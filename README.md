@@ -23,6 +23,21 @@ double-click it. A `.deb` package is there too.
 `web/index.html`. Get the source (green **Code** button → *Download ZIP*), unpack it, and open
 `web/index.html` in Chrome, Edge or Firefox. It works offline.
 
+## Examples
+
+Everything below was made by the app from its own built-in demo picture. The source, every
+result, and the chat-ready text files are in [`examples/`](examples/).
+
+| | |
+| --- | --- |
+| **The source picture**<br><img src="examples/demo-sunset.png" width="400"> | **ASCII: colour**<br><img src="examples/ascii-colour.png" width="400"> |
+| **Braille: classic**<br><img src="examples/braille-classic.png" width="400"> | **Matrix**<br><img src="examples/matrix.png" width="400"> |
+| **Pop-art dots**<br><img src="examples/pop-art-dots.png" width="400"> | **Emoji mosaic**<br><img src="examples/emoji-mosaic.png" width="400"> |
+| **Pencil sketch (edges)**<br><img src="examples/pencil-sketch.png" width="400"> | *…and over twenty more looks in the app, each with one slider to re-balance it.* |
+
+The same art as plain text, ready to paste into a chat:
+[braille-classic.txt](examples/braille-classic.txt) · [ascii-colour.txt](examples/ascii-colour.txt)
+
 ## What it does
 
 - Braille, ASCII, blocks, halftone, emoji and many more looks, each tuned per picture — plus one
