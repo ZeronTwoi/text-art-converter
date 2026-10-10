@@ -794,7 +794,7 @@ async function exportGIF() {
   await runExport('Encoding GIF', async progress => {
     const bytes = await gifBytes(progress);
     download(new Blob([bytes], { type: 'image/gif' }), baseName() + '.gif');
-    toast(`GIF saved (${fmtBytes(bytes.length)})`);
+    toast(`GIF saved (${fmtBytes(bytes.length)})`); reportActualSize('gif', bytes.length);
   });
 }
 /* the GIF file of a source's frames (the open source: its trim range) */
@@ -954,7 +954,7 @@ async function exportAnimated(kind) {
     const frames = enc.map((e, i) => Object.assign({}, meta[i], e));
     const blob = kind === 'apng' ? apngFile(W0, H0, frames) : webpFile(W0, H0, frames, S.bgMode === 'transparent' || frames.some(f => f.alph || f.id === 'VP8L'));
     download(blob, baseName() + (kind === 'apng' ? '_anim.png' : '.webp'));
-    toast(`${C.label} saved (${fmtBytes(blob.size)})`);
+    toast(`${C.label} saved (${fmtBytes(blob.size)})`); reportActualSize(kind, blob.size);
   });
 }
 const ANIM_WEBP_OK = (() => { try { return typeof OffscreenCanvas !== 'undefined' && typeof CompressionStream !== 'undefined' && document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp'); } catch (e) { return false; } })();
@@ -972,8 +972,55 @@ function audioTracksFor(s) {
   } catch (e) { console.warn('audio capture unavailable', e); return []; }
 }
 /* ---- video files encoded with WebCodecs: as fast as the computer allows, exact frame times ---- */
-/* WebM (Matroska): EBML header, Info, Tracks, Clusters of SimpleBlocks, Cues. chunks: { data, t (ms), key } */
-function webmFile(W, H, codecId, chunks, durationMs) {
+/* The source's own sound for the fast path: the file is decoded offline (no playback), resampled to
+   48 kHz and encoded with WebCodecs (AAC for MP4, Opus for WEBM). Returns { sr, ch, chunks, desc },
+   'silent' when the file has no readable sound, or null when this browser cannot pre-encode it
+   (then the real-time recorder is the fallback that keeps the sound). */
+async function encodeAudioFast(s, ext) {
+  if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined' || !s.file) return null;
+  const [a, b] = trimRange(); if (!(b > a)) return 'silent';
+  let decoded = null;
+  const AC = window.AudioContext || window.webkitAudioContext, actx = new AC();
+  try { decoded = await actx.decodeAudioData(await s.file.arrayBuffer()); } catch (e) { return 'silent'; }
+  finally { try { actx.close(); } catch (e) {} }
+  const len = Math.min(b, decoded.duration) - a;
+  if (!decoded.numberOfChannels || len <= 0.02) return 'silent';
+  const ch = Math.min(2, decoded.numberOfChannels), SR = 48000;
+  const codec = ext === 'mp4' ? 'mp4a.40.2' : 'opus';
+  try { if (!(await AudioEncoder.isConfigSupported({ codec, sampleRate: SR, numberOfChannels: ch, bitrate: 128000 })).supported) return null; } catch (e) { return null; }
+  const off = new OfflineAudioContext(ch, Math.ceil(len * SR), SR);   // trims and resamples in one go
+  const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start(0, a, len);
+  const pcm = await off.startRendering();
+  const chunks = []; let desc = null, err = null;
+  const enc = new AudioEncoder({
+    output: (c, meta) => {
+      const d = new Uint8Array(c.byteLength); c.copyTo(d);
+      chunks.push({ data: d, t: c.timestamp / 1000, dur: (c.duration || 21333) / 1000 });
+      const de = meta && meta.decoderConfig && meta.decoderConfig.description;
+      if (de && !desc) desc = ArrayBuffer.isView(de) ? new Uint8Array(de.buffer, de.byteOffset, de.byteLength).slice() : new Uint8Array(de).slice();
+    },
+    error: e => { err = e; },
+  });
+  enc.configure({ codec, sampleRate: SR, numberOfChannels: ch, bitrate: 128000 });
+  const planes = []; for (let c = 0; c < ch; c++) planes.push(pcm.getChannelData(c));
+  for (let i = 0; i < pcm.length && !err; i += SR) {   // one second at a time
+    const n = Math.min(SR, pcm.length - i), buf = new Float32Array(n * ch);
+    for (let c = 0; c < ch; c++) buf.set(planes[c].subarray(i, i + n), c * n);
+    enc.encode(new AudioData({ format: 'f32-planar', sampleRate: SR, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(i / SR * 1e6), data: buf }));
+  }
+  try { await enc.flush(); enc.close(); } catch (e) { return null; }
+  if (err || !chunks.length) return null;
+  if (!desc) {   // Opus can do without one from the encoder: a standard OpusHead
+    if (ext === 'mp4') return null;   // the MP4 esds needs the encoder's AudioSpecificConfig
+    desc = new Uint8Array(19); desc.set(new TextEncoder().encode('OpusHead'));
+    desc[8] = 1; desc[9] = ch; desc[10] = 0x38; desc[11] = 0x01;   // version, channels, pre-skip 312
+    new DataView(desc.buffer).setUint32(12, SR, true);
+  }
+  return { sr: SR, ch, chunks, desc };
+}
+/* WebM (Matroska): EBML header, Info, Tracks, Clusters of SimpleBlocks, Cues. chunks: { data, t (ms), key };
+   audio (optional, from encodeAudioFast) becomes an A_OPUS track interleaved into the clusters. */
+function webmFile(W, H, codecId, chunks, durationMs, audio) {
   const vint = n => { let len = 1; while (n >= 2 ** (7 * len) - 1 && len < 8) len++; const b = []; for (let i = len - 1; i >= 0; i--) b.push(Math.floor(n / 2 ** (8 * i)) & 255); b[0] |= 1 << (8 - len); return b; };
   const uint = n => { const b = []; do { b.unshift(n & 255); n = Math.floor(n / 256); } while (n > 0); return b; };
   const idb = id => { const b = []; while (id > 0) { b.unshift(id & 255); id = Math.floor(id / 256); } return b; };
@@ -982,28 +1029,35 @@ function webmFile(W, H, codecId, chunks, durationMs) {
   const f64 = (id, x) => { const b = new Uint8Array(8); new DataView(b.buffer).setFloat64(0, x); return el(id, [b]); };
   const head = el(0x1A45DFA3, [u(0x4286, 1).blob, u(0x42F7, 1).blob, u(0x42F2, 4).blob, u(0x42F3, 8).blob, str(0x4282, 'webm').blob, u(0x4287, 4).blob, u(0x4285, 2).blob]);
   const info = el(0x1549A966, [u(0x2AD7B1, 1000000).blob, str(0x4D80, 'Text Art Studio').blob, str(0x5741, 'Text Art Studio').blob, f64(0x4489, durationMs).blob]);
-  const tracks = el(0x1654AE6B, [el(0xAE, [u(0xD7, 1).blob, u(0x73C5, 1).blob, u(0x83, 1).blob, u(0x9C, 0).blob, str(0x86, codecId).blob, el(0xE0, [u(0xB0, W).blob, u(0xBA, H).blob]).blob]).blob]);
+  const trackVideo = el(0xAE, [u(0xD7, 1).blob, u(0x73C5, 1).blob, u(0x83, 1).blob, u(0x9C, 0).blob, str(0x86, codecId).blob, el(0xE0, [u(0xB0, W).blob, u(0xBA, H).blob]).blob]);
+  const trackAudio = audio ? el(0xAE, [u(0xD7, 2).blob, u(0x73C5, 2).blob, u(0x83, 2).blob, u(0x9C, 0).blob, str(0x86, 'A_OPUS').blob, el(0x63A2, [audio.desc]).blob, el(0xE1, [f64(0xB5, audio.sr).blob, u(0x9F, audio.ch).blob]).blob]) : null;
+  const tracks = el(0x1654AE6B, [trackVideo.blob, ...(trackAudio ? [trackAudio.blob] : [])]);
   // SeekHead (where Info, Tracks and Cues are); its positions are written with 8 bytes, so its size is known in advance
   const u8 = (id, n) => { const b = new Uint8Array(8); new DataView(b.buffer).setBigUint64(0, BigInt(n)); return el(id, [b]); };
   const seekHead = at => el(0x114D9B74, at.map(([id, n]) => el(0x4DBB, [el(0x53AB, [new Uint8Array(idb(id))]).blob, u8(0x53AC, n).blob]).blob));
   const shSize = seekHead([[0x1549A966, 0], [0x1654AE6B, 0], [0x1C53BB6B, 0]]).size;
+  const all = audio
+    ? [...chunks.map(c => ({ tr: 1, data: c.data, t: c.t, key: c.key })), ...audio.chunks.map(c => ({ tr: 2, data: c.data, t: c.t, key: true }))].sort((x, y) => x.t - y.t || x.tr - y.tr)
+    : chunks.map(c => ({ tr: 1, data: c.data, t: c.t, key: c.key }));
   const parts = [null, info, tracks], cues = [];
   let pos = shSize + info.size + tracks.size, i = 0;
-  while (i < chunks.length) {   // a cluster starts at a key frame and covers at most 30 s (block times are 16-bit)
-    const t0 = Math.round(chunks[i].t), blocks = [u(0xE7, t0).blob];
+  while (i < all.length) {   // a cluster starts at a video key frame and covers at most 30 s (block times are 16-bit)
+    const t0 = Math.round(all[i].t), blocks = [u(0xE7, t0).blob];
     cues.push([t0, pos]);
     do {
-      const c = chunks[i], rel = Math.round(c.t) - t0, hdr = new Uint8Array([0x81, (rel >> 8) & 255, rel & 255, c.key ? 0x80 : 0]);
+      const c = all[i], rel = Math.round(c.t) - t0, hdr = new Uint8Array([0x80 | c.tr, (rel >> 8) & 255, rel & 255, c.key ? 0x80 : 0]);
       blocks.push(el(0xA3, [hdr, c.data]).blob); i++;
-    } while (i < chunks.length && !(chunks[i].key && Math.round(chunks[i].t) - t0 > 0) && Math.round(chunks[i].t) - t0 < 30000);
+    } while (i < all.length && !(all[i].tr === 1 && all[i].key && Math.round(all[i].t) - t0 > 0) && Math.round(all[i].t) - t0 < 30000);
     const cl = el(0x1F43B675, blocks); parts.push(cl); pos += cl.size;
   }
   parts.push(el(0x1C53BB6B, cues.map(([t, at]) => el(0xBB, [u(0xB3, t).blob, el(0xB7, [u(0xF7, 1).blob, u(0xF1, at).blob]).blob]).blob)));
   parts[0] = seekHead([[0x1549A966, shSize], [0x1654AE6B, shSize + info.size], [0x1C53BB6B, pos]]);
   return new Blob([head.blob, el(0x18538067, parts.map(x => x.blob)).blob], { type: 'video/webm' });
 }
-/* MP4 (H.264, "fast start": moov before mdat). chunks: { data, t (ms), key }; avcC: the encoder's decoder description */
-function mp4File(W, H, avcC, chunks, durationMs) {
+/* MP4 (H.264, "fast start": moov before mdat). chunks: { data, t (ms), key }; avcC: the encoder's decoder
+   description; audio (optional, from encodeAudioFast) becomes an AAC track (its samples follow the video's
+   in mdat, each track with its own offsets). */
+function mp4File(W, H, avcC, chunks, durationMs, audio) {
   const TS = 90000, be = (n, len) => { const b = new Uint8Array(len); for (let i = len - 1; i >= 0; i--) { b[i] = n & 255; n = Math.floor(n / 256); } return b; };
   const box = (type, ...parts) => { const body = new Blob(parts); return new Blob([be(8 + body.size, 4), new TextEncoder().encode(type), body]); };
   const full = (type, ver, flags, ...parts) => box(type, new Uint8Array([ver, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255]), ...parts);
@@ -1011,8 +1065,31 @@ function mp4File(W, H, avcC, chunks, durationMs) {
   const stts = []; for (const d of dur) { const last = stts[stts.length - 1]; if (last && last[1] === d) last[0]++; else stts.push([1, d]); }
   const matrix = new Uint8Array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0, 0, 0]);
   const durMs = Math.round(durationMs), mdatSize = chunks.reduce((n, c) => n + c.data.length, 0);
+  let audioTrak = null;
+  if (audio) {
+    const SRa = audio.sr, A = audio.chunks, ticksA = A.map(c => Math.round(c.t * SRa / 1000));
+    const endA = Math.round((A[A.length - 1].t + A[A.length - 1].dur) * SRa / 1000);
+    const durA = A.map((c, i) => Math.max(1, (i + 1 < A.length ? ticksA[i + 1] : endA) - ticksA[i]));
+    const sttsA = []; for (const d of durA) { const last = sttsA[sttsA.length - 1]; if (last && last[1] === d) last[0]++; else sttsA.push([1, d]); }
+    const asc = audio.desc;   // AudioSpecificConfig from the encoder, wrapped in the esds descriptors
+    const esds = new Uint8Array([0x03, 23 + asc.length, 0, 2, 0, 0x04, 15 + asc.length, 0x40, 0x15, 0, 0, 0, 0, 1, 0xF4, 0, 0, 1, 0xF4, 0, 0x05, asc.length, ...asc, 0x06, 1, 0x02]);
+    audioTrak = off => box('trak',
+      full('tkhd', 0, 3, be(0, 4), be(0, 4), be(2, 4), be(0, 4), be(durMs, 4), new Uint8Array(8), be(0, 2), be(0, 2), be(0x0100, 2), be(0, 2), matrix, be(0, 4), be(0, 4)),
+      box('mdia',
+        full('mdhd', 0, 0, be(0, 4), be(0, 4), be(SRa, 4), be(endA, 4), be(0x55C4, 2), be(0, 2)),
+        full('hdlr', 0, 0, be(0, 4), new TextEncoder().encode('soun'), new Uint8Array(12), new TextEncoder().encode('SoundHandler\0')),
+        box('minf',
+          full('smhd', 0, 0, new Uint8Array(4)),
+          box('dinf', full('dref', 0, 0, be(1, 4), full('url ', 0, 1))),
+          box('stbl',
+            full('stsd', 0, 0, be(1, 4), box('mp4a', new Uint8Array(6), be(1, 2), new Uint8Array(8), be(audio.ch, 2), be(16, 2), new Uint8Array(4), be(SRa * 65536, 4), full('esds', 0, 0, esds))),
+            full('stts', 0, 0, be(sttsA.length, 4), ...sttsA.flatMap(([n, d]) => [be(n, 4), be(d, 4)])),
+            full('stsc', 0, 0, be(1, 4), be(1, 4), be(A.length, 4), be(1, 4)),
+            full('stsz', 0, 0, be(0, 4), be(A.length, 4), ...A.map(c => be(c.data.length, 4))),
+            full('stco', 0, 0, be(1, 4), be(off, 4))))));
+  }
   const moov = off => box('moov',
-    full('mvhd', 0, 0, be(0, 4), be(0, 4), be(1000, 4), be(durMs, 4), be(0x00010000, 4), be(0x0100, 2), new Uint8Array(10), matrix, new Uint8Array(24), be(2, 4)),
+    full('mvhd', 0, 0, be(0, 4), be(0, 4), be(1000, 4), be(durMs, 4), be(0x00010000, 4), be(0x0100, 2), new Uint8Array(10), matrix, new Uint8Array(24), be(audio ? 3 : 2, 4)),
     box('trak',
       full('tkhd', 0, 3, be(0, 4), be(0, 4), be(1, 4), be(0, 4), be(durMs, 4), new Uint8Array(8), be(0, 2), be(0, 2), be(0, 2), be(0, 2), matrix, be(W * 65536, 4), be(H * 65536, 4)),
       box('mdia',
@@ -1027,10 +1104,12 @@ function mp4File(W, H, avcC, chunks, durationMs) {
             full('stss', 0, 0, be(chunks.filter(c => c.key).length, 4), ...chunks.map((c, i) => c.key ? be(i + 1, 4) : null).filter(Boolean)),
             full('stsc', 0, 0, be(1, 4), be(1, 4), be(chunks.length, 4), be(1, 4)),
             full('stsz', 0, 0, be(0, 4), be(chunks.length, 4), ...chunks.map(c => be(c.data.length, 4))),
-            full('stco', 0, 0, be(1, 4), be(off, 4)))))));
+            full('stco', 0, 0, be(1, 4), be(off, 4)))))),
+    ...(audioTrak ? [audioTrak(off + mdatSize)] : []));
   const ftyp = box('ftyp', new TextEncoder().encode('isom'), be(512, 4), new TextEncoder().encode('isomiso2avc1mp41'));
+  const mdatAll = audio ? mdatSize + audio.chunks.reduce((n, c) => n + c.data.length, 0) : mdatSize;
   const m0 = moov(0), off = ftyp.size + m0.size + 8;   // the offset does not change the size of moov
-  return new Blob([ftyp, moov(off), be(8 + mdatSize, 4), new TextEncoder().encode('mdat'), ...chunks.map(c => c.data)], { type: 'video/mp4' });
+  return new Blob([ftyp, moov(off), be(8 + mdatAll, 4), new TextEncoder().encode('mdat'), ...chunks.map(c => c.data), ...(audio ? audio.chunks.map(c => c.data) : [])], { type: 'video/mp4' });
 }
 const FAST_VIDEO_OK = typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
 async function pickVideoCodec(ext, W, H, bitrate, fps) {
@@ -1042,8 +1121,9 @@ async function pickVideoCodec(ext, W, H, bitrate, fps) {
   }
   return null;
 }
-/* MP4 / WEBM without real-time recording: frames are drawn (on workers) and encoded as fast as possible */
-async function exportVideoFast(ext) {
+/* MP4 / WEBM without real-time recording: frames are drawn (on workers) and encoded as fast as possible;
+   audio (from encodeAudioFast) is muxed in without playing anything */
+async function exportVideoFast(ext, audio) {
   const s = App.src, label = ext === 'mp4' ? 'MP4' : 'WEBM';
   await runExport(`Encoding ${label}`, async progress => {
     const fps = clamp(S.videoFps, 1, 60), bitrate = Math.round(S.videoBitrate * 1e6), chunks = [];
@@ -1070,18 +1150,37 @@ async function exportVideoFast(ext) {
     const reps = s.kind === 'anim' ? Math.max(1, Math.round(S.animRepeat)) : 1, one = chunks.slice();
     for (let r = 1; r < reps; r++) for (const c of one) chunks.push({ data: c.data, t: c.t + r * t, key: c.key });
     const total = t * reps;
-    const blob = ext === 'mp4' ? mp4File(cfg.width, cfg.height, avcC, chunks, total) : webmFile(cfg.width, cfg.height, cfg.codec.startsWith('vp09') ? 'V_VP9' : 'V_VP8', chunks, total);
+    const blob = ext === 'mp4' ? mp4File(cfg.width, cfg.height, avcC, chunks, total, audio) : webmFile(cfg.width, cfg.height, cfg.codec.startsWith('vp09') ? 'V_VP9' : 'V_VP8', chunks, total, audio);
     download(blob, baseName() + '.' + ext);
     toast(`${label} saved (${fmtBytes(blob.size)}, ${fmtTime(total / 1000)})`);
+    reportActualSize(ext, blob.size);
+    if (audio) toast('The original sound is included');
   });
 }
-/* the video buttons: fast encoding when possible; real-time recording keeps a video's own sound */
-function exportVideoAny(ext) {
-  const rec = VIDEO_FORMATS.find(f => f.ext === ext), custom = playCustom(App.src), wantsAudio = App.src && App.src.kind === 'video' && S.includeAudio && !custom;
-  if (FAST_VIDEO_OK && !(wantsAudio && rec)) { if (custom && App.src.kind === 'video' && S.includeAudio) toast('Saved without sound: it cannot play reversed or at another speed'); return exportVideoFast(ext); }
-  if (custom) toast('This browser records in real time: order, speed and smooth loop are left out');
-  if (rec) return exportVideo(rec);
-  toast('This browser cannot save ' + ext.toUpperCase() + ' videos', 'error');
+/* the video buttons: fast encoding whenever possible, with the sound pre-encoded from the file;
+   real-time recording remains the fallback that keeps the sound */
+async function exportVideoAny(ext) {
+  const rec = VIDEO_FORMATS.find(f => f.ext === ext), custom = playCustom(App.src);
+  const wantsAudio = App.src && App.src.kind === 'video' && S.includeAudio && !custom;
+  if (!FAST_VIDEO_OK) {
+    if (custom) toast('This browser records in real time: order, speed and smooth loop are left out');
+    if (rec) return exportVideo(rec);
+    return toast('This browser cannot save ' + ext.toUpperCase() + ' videos', 'error');
+  }
+  if (custom && App.src.kind === 'video' && S.includeAudio) toast('Saved without sound: it cannot play reversed or at another speed');
+  let audio = null;
+  if (wantsAudio) {
+    showProgress('Reading the sound…', true);
+    let got = null;
+    try { got = await encodeAudioFast(App.src, ext); } catch (e) { console.warn('audio', e); }
+    finally { hideProgress(); }
+    if (got === 'silent') toast('No sound found in this video: saved without it');
+    else if (!got) {
+      if (rec) { toast('This browser cannot pre-encode the sound: recording in real time instead'); return exportVideo(rec); }
+      toast('The sound could not be read: saved without it');
+    } else audio = got;
+  }
+  return exportVideoFast(ext, audio);
 }
 async function exportVideo(fmt) {
   const s = App.src;
@@ -1140,7 +1239,7 @@ async function exportVideo(fmt) {
     if (App.cancel) throw cancelled();
     const blob = new Blob(chunks, { type: fmt.mime.split(';')[0] });
     download(blob, baseName() + '.' + fmt.ext);
-    toast(`${fmt.label} saved (${fmtBytes(blob.size)})`);
+    toast(`${fmt.label} saved (${fmtBytes(blob.size)})`); reportActualSize(fmt.ext, blob.size);
   });
 }
 /* the result of every export frame (converted on workers where needed) with its delay */
@@ -1390,7 +1489,7 @@ function buildExportPanel() {
     if (s.kind === 'video') o += `<div class="row"><label class="chk"><input type="checkbox" data-key="includeAudio"> Include original audio in video</label></div>`;
     else o += `<div class="row"><label>Video: repeat loop <output data-out="animRepeat" data-suffix="×"></output></label><input type="range" data-key="animRepeat" min="1" max="20" step="1"></div>`;
     o = `<details class="fold xoptfold" data-fold="x-animopts"><summary>Animation options (order, speed, loop, colours)</summary>${o}`;
-    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p></details>`;
+    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows; "Include original audio" adds the file’s own sound.' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p></details>`;
     opts(an, o); initFold(an.querySelector('details.xoptfold'));
   }
   { const st = section('Stickers &amp; emoji', animated ? 'animated' : ''); st.dataset.goal = 'save';

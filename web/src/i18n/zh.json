@@ -1204,5 +1204,13 @@
 "smoothness": "流畅度",
 "size": "大小",
 "quality": "质量",
-"video bitrate": "视频码率"
+"video bitrate": "视频码率",
+"Reading the sound…": "正在读取声音…",
+"No sound found in this video: saved without it": "这个视频里没有找到声音: 已无声保存",
+"This browser cannot pre-encode the sound: recording in real time instead": "这个浏览器无法预先编码声音: 改为实时录制",
+"The sound could not be read: saved without it": "无法读取声音: 已无声保存",
+"The original sound is included": "已包含原始声音",
+"The size of your last export with these settings": "这些设置下你上次导出的大小",
+"Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "视频会以电脑允许的最快速度编码;“包含原始音频”会加入文件自己的声音。",
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "按码率估算;画面简单时编码器会更小"
 }

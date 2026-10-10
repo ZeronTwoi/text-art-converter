@@ -1204,5 +1204,13 @@
 "smoothness": "なめらかさ",
 "size": "サイズ",
 "quality": "画質",
-"video bitrate": "動画ビットレート"
+"video bitrate": "動画ビットレート",
+"Reading the sound…": "音声を読み込み中…",
+"No sound found in this video: saved without it": "この動画に音声は見つかりませんでした: 音声なしで保存しました",
+"This browser cannot pre-encode the sound: recording in real time instead": "このブラウザーは音声を事前エンコードできません: 代わりにリアルタイムで録画します",
+"The sound could not be read: saved without it": "音声を読み込めませんでした: 音声なしで保存しました",
+"The original sound is included": "元の音声が入っています",
+"The size of your last export with these settings": "この設定での前回の書き出しのサイズ",
+"Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "動画はパソコンの許すかぎり速くエンコードされます。「元の音声を含める」はファイル自身の音声を加えます。",
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "ビットレートからの見積もり。単純な絵ではエンコーダーはより小さく仕上げます"
 }

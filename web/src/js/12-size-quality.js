@@ -25,6 +25,8 @@ function scheduleSizeEstimate() {
   clearTimeout(sizeTimer); sizeTimer = setTimeout(() => { sizeTimer = 0; estimateSizes(); }, 450);
 }
 function setEst(key, text, title) { $$(`[data-est="${key}"] .sz`).forEach(e => { e.textContent = text; if (title) e.parentNode.title = title; }); }
+/* after a real export, its exact size replaces the estimate (until the settings change again) */
+function reportActualSize(ext, bytes) { setEst(ext, fmtBytes(bytes) + ' ✓', 'The size of your last export with these settings'); }
 /* settings that change how a result is drawn into a picture (with the result itself and the scale) */
 const RENDER_KEYS = ['fontSize', 'charAspect', 'bg', 'bgMode', 'renderStyle', 'dotShape', 'dotSize', 'fontFamily', 'customFont', 'margin',
   'layerOn', 'layerStyle', 'layerX', 'layerY', 'layerSize', 'layerOpacity', 'layerBlend'];
@@ -100,12 +102,13 @@ async function estimateSizes() {
       estimateSizes.gif = paired ? { sig: gifSig, first: lens[0], perFrame: (lens[1] + lens[2]) / 2 } : { sig: gifSig, first: 0, perFrame: lens.reduce((x, y) => x + y, 0) / Math.max(1, lens.length) };
     }
     const est = estimateSizes.gif;
-    if (rs.length) setEst('gif', '≈ ' + fmtBytes(est.first ? est.first + est.perFrame * (frames - 1) + 800 : est.perFrame * frames + 800), s.kind === 'video' && diff ? 'Upper estimate from one frame: storing only what changes usually makes it smaller' : 'Estimated from sample frames');
+    // for a video with "only what changes" the sample is one whole frame, so this is an upper bound: shown as ≤
+    if (rs.length) setEst('gif', (s.kind === 'video' && diff ? '≤ ' : '≈ ') + fmtBytes(est.first ? est.first + est.perFrame * (frames - 1) + 800 : est.perFrame * frames + 800), s.kind === 'video' && diff ? 'Upper estimate from one frame: storing only what changes usually makes it smaller' : 'Estimated from sample frames');
   } catch (e) { console.warn('gif estimate', e); }
-  // video: bitrate × length
+  // video: bitrate × length (the bitrate is a cap, so the file is at most this big)
   const vsecs = s.kind === 'anim' ? secs * Math.max(1, Math.round(S.animRepeat)) : secs;
   const vbytes = vsecs * (S.videoBitrate * 1e6 + (s.kind === 'video' && S.includeAudio ? 128e3 : 0)) / 8;
-  for (const f of (FAST_VIDEO_OK ? [{ ext: 'mp4' }, { ext: 'webm' }] : VIDEO_FORMATS)) setEst(f.ext, '≈ ' + fmtBytes(vbytes), 'Estimated from the bitrate; the recorder can come out smaller for simple pictures');
+  for (const f of (FAST_VIDEO_OK ? [{ ext: 'mp4' }, { ext: 'webm' }] : VIDEO_FORMATS)) setEst(f.ext, '≤ ' + fmtBytes(vbytes), 'Estimated from the bitrate; the encoder comes out smaller for simple pictures');
 }
 /* ---- fit a size limit: lowers colours, frames and size until the export fits (a chat app's upload cap,
    small mailboxes, slow connections). The video bitrate follows the budget directly; the GIF is measured

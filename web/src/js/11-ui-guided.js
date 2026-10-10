@@ -127,7 +127,8 @@ function varyApply(v) {
 function varyReset() { Vary.base = null; Vary.v = 0.5; varySync(); }
 function varySync() {
   const s = $('#varySlider'), o = $('#varyOut'); if (!s) return;
-  s.value = String(Vary.v);
+  const v = String(Vary.v);
+  if (s.value !== v) s.value = v;   // writing the value during a drag would end the drag
   const d = Math.round((Vary.v - 0.5) * 200);
   o.textContent = d ? (d > 0 ? '+' : '') + d + '%' : '';
 }

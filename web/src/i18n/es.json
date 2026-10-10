@@ -1202,5 +1202,13 @@
 "smoothness": "fluidez",
 "size": "tamaño",
 "quality": "calidad",
-"video bitrate": "bitrate del vídeo"
+"video bitrate": "bitrate del vídeo",
+"Reading the sound…": "Leyendo el sonido…",
+"No sound found in this video: saved without it": "No se encontró sonido en este vídeo: guardado sin él",
+"This browser cannot pre-encode the sound: recording in real time instead": "Este navegador no puede precodificar el sonido: se graba en tiempo real en su lugar",
+"The sound could not be read: saved without it": "No se pudo leer el sonido: guardado sin él",
+"The original sound is included": "El sonido original está incluido",
+"The size of your last export with these settings": "El tamaño de tu última exportación con estos ajustes",
+"Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "Los vídeos se codifican tan rápido como permita tu equipo; «Incluir audio original» añade el sonido del archivo.",
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Estimado a partir del bitrate; con imágenes simples el codificador sale más pequeño"
 }

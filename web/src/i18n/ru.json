@@ -1204,5 +1204,13 @@
 "smoothness": "плавность",
 "size": "размер",
 "quality": "качество",
-"video bitrate": "битрейт видео"
+"video bitrate": "битрейт видео",
+"Reading the sound…": "Чтение звука…",
+"No sound found in this video: saved without it": "В этом видео не найден звук: сохранено без него",
+"This browser cannot pre-encode the sound: recording in real time instead": "Этот браузер не может заранее закодировать звук: вместо этого запись идёт в реальном времени",
+"The sound could not be read: saved without it": "Звук прочитать не удалось: сохранено без него",
+"The original sound is included": "Оригинальный звук включён",
+"The size of your last export with these settings": "Размер вашего последнего экспорта с этими настройками",
+"Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "Видео кодируется так быстро, как позволяет компьютер; «Включить исходный звук» добавляет звук из файла.",
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Оценка по битрейту; на простых картинках кодировщик даёт меньше"
 }
