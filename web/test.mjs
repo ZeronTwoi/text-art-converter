@@ -1,4 +1,4 @@
-// Runs the page's own checks in a headless Chrome or Edge and prints the results:
+// Runs the checks built into test.html (the app + its tests) in a headless Chrome or Edge and prints the results:
 //   #selftest  GIF round-trip, ZIP CRC, every mode and export
 //   #equiv     bit-exact regression hashes of the engine, text formats and encoders (plus the worker copies)
 //   #uitest    the interactive features: gallery, crop, wipe, projects, batch ZIP, editing, effects, palettes, ANSI import
@@ -10,7 +10,7 @@
 //   node test.mjs selftest equiv  run only these
 //   CHROME=path node test.mjs     use this browser
 //
-// It first checks that index.html is built from src/ (node build.mjs).
+// It first checks that index.html and test.html are built from src/ (node build.mjs).
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { existsSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
@@ -41,7 +41,7 @@ const browser = candidates.find(p => p && existsSync(p));
 if (!browser) { console.error('No Chrome or Edge found: set CHROME=<path to the browser>'); process.exit(1); }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const page = pathToFileURL(join(here, 'index.html')).href;
+const page = pathToFileURL(join(here, 'test.html')).href;
 const profile = mkdtempSync(join(tmpdir(), 'textart-test-'));
 const port = 9300 + Math.floor(Math.random() * 600);
 const proc = spawn(browser, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run',

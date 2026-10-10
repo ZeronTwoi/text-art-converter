@@ -1,6 +1,6 @@
 /* Offline cache of the installed Text Art Studio (only used when the page is served over https or localhost).
    Built by build.mjs: the version is a hash of index.html, so a new build replaces the cached copy. */
-const CACHE = 'textart-2ad5181002e1';
+const CACHE = 'textart-763033b8712d';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

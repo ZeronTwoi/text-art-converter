@@ -24,10 +24,10 @@ The page is built from `web/src/`:
 
 ```
 cd web
-node build.mjs          # writes index.html (and sw.js)
+node build.mjs          # writes index.html (the app), test.html (app + tests) and sw.js
 node test.mjs           # self-test, bit-exact regression check, feature checks, installed-app check
 ```
 
 `node test.mjs` needs Node 22+ and Chrome or Edge (or `CHROME=<path>`). It exits with code 1 if
 anything fails. Single suites: `node test.mjs selftest`, `equiv`, `uitest`, `pwa`, `video`.
-To check video in your own browser: open `web/index.html#videotest` and press Start.
+To check video in your own browser: open `web/test.html#videotest` and press Start. (`test.html` is the app plus its tests; `index.html` is the app alone.)
