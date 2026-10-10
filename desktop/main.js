@@ -147,6 +147,7 @@ function start() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false,
+      backgroundThrottling: false,   // exports and playback keep full speed while the window is minimized
     },
   });
   Menu.setApplicationMenu(null);   // the page is the whole interface

@@ -342,8 +342,9 @@ onmessage = async e => {
       const ws = this.size() ? init().filter(w => w.busy < 1e9) : [];
       if (!ws.length) return Promise.reject(new Error('no workers'));
       const w = ws.reduce((b, x) => x.busy < b.busy ? x : b), id = ++seq;
-      // the sharp "picture on top" travels with the job (drawn by renderResult on the worker too)
-      if (a && typeof a === 'object' && a.layer === undefined && Layer.bmp && Layer.png) a.layer = { id: Layer.id, png: Layer.png };
+      // the sharp "picture on top" travels with the job (drawn by renderResult on the worker too);
+      // in the "as characters" style the workers never draw it, so nothing is copied then
+      if (a && typeof a === 'object' && a.layer === undefined && Layer.bmp && Layer.png && S.layerOn && S.layerStyle === 'sharp' && S.layerOpacity > 0) a.layer = { id: Layer.id, png: Layer.png };
       w.busy++;
       return new Promise((res, rej) => { jobs.set(id, { res, rej, w }); w.postMessage({ id, op, a }, transfer || []); });
     },
