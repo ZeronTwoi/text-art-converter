@@ -39,6 +39,9 @@ in a browser). It serves the page from a stable `app://` origin so settings, pro
 persist, opens files passed on the command line or by double-click, lets the camera through, and
 opens outside links in the system browser.
 
+On Windows, double-clicking `desktop\dev.cmd` (or a shortcut to it) does all of this in one go:
+it fetches Electron once if needed, rebuilds the page from `src/`, and opens the app.
+
 ```
 cd desktop
 npm install
