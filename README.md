@@ -30,18 +30,89 @@ for the chat app you choose:
 
 <img src="examples/app-screenshot.png" width="920">
 
-Three sources, four of the twenty-plus looks (all files, including the chat-ready text, are in
+Before and after — four illustrations, four different looks (all files are in
 [`examples/`](examples/)):
+
+| The source | The text art |
+| --- | --- |
+| <img src="examples/Leaning-Normal.png" width="380"> | **Pixel art**<br><img src="examples/Leaning-Pixel.png" width="380"> |
+| <img src="examples/Sitting-Normal.png" width="380"> | **Dots**<br><img src="examples/Sitting-Dot.png" width="380"> |
+| <img src="examples/Sitting2-Normal.png" width="380"> | **Letters**<br><img src="examples/Sitting2-Letter.png" width="380"> |
+| <img src="examples/Standing-Normal.png" width="380"> | **Emoji**<br><img src="examples/Standing-Emojy.png" width="380"> |
+
+A photo — one source, three looks (NASA, 1984):
 
 | | |
 | --- | --- |
-| **An illustration (the source)**<br><img src="examples/elf.png" width="380"> | **Pixel art (half blocks)**<br><img src="examples/elf-half-blocks.png" width="380"> |
-| **Comic line art (the source)**<br><img src="examples/comic.png" width="380"> | **Comic (outlines + shading)**<br><img src="examples/comic-outlines.png" width="380"> |
-| **A photo (the source — NASA, 1984)**<br><img src="examples/astronaut.jpg" width="380"> | **Braille: classic**<br><img src="examples/astronaut-braille.png" width="380"> |
-| **Matrix**<br><img src="examples/astronaut-matrix.png" width="380"> | *…and over twenty more looks in the app, each with one slider to re-balance it.* |
+| **The source**<br><img src="examples/astronaut.jpg" width="380"> | **Braille: classic**<br><img src="examples/astronaut-braille.png" width="380"> |
+| **Matrix**<br><img src="examples/astronaut-matrix.png" width="380"> | **Halftone print**<br><img src="examples/astronaut-halftone.png" width="380"> |
 
-The same art as plain text, ready to paste into a chat:
-[elf-half-blocks.txt](examples/elf-half-blocks.txt) · [astronaut-braille.txt](examples/astronaut-braille.txt)
+And the text itself: the picture below, adapted for Discord — paste
+[Standing-Text.txt](examples/Standing-Text.txt) into a chat and it shows as braille dots.
+
+<img src="examples/Standing-ImageNormal.png" width="200">
+
+<details><summary><b>Show the chat-ready text</b></summary>
+
+```text
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⣒⣒⣢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⣄⣺⣿⣿⡿⢶⣢⣄⠀⠀⠀⢠⡄⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠮⠛⣿⣗⣿⣿⣿⣿⣟⢿⡝⠿⣢⣤⣾⡿⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢠⡿⠁⠀⠘⠉⣻⣍⣯⣟⣶⣿⡇⠉⢰⣌⢻⣿⡀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⣾⠃⣠⣴⢆⢰⠟⣾⠋⠀⠀⢉⡿⠀⢸⣿⣏⠻⣿⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢰⡽⣼⡿⣳⣿⣿⣼⣯⣤⣤⣤⣼⢧⣿⠈⣿⣿⢹⡿⡀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣀⣺⣿⣯⣴⣿⢿⣳⣷⣿⣿⣿⣿⢹⣼⣿⣶⡀⣿⣦⣣⣇⢀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⡲⡿⣛⣩⣿⣿⣿⣿⣿⣛⠻⣻⡿⠛⣿⣿⢷⣷⣼⣶⡭⣽⠷⠃⠀⠀
+⠀⠀⠘⢾⣷⣮⣻⠿⣿⣿⠟⣿⣿⣿⣍⠉⠋⠉⠘⠳⠟⠷⣞⣿⣿⣿⣷⣣⢔⡔⠀⠀
+⠀⠀⢀⣾⣟⣅⣠⣾⢿⣷⡄⣿⣿⠏⣿⣷⣄⡘⠛⢉⣥⣾⣿⣿⡅⢻⡍⣿⣯⡀⠀⠀
+⠀⠀⣿⣵⡟⣾⢻⠇⠘⢿⣿⣮⢿⣶⣷⡮⡷⠭⡟⠛⣯⣛⣿⠗⣿⣾⠹⣮⠛⣷⡀⠀
+⠀⠀⠻⢿⣷⡛⢾⣧⣴⠟⠛⠛⢻⣿⣽⣿⣏⠉⠿⣦⣬⣟⣷⡾⠿⠋⢀⣿⣇⣾⠃⠀
+⠀⠀⠆⣆⡨⣾⢀⢰⡏⠀⠀⠀⠀⠘⣿⡄⠈⠉⠓⠒⠚⢿⣏⠻⣦⠀⡿⡛⠒⠁⠀⠀
+⠀⠀⠈⠻⡿⡷⠟⢸⡇⠀⠀⠀⠀⣴⣘⣿⣤⠤⠤⠶⠤⠤⢿⣷⣿⣠⣜⢷⡴⡀⠀⠀
+⠀⠀⠀⠀⢻⢇⣦⣿⠛⠛⣛⡿⠿⡟⠉⠉⠀⠀⠀⠀⠀⠀⠀⠉⠙⠿⣟⡟⠋⠀⠀⠀
+⠀⠀⠀⠀⠀⡹⣿⣿⠀⠀⢸⠘⣾⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⡞⡀⠀⠀⠀
+⠀⠀⠀⠀⢨⢏⠛⠻⢶⣤⣸⠀⡼⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡷⡁⠀⠀⠀
+⠀⠀⠀⠀⣜⡎⠀⠀⠀⠉⠻⣷⣧⠀⠀⠀⠠⠖⠒⠒⠉⠉⠓⠒⠶⣿⡿⠈⣻⡃⠀⠀
+⠀⠀⠀⠀⠫⡗⡶⠶⠶⠶⠶⣬⣻⣅⢀⣀⣀⠤⠴⠶⠶⠶⠶⠶⢶⣿⢀⣼⢹⠀⠀⠀
+⠀⠀⠀⠀⡰⡽⠾⠽⣯⣿⢿⣿⣿⢿⣬⠇⠀⠀⠀⠀⠀⠀⠀⠀⣾⣷⣿⠿⣼⠀⠀⠀
+⠀⠀⠀⠀⣿⡋⣳⠀⠀⣙⠿⣿⣿⢸⣋⣀⠀⠀⠀⠀⠀⢰⡟⠀⢻⣟⡞⢰⢳⣣⠀⠀
+⠀⠀⠀⠀⠱⡳⡇⠀⠀⢏⢧⡙⢿⠀⠀⠀⠉⢩⢿⠓⢲⣶⢷⣾⣿⡍⡇⡜⠀⢫⡆⠀
+⠀⠀⠀⠀⠀⡇⡇⠀⠀⠘⣆⢳⡀⣿⠒⢲⣤⣼⣎⣀⣸⣿⣀⣿⣸⣷⣿⡅⠀⢸⢸⠀
+⠀⠀⠀⠀⢰⣁⣇⠀⠀⠀⠘⣆⢹⣿⣶⣿⠟⠉⠉⠀⠈⣿⠛⡟⠈⠉⢻⣿⡄⢸⢸⠀
+⠀⠀⠀⢀⢦⣿⠋⠳⣄⠀⠀⠘⣆⢸⣧⣄⡀⠀⠀⠀⠀⣿⢠⡇⠀⣠⣴⣿⣧⡸⡼⡀
+⠀⠀⠀⣌⡇⣿⠀⣀⣈⡇⠀⠀⠘⣾⡷⣯⣿⢶⣄⠀⠀⣿⡾⠃⠛⣛⡿⠚⣹⡯⢿⢱
+⠀⠀⠰⡜⡇⢿⣿⣅⣤⠖⠋⠉⠙⣾⡟⠻⢾⣷⣤⣤⣤⣿⣖⣿⣾⡷⠿⢻⡟⠁⣮⠃
+⠀⢀⢷⠁⢹⠈⣿⠘⣮⣷⠶⠾⠿⢿⣇⠀⠀⠉⠻⣯⠟⣛⡽⢋⠀⠀⠀⠈⣿⠛⡟⡄
+⠀⡘⡏⠀⠀⡇⣿⣿⣹⠆⠀⠀⠀⠀⣿⠀⠀⠀⠀⢻⡴⣻⠗⠋⠀⠀⠀⠀⣿⠀⡽⡇
+⢀⢿⠁⠀⠀⢹⢿⣭⣅⣀⣀⣀⣤⣴⡿⣀⣀⠀⠀⢸⡏⠁⠀⠀⠀⠀⠀⢸⣿⣵⡽⠀
+⢸⡞⠀⠀⠀⠸⣼⡈⠻⣯⣽⡟⢻⢸⡟⢧⣼⢶⡀⢸⡇⠀⠀⠀⠀⢀⡀⣼⣯⢷⠁⠀
+⡎⡇⠀⠀⠀⢀⢿⢧⡀⠈⠙⣻⣿⡿⣶⡋⣻⡏⠀⣼⠇⠀⠀⣀⣴⣫⣿⡿⠉⡿⡀⠀
+⠘⢽⣦⢄⣀⣸⣸⠀⠉⠉⣿⢹⣏⣷⣿⠻⣧⡽⠀⣿⢀⣤⠾⣧⡿⢻⣾⣇⡤⡧⠃⠀
+⠀⠀⠀⠉⠉⠒⣵⣄⣀⣀⣿⠘⣾⢥⠽⠛⠁⠀⢸⣿⣯⣽⢿⣏⣿⡿⡕⠊⠉⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⠉⠐⠒⠛⢏⡟⠀⠀⠀⠀⠀⣾⢿⣟⣷⣾⣻⣷⡻⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⢱⠀⠀⠀⠀⢰⣿⡾⢻⣧⣿⢿⣯⠃⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⢸⠰⣄⣤⣾⣹⢧⣙⣿⣉⣿⣿⡜⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡸⡞⢿⣻⡷⠚⣹⣸⠳⢻⣯⣺⣽⡇⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣻⣤⠖⢻⡇⣴⢿⣿⠀⠶⣟⣯⢸⢣⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢮⣧⡿⢿⣿⣹⣼⣿⣿⠀⠀⠈⠁⠘⡼⡀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢰⢱⠚⣿⡶⣾⣭⣤⣯⣿⡽⠶⣖⣒⣒⡾⢷⡜⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢸⢸⣀⡀⢹⢸⠁⠀⢸⣿⡇⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢻⢽⣛⣿⣿⠛⠀⠀⣸⣿⣧⣀⠀⠀⠀⣀⣾⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⡟⠻⢿⢳⠚⢛⣿⠙⣿⠈⠉⠉⠉⠁⣿⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣇⠀⢸⡏⠀⢸⢸⠀⡿⡄⠀⠀⠀⢸⡟⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣼⠀⢸⡇⠀⢸⡏⠀⢳⡇⠀⠀⠀⣼⡇⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢏⡆⠘⡇⠀⡼⡇⠀⢸⢣⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⢧⠀⣿⠀⡇⡇⠀⢸⢸⠀⠀⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡸⡎⠘⢿⣄⣳⣧⡀⣾⠏⠀⠀⠈⣿⡄⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢱⢳⠦⣤⢞⣩⣿⠃⢻⡇⠀⠀⢠⣿⠃⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢮⠎⠈⢹⣻⠘⣿⡄⢸⡇⠀⠀⠈⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⢸⣄⠀⠀⢯⢧⠘⣿⣼⡇⠀⠀⠀⢯⡆⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡿⡝⢷⣄⠈⢻⣆⠸⣿⡇⠀⠀⠀⠸⣥⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⢸⢿⡆⠀⠉⠀⠈⠻⢶⣄⠀⠀⢹⢣⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠫⠿⣼⣿⣤⣀⣀⣀⣀⣤⣿⠒⠒⣫⡾⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠚⠭⢟⣛⣽⣛⡳⠭⠛⠛⠋⠁⠀⠀⠀⠀⠀⠀
+```
+</details>
 
 ## What it does
 
@@ -60,6 +131,39 @@ The same art as plain text, ready to paste into a chat:
 If you mention Text Art Studio when you use it somewhere, that is appreciated, never required.
 
 This project was built with the help of an AI coding assistant (Anthropic's Claude).
+
+## More of what it can do
+
+**Open anything** — PNG, JPG, WEBP, AVIF, GIF, APNG, BMP, SVG, ICO, MP4, WEBM, MOV, MKV and more;
+the webcam; pasted or dropped pictures; text art (.txt and ANSI .ans); whole folders as a batch;
+and its own .textart project files that save everything.
+
+**Looks and drawing** — braille dots, ASCII letters, shape-matching glyphs, edge sketches,
+half-block and quadrant pixels, halftone dots, emoji mosaics, word fills, a pixel font; over
+twenty tuned looks plus one slider that re-balances any of them; your own looks, shareable as a
+link or a .textlook file; a character-set designer; mono, gradient and full-colour modes; retro
+palettes (Game Boy, C64 …) and your own palettes.
+
+**Adjust and edit** — width, brightness, contrast, gamma, saturation, auto levels, threshold,
+five dither styles, direction-aware outlines, depth, sharpen, hide-plain-background; crop,
+rotate, flip, masks, a wipe compare; captions; a picture on top (logo or watermark — as
+characters or drawn sharp); per-cell editing with brushes; undo and redo of everything.
+
+**Animation and video** — GIFs and videos play live with trim, speed, reverse, boomerang and a
+smooth loop; settings can change over time, each change with its own start and end; the look
+cards play along with the video; exports to GIF, APNG, animated WEBP, MP4 and WEBM keep the
+original sound and are encoded as fast as the computer allows.
+
+**Share and save** — copies adapted to Discord, WhatsApp, Telegram, X and more, with per-app
+checks and a one-click "Fix all"; a fit-a-size-limit helper for upload caps that shows real
+sizes; stills as PNG, JPG, WEBP or BMP; SVG (plain, animated, or plotter/laser lines); HTML,
+ANSI, code strings (JavaScript, Python, C#, JSON), terminal scripts, a ZIP of all frames;
+print and poster PDFs; before→after reveal videos; sticker and emoji sizes.
+
+**Comfort** — interface in English, Türkçe, Deutsch, Español, Русский, 日本語 and 中文; light and
+dark themes; find any tool by name with Ctrl+K; a guided tour; session restore after closing;
+backups of your settings and looks; a full-screen/OBS view; and everything runs offline —
+nothing ever leaves your computer.
 
 ## For developers
 
