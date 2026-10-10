@@ -813,6 +813,29 @@ UI_TESTS.push(async function charsetDesigner(ok, { wait }) {
   try { localStorage.removeItem(CHARSET_STORE); } catch (e) {} fillCharsetSelect(); applySettings({ charset: 'standard' });
 });
 
+UI_TESTS.push(async function videoTools(ok, { wait, reset }) {
+  reset(); await demoAnim(); await wait(30); setPlaying(false);
+  const set = o => applySettings(Object.assign({ playOrder: 'forward', playSpeed: 1, loopFade: 0, frameStep: 1 }, o));
+  const dur = a => a.reduce((s, f) => s + f.d, 0), texts = a => a.map(f => resultText(f.res));
+  set({}); const fwd = await collectResults(() => {}), txt = texts(fwd);
+  ok('Video tools: off = played as it is', !playCustom(App.src) && fwd.length === 48);
+  set({ playOrder: 'reverse' }); let r = await collectResults(() => {});
+  ok('Video tools: reversed', r.length === 48 && texts(r).every((t, i) => t === txt[47 - i]));
+  set({ playOrder: 'boomerang' }); r = await collectResults(() => {});
+  ok('Video tools: boomerang plays forward, then back (ends not doubled)', r.length === 94 && countFrames() === 94 && resultText(r[48].res) === txt[46] && resultText(r[93].res) === txt[1]);
+  set({ playSpeed: 2 }); r = await collectResults(() => {});
+  ok('Video tools: 2× speed is half as long', Math.abs(dur(r) - dur(fwd) / 2) <= r.length, `${dur(r)} vs ${dur(fwd)} ms`);
+  set({ playSpeed: 4 }); r = await collectResults(() => {});
+  ok('Video tools: very fast merges frames (no delay under 20 ms)', r.every(f => f.d >= 20) && r.length < 48 && Math.abs(dur(r) - dur(fwd) / 4) <= 25, `${r.length} frames, ${dur(r)} ms`);
+  set({ loopFade: 0.5 }); r = await collectResults(() => {}); const n = 48 - r.length, rt = texts(r);
+  ok('Video tools: smooth loop starts later and fades the end into the start', n >= 8 && n <= 12 && rt[0] === txt[n] && rt[r.length - 1] !== txt[47] && rt[r.length - 1] !== txt[n - 1] && rt[r.length - n - 1] === txt[47 - n], 'faded frames: ' + n);
+  const f0 = Pool.failures, gif = await gifBytes(() => {});
+  ok('Video tools: a GIF with crossfaded frames', gif.length > 1000 && Pool.failures === f0);
+  set({ playOrder: 'reverse' }); App.time = 1; App.loop = true; setPlaying(true); await wait(300); const t1 = App.time; setPlaying(false);
+  ok('Video tools: the preview plays backwards too', t1 < 1 && t1 > 0.3, 'time ' + t1.toFixed(2));
+  set({});
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

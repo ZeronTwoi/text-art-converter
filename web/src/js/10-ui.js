@@ -177,7 +177,7 @@ function initUI() {
   $('#pIn').addEventListener('click', setIn);
   $('#pOut').addEventListener('click', setOut);
   $('#pClear').addEventListener('click', clearTrim);
-  $('#pSpeed').addEventListener('change', e => { App.speed = parseFloat(e.target.value) || 1; if (App.src && App.src.kind === 'video') App.src.video.playbackRate = App.speed; });
+  $('#pSpeed').addEventListener('change', e => { App.speed = parseFloat(e.target.value) || 1; if (App.src && App.src.kind === 'video') App.src.video.playbackRate = App.speed * (S.playSpeed || 1); });
   $('#pLoop').addEventListener('change', e => { App.loop = e.target.checked; });
   $('#pMute').addEventListener('click', () => { App.muted = !App.muted; if (App.src && App.src.kind === 'video') App.src.video.muted = App.muted; updateMuteBtn(); });
   const seek = $('#seek');

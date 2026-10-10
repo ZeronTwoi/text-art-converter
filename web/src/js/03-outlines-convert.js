@@ -246,7 +246,7 @@ function backgroundMask(C, A, W, H) {
 }
 
 /* Settings that only change how a result is drawn or exported, not the result itself. */
-const RENDER_ONLY_KEYS = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat']);
+const RENDER_ONLY_KEYS = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'playOrder', 'playSpeed', 'loopFade']);
 const CONVERT_KEYS = Object.keys(DEFAULTS).filter(k => !RENDER_ONLY_KEYS.has(k));
 const resultBytes = r => r.cp.byteLength + r.fg.byteLength + (r.bgc ? r.bgc.byteLength : 0) + (r.bits ? r.bits.byteLength : 0) + (r.val ? r.val.byteLength : 0) + (r.ov ? r.ov.byteLength : 0) + 200;
 /* Main conversion: drawable → result grid. Results of immutable sources are memoised (callers never modify a result),

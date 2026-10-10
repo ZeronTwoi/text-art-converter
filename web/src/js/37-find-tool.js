@@ -74,6 +74,7 @@ function toolList() {
     add('Save ' + lab, 'Share panel', k2 + ' download export', needSrc(() => showExport('save', lab)));
   add('Before → after video (picture turns into the art)', 'Share panel', 'reveal transformation wipe fade video gif mp4 tiktok reel', needSrc(openRevealDialog));
   add('Print or poster (A4, A3, PDF)', 'Share panel', 'print paper pdf poster a4 a3 letter', needSrc(openPoster));
+  add('Reverse, boomerang, speed, smooth loop', 'Share panel → Animation options', 'reverse backwards boomerang ping pong speed fast slow crossfade loop seamless video gif', () => { if (!App.src || !(App.src.kind === 'anim' || App.src.kind === 'video')) return toast('Open a GIF or video first'); showExport('save', 'playOrder'); });
   add('Plotter / laser SVG (lines only)', 'Share panel', 'plotter laser cutter pen cnc svg lines hatching', needSrc(openPlotter));
   add('Stickers & emoji (Discord, Slack, Telegram)', 'Share panel', 'sticker emoji discord slack telegram', needSrc(() => showExport('save', 'Discord emoji')));
   add('Copy as text', 'Share panel', 'clipboard plain', needSrc(actCopyText));

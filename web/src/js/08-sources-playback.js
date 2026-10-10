@@ -287,14 +287,14 @@ function setPlaying(p) {
   s.autoplay = false;
   if (s.kind === 'anim') {
     const [a, b] = trimRange();
-    if (p && (App.time >= b - 1e-3 || App.time < a)) App.time = a;
-    App.playing = p;
+    if (p && (App.time >= b - 1e-3 || App.time < a)) App.time = S.playOrder === 'reverse' ? Math.max(a, b - 1e-6) : a;
+    App.playing = p; App.dir = 1;
   } else if (s.kind === 'video') {
     const v = s.video;
     if (p) {
       const [a, b] = trimRange();
       if (v.currentTime >= b - 0.02 || v.currentTime < a - 0.001) v.currentTime = a;
-      v.playbackRate = App.speed; v.play().catch(e => toast('Playback failed: ' + e.message, 'error'));
+      v.playbackRate = App.speed * (S.playSpeed || 1); v.play().catch(e => toast('Playback failed: ' + e.message, 'error'));
     } else v.pause();
   } else if (s.kind === 'webcam') {
     if (p) s.video.play().catch(() => {}); else s.video.pause();
@@ -351,7 +351,16 @@ function tick(now) {
   if (s.kind === 'anim') {
     if (App.playing) {
       const [a, b] = trimRange();
-      App.time += dt * App.speed;
+      const step = dt * App.speed * (S.playSpeed || 1), order = S.playOrder;
+      if (order === 'reverse' || (order === 'boomerang' && App.dir < 0)) {   // backwards (the saved file plays like this too)
+        App.time -= step;
+        if (App.time < a) {
+          if (order === 'boomerang') { App.time = Math.min(b - 1e-6, a + (a - App.time)); App.dir = 1; if (!App.loop) { App.time = a; App.playing = false; } }
+          else if (App.loop) App.time = b - a > 0 ? b - 1e-6 - ((a - App.time) % (b - a)) : a;
+          else { App.time = a; App.playing = false; }
+        }
+      } else App.time += step;
+      if (App.time >= b && order === 'boomerang') { App.time = Math.max(a, b - 1e-6 - (App.time - b)); App.dir = -1; }
       if (App.time >= b) {
         if (App.loop) App.time = b - a > 0 ? a + ((App.time - a) % (b - a)) : a;
         else { App.time = Math.max(a, b - 1e-6); App.playing = false; }

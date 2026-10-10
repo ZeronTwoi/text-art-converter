@@ -633,8 +633,46 @@ function seekVideo(v, t) {
 /* Iterates the frames to export (respects trim range, frame step, fps). */
 /* the frames to export of a source (the open one by default: then the trim range applies) */
 const rangeOf = s => s === App.src ? trimRange() : [0, s.kind === 'anim' ? s.duration : s.kind === 'video' && isFinite(s.video.duration) ? s.video.duration : 0];
+/* play order, speed and smooth loop of the saved animation (the open file only; null when it plays as it is) */
+const playCustom = s => s === App.src && (s.kind === 'anim' || s.kind === 'video') && (S.playOrder !== 'forward' || S.playSpeed !== 1 || S.loopFade > 0);
+/* the frames to save in order: { i (animation frame) or t (video time), t, delay, blend: { entry, a } (crossfade) } */
+function playPlan(s, fps0 = S.gifFps) {
+  const [a, b] = rangeOf(s), speed = clamp(+S.playSpeed || 1, 0.1, 10);
+  let list = [];
+  if (s.kind === 'anim') {
+    const i0 = frameIndexIn(s, a), i1 = frameIndexIn(s, Math.max(a, b - 1e-6)), step = Math.max(1, Math.round(S.frameStep));
+    for (let i = i0; i <= i1; i += step) { let d = 0; for (let j = i; j < Math.min(i + step, i1 + 1); j++) d += s.frames[j].delay; list.push({ i, t: s.frames[i].t0, delay: d / speed }); }
+    // faster than a player can show (20 ms): frames are merged
+    const merged = []; for (const e of list) { const last = merged[merged.length - 1]; if (last && last.delay < 20) last.delay += e.delay; else merged.push(e); }
+    list = merged;
+  } else {
+    const fps = clamp(fps0, 1, 60), n = Math.max(1, Math.floor((b - a) * fps / speed + 1e-6));
+    for (let k = 0; k < n; k++) list.push({ t: a + k * speed / fps, delay: 1000 / fps });
+  }
+  if (S.playOrder === 'reverse') list.reverse();
+  else if (S.playOrder === 'boomerang' && list.length > 2) list = list.concat(list.slice(1, -1).reverse());
+  // smooth loop: the last frames fade into the first ones, which are then left out at the start
+  let n = 0; for (let ms = 0, k = list.length - 1; k > 0 && ms + list[k].delay <= S.loopFade * 1000 + 1e-6; k--) { ms += list[k].delay; n++; }
+  n = Math.min(n, Math.floor((list.length - 1) / 2));
+  if (n > 0) { const N = list.length; list = list.slice(n, N - n).concat(list.slice(N - n).map((e, k) => Object.assign({}, e, { blend: { e: list[k], a: (k + 1) / (n + 1) } }))); }
+  return list;
+}
 async function* exportFrames(s = App.src, fps0 = S.gifFps) {
   if (s.kind === 'anim' && s.complete === false) await s.ready;   // still decoding: wait for every frame
+  if (playCustom(s)) {
+    const plan = playPlan(s, fps0), v = s.video, w = v ? v.videoWidth : s.w, h = v ? v.videoHeight : s.h;
+    const pic = async e => { if (!v) return s.frames[e.i].bmp; await seekVideo(v, e.t); return v; };
+    for (let k = 0; k < plan.length; k++) {
+      const e = plan[k]; let d = await pic(e);
+      if (e.blend) {   // a crossfade frame: both pictures mixed, then converted
+        const c = document.createElement('canvas'), g = c.getContext('2d'); c.width = w; c.height = h;
+        g.drawImage(d, 0, 0, w, h); g.globalAlpha = e.blend.a; g.drawImage(await pic(e.blend.e), 0, 0, w, h);
+        srcOwner.set(c, s); d = c;
+      }
+      yield { d, w, h, delay: e.delay, index: k, total: plan.length, t: e.t };
+    }
+    return;
+  }
   if (s.kind === 'anim') {
     const [a, b] = rangeOf(s), i0 = frameIndexIn(s, a), i1 = frameIndexIn(s, Math.max(a, b - 1e-6));
     const step = Math.max(1, Math.round(S.frameStep)), total = Math.floor((i1 - i0) / step) + 1;
@@ -662,6 +700,7 @@ function confirmLarge(total) {
 }
 function countFrames() {
   const s = App.src, [a, b] = trimRange();
+  if (playCustom(s)) return playPlan(s).length;
   if (s.kind === 'anim') return Math.floor((frameIndexAt(Math.max(a, b - 1e-6)) - frameIndexAt(a)) / Math.max(1, S.frameStep)) + 1;
   if (s.kind === 'video') return Math.max(1, Math.floor((b - a) * S.gifFps));
   return 1;
@@ -1030,8 +1069,9 @@ async function exportVideoFast(ext) {
 }
 /* the video buttons: fast encoding when possible; real-time recording keeps a video's own sound */
 function exportVideoAny(ext) {
-  const rec = VIDEO_FORMATS.find(f => f.ext === ext), wantsAudio = App.src && App.src.kind === 'video' && S.includeAudio;
-  if (FAST_VIDEO_OK && !(wantsAudio && rec)) return exportVideoFast(ext);
+  const rec = VIDEO_FORMATS.find(f => f.ext === ext), custom = playCustom(App.src), wantsAudio = App.src && App.src.kind === 'video' && S.includeAudio && !custom;
+  if (FAST_VIDEO_OK && !(wantsAudio && rec)) { if (custom && App.src.kind === 'video' && S.includeAudio) toast('Saved without sound: it cannot play reversed or at another speed'); return exportVideoFast(ext); }
+  if (custom) toast('This browser records in real time: order, speed and smooth loop are left out');
   if (rec) return exportVideo(rec);
   toast('This browser cannot save ' + ext.toUpperCase() + ' videos', 'error');
 }
@@ -1320,7 +1360,9 @@ function buildExportPanel() {
     btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)', more: 'anim' });
     btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour', more: 'anim' });
     btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour', more: 'anim' });
-    let o = '';
+    let o = `<div class="row"><label for="playOrder">Play</label><select id="playOrder" data-key="playOrder"><option value="forward">Forward</option><option value="reverse">Reversed</option><option value="boomerang">Boomerang (forward, then back)</option></select></div>
+      <div class="row"><label>Speed <output data-out="playSpeed" data-suffix="×"></output></label><input type="range" data-key="playSpeed" min="0.25" max="4" step="0.25"></div>
+      <div class="row"><label title="The end fades into the start, so the loop has no jump">Smooth loop (crossfade) <output data-out="loopFade" data-suffix=" s"></output></label><input type="range" data-key="loopFade" min="0" max="2" step="0.1"></div>`;
     if (s.kind === 'video') o += `<div class="row"><label>Frames per second (GIF / text) <output data-out="gifFps"></output></label><input type="range" data-key="gifFps" min="1" max="30" step="1"></div>`;
     else o += `<div class="row"><label>Use every Nth frame <output data-out="frameStep"></output></label><input type="range" data-key="frameStep" min="1" max="10" step="1"></div>`;
     o += `<div class="row"><label>GIF colours <output data-out="gifColors"></output></label><input type="range" data-key="gifColors" min="2" max="256" step="1"></div>`;
@@ -1331,7 +1373,7 @@ function buildExportPanel() {
     o += `<div class="row"><label>Video bitrate (Mbit/s) <output data-out="videoBitrate"></output></label><input type="range" data-key="videoBitrate" min="1" max="40" step="1"></div>`;
     if (s.kind === 'video') o += `<div class="row"><label class="chk"><input type="checkbox" data-key="includeAudio"> Include original audio in video</label></div>`;
     else o += `<div class="row"><label>Video: repeat loop <output data-out="animRepeat" data-suffix="×"></output></label><input type="range" data-key="animRepeat" min="1" max="20" step="1"></div>`;
-    o = `<details class="fold xoptfold" data-fold="x-animopts"><summary>Animation options (frames, colours, quality)</summary>${o}`;
+    o = `<details class="fold xoptfold" data-fold="x-animopts"><summary>Animation options (order, speed, loop, colours)</summary>${o}`;
     o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p></details>`;
     opts(an, o); initFold(an.querySelector('details.xoptfold'));
   }
