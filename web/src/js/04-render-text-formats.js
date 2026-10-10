@@ -91,11 +91,11 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
     }
   } else if (m === 'emoji') {   // an emoji spans its cell and the next one
     ctx.font = Math.max(1, Math.min(2 * cw, ch) * 0.92) + 'px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const cp = res.cp, ov = res.ov;
-    for (const [k, list] of groupsOf(res, c => isBlankCp(cp[c]) || (ov && ov[c]))) {
-      ctx.fillStyle = hex6(k);
-      for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
-    }
+    // colour emoji ignore the fill colour: one colour for all keeps the text drawing batched (a colour per cell
+    // made photos ~100× slower); systems without colour emoji show them in the text colour
+    const cp = res.cp, ov = res.ov, n = res.cols * res.rows;
+    ctx.fillStyle = S.fg;
+    for (let c = 0; c < n; c++) if (!isBlankCp(cp[c]) && !(ov && ov[c])) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
   } else {
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
