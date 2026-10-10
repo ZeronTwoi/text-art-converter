@@ -229,9 +229,11 @@
         </div>
         <div class="row"><label>Font</label>
           <select data-key="fontFamily">
+            <option value="pixel">Built-in pixel font (looks the same on every computer)</option>
             <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
             <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option>
           </select></div>
+        <p class="hint" data-when="fontFamily:pixel">Pictures, GIFs, videos and SVG use the pixel font exactly. Copied text and .txt / .html use the fonts of the app you paste into.</p>
         <div class="row" data-when="fontFamily:custom"><label>Font name (installed on this computer)</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
       </div>
     </section>
@@ -459,7 +461,7 @@
   <textarea id="textIn" spellcheck="false" placeholder="Paste text art here…"></textarea>
   <div class="textopts">
     <div class="row"><label>Font</label><select data-key="fontFamily">
-      <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
+      <option value="pixel">Built-in pixel font</option><option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
       <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option></select></div>
     <div class="row" data-when="fontFamily:custom"><label>Font name</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
     <div class="row"><label>Line height <output data-out="charAspect"></output></label><input type="range" data-key="charAspect" min="1" max="3" step="0.05"></div>

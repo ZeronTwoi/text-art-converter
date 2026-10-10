@@ -622,9 +622,11 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
         </div>
         <div class="row"><label>Font</label>
           <select data-key="fontFamily">
+            <option value="pixel">Built-in pixel font (looks the same on every computer)</option>
             <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
             <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option>
           </select></div>
+        <p class="hint" data-when="fontFamily:pixel">Pictures, GIFs, videos and SVG use the pixel font exactly. Copied text and .txt / .html use the fonts of the app you paste into.</p>
         <div class="row" data-when="fontFamily:custom"><label>Font name (installed on this computer)</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
       </div>
     </section>
@@ -852,7 +854,7 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
   <textarea id="textIn" spellcheck="false" placeholder="Paste text art here…"></textarea>
   <div class="textopts">
     <div class="row"><label>Font</label><select data-key="fontFamily">
-      <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
+      <option value="pixel">Built-in pixel font</option><option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
       <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option></select></div>
     <div class="row" data-when="fontFamily:custom"><label>Font name</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
     <div class="row"><label>Line height <output data-out="charAspect"></output></label><input type="range" data-key="charAspect" min="1" max="3" step="0.05"></div>
@@ -994,6 +996,7 @@ const FONTS = {
   lucida: "'Lucida Console', Monaco, 'Segoe UI Symbol', monospace",
   dejavu: "'DejaVu Sans Mono', 'Segoe UI Symbol', monospace",
   symbol: "'Segoe UI Symbol', 'Segoe UI', sans-serif",
+  pixel: "'Text Art Pixel', ui-monospace, monospace",   // the built-in pixel font (drawn by drawPixelText, not by the browser)
 };
 /* fontFamily 'custom': any installed font by name (letters, digits, spaces and - only), monospace as fallback */
 const fontCss = S => { const c = S.fontFamily === 'custom' && String(S.customFont || '').replace(/[^\w \-]/g, '').trim(); return c ? `'${c}', 'Segoe UI Symbol', monospace` : FONTS[S.fontFamily] || FONTS.mono; };
@@ -1251,9 +1254,13 @@ function getGlyphTable(chars, family) {
   g.font = Math.round(CW / 0.6) + 'px ' + family; g.textAlign = 'center'; g.textBaseline = 'middle';
   let max = 0;
   const bw = CW / GX, bh = CH / GY;
+  const pixel = family === FONTS.pixel, R = [];
   for (let i = 0; i < n; i++) {
     g.fillStyle = '#000'; g.fillRect(0, 0, CW, CH);
-    g.fillStyle = '#fff'; g.fillText(chars[i], CW / 2, CH / 2 + 1);
+    g.fillStyle = '#fff';
+    R.length = 0;
+    if (pixel && pixelCharRects(chars[i].codePointAt(0), 0, 0, CW, CH, R)) { g.beginPath(); for (let j = 0; j < R.length; j += 4) g.rect(R[j], R[j + 1], R[j + 2], R[j + 3]); g.fill(); }
+    else g.fillText(chars[i], CW / 2, CH / 2 + 1);
     const d = g.getImageData(0, 0, CW, CH).data;
     let sum = 0;
     for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
@@ -2026,6 +2033,8 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
     const cp = res.cp, ov = res.ov, n = res.cols * res.rows;
     ctx.fillStyle = S.fg;
     for (let c = 0; c < n; c++) if (!isBlankCp(cp[c]) && !(ov && ov[c])) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
+  } else if (S.fontFamily === 'pixel') {
+    const cp = res.cp; drawPixelText(ctx, res, S, cw, ch, X, Y, c => isBlankCp(cp[c]));
   } else {
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -2035,7 +2044,8 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
-  if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
+  if ((shapes || m === 'emoji') && res.ov && S.fontFamily === 'pixel') { const cp = res.cp, ov = res.ov; drawPixelText(ctx, res, S, cw, ch, X, Y, c => !ov[c] || isBlankCp(cp[c])); }
+  else if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
@@ -2185,7 +2195,15 @@ function svgBody(res, S, parts) {
       parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
     }
   }
-  if (!shapes || res.ov) {
+  if ((!shapes || res.ov) && S.fontFamily === 'pixel' && m !== 'emoji') {   // the pixel font: the same pixels as paths
+    const ov = shapes ? res.ov : null, R = [], miss = [];
+    for (const [k, list] of groupsOf(res, c => isBlankCp(cp[c]) || (ov && !ov[c]))) {
+      let d = '';
+      for (const c of list) { R.length = 0; if (!pixelCharRects(cp[c], (c % cols) * cw, ((c / cols) | 0) * ch, cw, ch, R)) { miss.push(c); continue; } for (let i = 0; i < R.length; i += 4) d += `M${f(R[i])} ${f(R[i + 1])}h${f(R[i + 2])}v${f(R[i + 3])}h${f(-R[i + 2])}z`; }
+      if (d) parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
+    }
+    if (miss.length) { parts.push(`<g font-family="${FONTS.mono.replace(/"/g, "'")}" font-size="${f(Math.min(cw / 0.6, ch / 1.1))}" text-anchor="middle" dominant-baseline="central">`); for (const c of miss) { const o = c * 3; parts.push(`<text x="${f((c % cols) * cw + cw / 2)}" y="${f(((c / cols) | 0) * ch + ch / 2)}" fill="${hex6((fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2])}">${escHTML(chr(cp[c]))}</text>`); } parts.push('</g>'); }
+  } else if (!shapes || res.ov) {
     const ov = shapes ? res.ov : null, wide = m === 'emoji';
     const fontPx = wide ? Math.min(2 * cw, ch) * 0.92 : Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     parts.push(`<g font-family="${(wide ? EMOJI_FONT : fontCss(S)).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
@@ -2717,11 +2735,11 @@ function encodeBMP(img) {
    Inside a worker every source is new, so nothing is cached between messages (srcKey → null). */
 function engineSource() {
   const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS,
-    RETRO_PALETTES, WIDE_CONT, EMOJI_SETS, EMOJI_FONT };
+    RETRO_PALETTES, WIDE_CONT, EMOJI_SETS, EMOJI_FONT, PIXEL_FONT_DATA, BLOCK_RECTS, BOX_ARMS, DOT_SIZES };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
-    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji,
+    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -2739,6 +2757,7 @@ function engineSource() {
     'function maskPixels() { return null; }',
     'function withOverlay(r) { return r; }',
     'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
+    'let pixelGlyphs = null;',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------
@@ -5752,7 +5771,7 @@ async function selfTest() {
    machine and browser. Each group must match EQUIV_BASELINE; after an intended change of results, paste the
    new baseline the page prints into EQUIV_BASELINE.
    ===================================================================== */
-const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "retro/gameboy":"7c24f44e", "retro/cga":"17ebae84", "retro/c64":"ae9fdfa6", "retro/pico8":"de19d3b5", "retro/amber":"2c522933", "retro/green":"4b00455", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
+const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "retro/gameboy":"7c24f44e", "retro/cga":"17ebae84", "retro/c64":"ae9fdfa6", "retro/pico8":"de19d3b5", "retro/amber":"2c522933", "retro/green":"4b00455", "glyph/pixel":"224cc5a0", "ascii/pixel-sorted":"13012a49", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
 /* A test scene (sky gradient, a sun, a dark box, a thin diagonal, noise, a half transparent band) at any size. */
 function synthPixels(W, H, seed) {
   const d = new Uint8ClampedArray(W * H * 4);
@@ -5777,6 +5796,11 @@ function equivCases() {
   const out = [];
   for (const mode of modes) for (const c of colours) for (let vi = 0; vi < variants.length; vi++) for (const cols of [23, 64])
     out.push({ group: mode + '/' + (c.appPalette || c.colorMode), name: `${mode}/${c.appPalette || c.colorMode}/v${vi}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols }, c, variants[vi]) });
+  // the pixel font makes the Shape style and sorted ramps independent of installed fonts
+  for (const v of [{}, { glyphSet: 'alnum' }, { glyphSet: 'lines', outline: 0.8 }, { colorMode: 'color' }]) for (const cols of [23, 64])
+    out.push({ group: 'glyph/pixel', name: `glyph/pixel/${JSON.stringify(v)}/${cols}`, St: Object.assign({}, DEFAULTS, { mode: 'glyph', fontFamily: 'pixel', cols }, v) });
+  for (const cs of ['detailed', 'standard', 'blocks']) for (const cols of [23, 64])
+    out.push({ group: 'ascii/pixel-sorted', name: `ascii/pixel-sorted/${cs}/${cols}`, St: Object.assign({}, DEFAULTS, { mode: 'ascii', fontFamily: 'pixel', sortRamp: true, charset: cs, cols }) });
   // retro palettes: one group each, over the modes that show colour best
   for (const pal of Object.keys(RETRO_PALETTES)) for (const mode of ['braille', 'ascii', 'half', 'quad', 'halftone']) for (const vi of [0, 4, 12]) for (const cols of [23, 64])
     out.push({ group: 'retro/' + pal, name: `retro/${pal}/${mode}/v${vi}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols, colorMode: 'app', appPalette: pal }, variants[vi]) });
@@ -7025,6 +7049,29 @@ UI_TESTS.push(async function rampsOverTime(ok, { wait }) {
   ok('Change over time: none = your settings', settingsAt(1) === S);
 });
 
+UI_TESTS.push(async function pixelFont(ok) {
+  ok('Pixel font: every printable ASCII character', Array.from({ length: 95 }, (_, i) => 32 + i).every(cp => !!pixelGlyph(cp)));
+  const R = []; pixelCharRects(0x41, 0, 0, 6, 12, R);
+  ok('Pixel font: "A" is drawn in whole pixels', R.length > 0 && R.every(v => Number.isInteger(v)));
+  R.length = 0; pixelCharRects(0x2588, 0, 0, 6, 12, R);
+  ok('Pixel font: full block fills the cell', R.join() === '0,0,6,12');
+  R.length = 0; pixelCharRects(0x28FF, 0, 0, 6, 12, R);
+  ok('Pixel font: braille has 8 dots', R.length === 32);
+  const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 50, fontFamily: 'pixel', colorMode: 'color' }), r = uiDemoRes(St);
+  const a = document.createElement('canvas'), b = document.createElement('canvas'); a.getContext('2d', { willReadFrequently: true }); b.getContext('2d', { willReadFrequently: true });
+  renderResult(r, St, a, 1); renderResult(r, St, b, 1);
+  ok('Pixel font: draws the picture', a.width > 100 && a.toDataURL() === b.toDataURL());
+  const svg = resultSVG(r, St);
+  ok('Pixel font: SVG has the same pixels as paths, no text', svg.includes('<path') && !svg.includes('<text'));
+  const T = getGlyphTable(glyphChars(St), FONTS.pixel);
+  ok('Pixel font: the Shape style measures its bitmaps', T.vecs.length === 95 * 32 && T.mean[0] === 0);
+  if (Pool.size()) {
+    const c = demoCanvas(), Sg = Object.assign({}, St, { mode: 'glyph' }), pre = convertInputs(c, c.width, c.height, Sg), w = await Pool.run('convertPre', { pre, sw: c.width, sh: c.height, St: Sg });
+    const m = convertCore(null, c.width, c.height, Sg, null, pre);
+    ok('Pixel font: Shape style is identical on a worker', w.cp.every((v, i) => v === m.cp[i]));
+  }
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -8074,6 +8121,93 @@ function addRamp(key = 'brightness') {
 function initRamps() {
   $('#rampAdd').addEventListener('click', () => addRamp());
   buildRampsUI();
+}
+/* =====================================================================
+   Built-in pixel font ("Text Art Pixel"): the same characters on every computer. 99 glyphs drawn here on a
+   5 × 9 grid (rows 7-8 for descenders); block, shade, braille, line-drawing and dot characters are drawn as
+   shapes that fill the cell. Characters it does not have fall back to the system font. Saved SVGs get the
+   same pixels as paths; the Shape style measures these bitmaps, so it gives the same result everywhere.
+   ===================================================================== */
+const PIXEL_FONT_DATA = ' 000000000!444440400"AAA000000#AAVAVAA00$4FKE5U400%OP248J300&CIK8LID00\'448000000(248884200)842224800*04LEL4000+044V44000,00000CC48-000V00000.00000CC00/11248GG000EHJLPHE0014C4444E002EH1248V003V2421HE00426AIV22005VGU11HE00668GUHHE007V124888008EHHEHHE009EHHF12C00:0CC0CC000;0CC0CC480<248G84200=00V0V0000>842124800?EH1240400@EH1DLLE00AEHHHVHH00BUHHUHHU00CEHGGGHE00DSIHHHIS00EVGGUGGV00FVGGUGGG00GEHGNHHF00HHHHVHHH00IE44444E00J72222IC00KHIKOKIH00LGGGGGGV00MHRLLHHH00NHHPLJHH00OEHHHHHE00PUHHUGGG00QEHHHLID00RUHHUKIH00SFGGE11U00TV44444400UHHHHHHE00VHHHHHA400WHHHLLLA00XHHA4AHH00YHHHA44400ZV1248GV00[E88888E00\\GG8421100]E22222E00^4AH000000_0000000V0`840000000a00E1FHF00bGGMPHHU00c00EGGHE00d11DJHHF00e00EHVGE00f698S88800g00FHHHF1EhGGMPHHH00i40C444E00j2062222ICkGGIKOKI00lC44444E00m00QLLLL00n00MPHHH00o00EHHHE00p00UHHHUGGq00FHHHF11r00MPGGG00s00FGE1U00t88S889600u00HHHJD00v00HHHA400w00HHLLA00x00HA4AH00y00HHHHF1Ez00V248V00{344O44300|444444440}O44344O00~008L20000≡0V0V0V000✱0LEVEL000°CIC000000×0HA4AH000';
+const PIXEL_FAMILY = "'Text Art Pixel', ui-monospace, monospace";
+let pixelGlyphs = null;
+function pixelGlyph(cp) {
+  if (!pixelGlyphs) {
+    pixelGlyphs = new Map(); const A = '0123456789ABCDEFGHIJKLMNOPQRSTUV';
+    for (let i = 0; i < PIXEL_FONT_DATA.length; i += 10) pixelGlyphs.set(PIXEL_FONT_DATA.codePointAt(i), Array.from(PIXEL_FONT_DATA.slice(i + 1, i + 10), c => A.indexOf(c)));
+  }
+  return pixelGlyphs.get(cp);
+}
+/* fractional rectangles [x, y, w, h] of the block elements U+2580-259F (cell = 1 × 1) */
+const BLOCK_RECTS = (() => {
+  const h = 0.5, q = [[0, 0, h, h], [h, 0, h, h], [0, h, h, h], [h, h, h, h]];   // UL UR LL LR
+  const R = {}, e = k => [[0, 1 - k / 8, 1, k / 8]];
+  R[0x2580] = [[0, 0, 1, h]]; for (let k = 1; k <= 8; k++) R[0x2580 + k] = e(k);
+  for (let k = 1; k <= 7; k++) R[0x2588 + k] = [[0, 0, (8 - k) / 8, 1]];
+  R[0x2590] = [[h, 0, h, 1]]; R[0x2594] = [[0, 0, 1, 1 / 8]]; R[0x2595] = [[7 / 8, 0, 1 / 8, 1]];
+  const Q = { 0x2596: [2], 0x2597: [3], 0x2598: [0], 0x2599: [0, 2, 3], 0x259A: [0, 3], 0x259B: [0, 1, 2], 0x259C: [0, 1, 3], 0x259D: [1], 0x259E: [1, 2], 0x259F: [1, 2, 3] };
+  for (const k in Q) R[k] = Q[k].map(i => q[i]);
+  return R;
+})();
+const BOX_ARMS = { 0x2500: 'lr', 0x2502: 'ud', 0x250C: 'rd', 0x2510: 'ld', 0x2514: 'ru', 0x2518: 'lu', 0x251C: 'udr', 0x2524: 'udl', 0x252C: 'lrd', 0x2534: 'lru', 0x253C: 'lrud', 0x2574: 'l', 0x2575: 'u', 0x2576: 'r', 0x2577: 'd' };
+const DOT_SIZES = { 0xB7: 0.16, 0x2219: 0.16, 0x2022: 0.3, 0x25CF: 0.62, 0x25AA: 0.3, 0x25A0: 0.7 };
+/* pushes the rectangles of one character in the cell (x0, y0, cw × ch) to out; false if the font does not have it */
+function pixelCharRects(cp, x0, y0, cw, ch, out) {
+  const B = BLOCK_RECTS[cp];
+  if (B) { for (const [x, y, w, h] of B) out.push(x0 + x * cw, y0 + y * ch, w * cw, h * ch); return true; }
+  const p = Math.min(cw / 6, ch / 10), P = p >= 1 ? Math.floor(p) : p;   // pixel size: whole pixels when there is room
+  if (cp >= 0x2591 && cp <= 0x2593) {   // shades: an even pattern of pixels over the whole cell
+    const nx = Math.max(1, Math.round(cw / P)), ny = Math.max(1, Math.round(ch / P)), sx = cw / nx, sy = ch / ny;
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const on = cp === 0x2591 ? (x % 2 === 0 && y % 2 === 0) : cp === 0x2592 ? ((x + y) % 2 === 0) : !(x % 2 === 1 && y % 2 === 1);
+      if (on) out.push(x0 + x * sx, y0 + y * sy, sx, sy);
+    }
+    return true;
+  }
+  if (cp >= 0x2800 && cp <= 0x28FF) {   // braille: 2 × 4 square dots
+    const bits = cp - 0x2800, dw = cw / 2, dh = ch / 4, s = Math.max(P, Math.min(dw, dh) * 0.55);
+    for (let j = 0; j < 8; j++) if (bits & (1 << j)) { const [dx, dy] = BRAILLE_POS[j]; out.push(x0 + dx * dw + (dw - s) / 2, y0 + dy * dh + (dh - s) / 2, s, s); }
+    return true;
+  }
+  const arms = BOX_ARMS[cp];
+  if (arms) {
+    const t = Math.max(1, P), cx = x0 + Math.round((cw - t) / 2), cy = y0 + Math.round((ch - t) / 2);
+    if (arms.includes('l')) out.push(x0, cy, cx - x0 + t, t);
+    if (arms.includes('r')) out.push(cx, cy, x0 + cw - cx, t);
+    if (arms.includes('u')) out.push(cx, y0, t, cy - y0 + t);
+    if (arms.includes('d')) out.push(cx, cy, t, y0 + ch - cy);
+    return true;
+  }
+  const dot = DOT_SIZES[cp];
+  if (dot) { const s = Math.max(P, Math.round(Math.min(cw, ch) * dot / P) * P); out.push(x0 + (cw - s) / 2, y0 + (ch - s) / 2, s, s); return true; }
+  const G = pixelGlyph(cp); if (!G) return false;
+  const ox = x0 + (p >= 1 ? Math.round((cw - 5 * P) / 2) : (cw - 5 * P) / 2), oy = y0 + (p >= 1 ? Math.round((ch - 9 * P) / 2) : (ch - 9 * P) / 2);
+  for (let y = 0; y < 9; y++) {
+    const row = G[y]; if (!row) continue;
+    for (let x = 0; x < 5;) {   // runs of lit pixels as one rectangle
+      if (!(row & (16 >> x))) { x++; continue; }
+      let e = x; while (e < 5 && (row & (16 >> e))) e++;
+      out.push(ox + x * P, oy + y * P, (e - x) * P, P); x = e;
+    }
+  }
+  return true;
+}
+/* draws the characters of a result with the pixel font (skip(c): cells to leave out) */
+function drawPixelText(ctx, res, S, cw, ch, X, Y, skip) {
+  const cp = res.cp, missing = [], R = [];
+  for (const [k, list] of groupsOf(res, skip)) {
+    ctx.fillStyle = hex6(k); ctx.beginPath();
+    for (const c of list) {
+      R.length = 0;
+      if (!pixelCharRects(cp[c], X(c), Y(c), cw, ch, R)) { missing.push(c); continue; }
+      for (let i = 0; i < R.length; i += 4) ctx.rect(R[i], R[i + 1], R[i + 2], R[i + 3]);
+    }
+    ctx.fill();
+  }
+  if (missing.length) {   // not in the font (katakana, emoji…): the system font
+    ctx.font = Math.max(1, Math.min(cw / 0.6, ch / 1.1)) + 'px ' + FONTS.mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const c of missing) { const o = c * 3; ctx.fillStyle = hex6((res.fg[o] << 16) | (res.fg[o + 1] << 8) | res.fg[o + 2]); ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2); }
+  }
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

@@ -542,6 +542,29 @@ UI_TESTS.push(async function rampsOverTime(ok, { wait }) {
   ok('Change over time: none = your settings', settingsAt(1) === S);
 });
 
+UI_TESTS.push(async function pixelFont(ok) {
+  ok('Pixel font: every printable ASCII character', Array.from({ length: 95 }, (_, i) => 32 + i).every(cp => !!pixelGlyph(cp)));
+  const R = []; pixelCharRects(0x41, 0, 0, 6, 12, R);
+  ok('Pixel font: "A" is drawn in whole pixels', R.length > 0 && R.every(v => Number.isInteger(v)));
+  R.length = 0; pixelCharRects(0x2588, 0, 0, 6, 12, R);
+  ok('Pixel font: full block fills the cell', R.join() === '0,0,6,12');
+  R.length = 0; pixelCharRects(0x28FF, 0, 0, 6, 12, R);
+  ok('Pixel font: braille has 8 dots', R.length === 32);
+  const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 50, fontFamily: 'pixel', colorMode: 'color' }), r = uiDemoRes(St);
+  const a = document.createElement('canvas'), b = document.createElement('canvas'); a.getContext('2d', { willReadFrequently: true }); b.getContext('2d', { willReadFrequently: true });
+  renderResult(r, St, a, 1); renderResult(r, St, b, 1);
+  ok('Pixel font: draws the picture', a.width > 100 && a.toDataURL() === b.toDataURL());
+  const svg = resultSVG(r, St);
+  ok('Pixel font: SVG has the same pixels as paths, no text', svg.includes('<path') && !svg.includes('<text'));
+  const T = getGlyphTable(glyphChars(St), FONTS.pixel);
+  ok('Pixel font: the Shape style measures its bitmaps', T.vecs.length === 95 * 32 && T.mean[0] === 0);
+  if (Pool.size()) {
+    const c = demoCanvas(), Sg = Object.assign({}, St, { mode: 'glyph' }), pre = convertInputs(c, c.width, c.height, Sg), w = await Pool.run('convertPre', { pre, sw: c.width, sh: c.height, St: Sg });
+    const m = convertCore(null, c.width, c.height, Sg, null, pre);
+    ok('Pixel font: Shape style is identical on a worker', w.cp.every((v, i) => v === m.cp[i]));
+  }
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

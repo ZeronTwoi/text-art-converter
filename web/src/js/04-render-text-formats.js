@@ -96,6 +96,8 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
     const cp = res.cp, ov = res.ov, n = res.cols * res.rows;
     ctx.fillStyle = S.fg;
     for (let c = 0; c < n; c++) if (!isBlankCp(cp[c]) && !(ov && ov[c])) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
+  } else if (S.fontFamily === 'pixel') {
+    const cp = res.cp; drawPixelText(ctx, res, S, cw, ch, X, Y, c => isBlankCp(cp[c]));
   } else {
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -105,7 +107,8 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
-  if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
+  if ((shapes || m === 'emoji') && res.ov && S.fontFamily === 'pixel') { const cp = res.cp, ov = res.ov; drawPixelText(ctx, res, S, cw, ch, X, Y, c => !ov[c] || isBlankCp(cp[c])); }
+  else if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
@@ -255,7 +258,15 @@ function svgBody(res, S, parts) {
       parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
     }
   }
-  if (!shapes || res.ov) {
+  if ((!shapes || res.ov) && S.fontFamily === 'pixel' && m !== 'emoji') {   // the pixel font: the same pixels as paths
+    const ov = shapes ? res.ov : null, R = [], miss = [];
+    for (const [k, list] of groupsOf(res, c => isBlankCp(cp[c]) || (ov && !ov[c]))) {
+      let d = '';
+      for (const c of list) { R.length = 0; if (!pixelCharRects(cp[c], (c % cols) * cw, ((c / cols) | 0) * ch, cw, ch, R)) { miss.push(c); continue; } for (let i = 0; i < R.length; i += 4) d += `M${f(R[i])} ${f(R[i + 1])}h${f(R[i + 2])}v${f(R[i + 3])}h${f(-R[i + 2])}z`; }
+      if (d) parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
+    }
+    if (miss.length) { parts.push(`<g font-family="${FONTS.mono.replace(/"/g, "'")}" font-size="${f(Math.min(cw / 0.6, ch / 1.1))}" text-anchor="middle" dominant-baseline="central">`); for (const c of miss) { const o = c * 3; parts.push(`<text x="${f((c % cols) * cw + cw / 2)}" y="${f(((c / cols) | 0) * ch + ch / 2)}" fill="${hex6((fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2])}">${escHTML(chr(cp[c]))}</text>`); } parts.push('</g>'); }
+  } else if (!shapes || res.ov) {
     const ov = shapes ? res.ov : null, wide = m === 'emoji';
     const fontPx = wide ? Math.min(2 * cw, ch) * 0.92 : Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     parts.push(`<g font-family="${(wide ? EMOJI_FONT : fontCss(S)).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);

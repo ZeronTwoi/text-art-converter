@@ -70,6 +70,7 @@ const FONTS = {
   lucida: "'Lucida Console', Monaco, 'Segoe UI Symbol', monospace",
   dejavu: "'DejaVu Sans Mono', 'Segoe UI Symbol', monospace",
   symbol: "'Segoe UI Symbol', 'Segoe UI', sans-serif",
+  pixel: "'Text Art Pixel', ui-monospace, monospace",   // the built-in pixel font (drawn by drawPixelText, not by the browser)
 };
 /* fontFamily 'custom': any installed font by name (letters, digits, spaces and - only), monospace as fallback */
 const fontCss = S => { const c = S.fontFamily === 'custom' && String(S.customFont || '').replace(/[^\w \-]/g, '').trim(); return c ? `'${c}', 'Segoe UI Symbol', monospace` : FONTS[S.fontFamily] || FONTS.mono; };

@@ -179,9 +179,13 @@ function getGlyphTable(chars, family) {
   g.font = Math.round(CW / 0.6) + 'px ' + family; g.textAlign = 'center'; g.textBaseline = 'middle';
   let max = 0;
   const bw = CW / GX, bh = CH / GY;
+  const pixel = family === FONTS.pixel, R = [];
   for (let i = 0; i < n; i++) {
     g.fillStyle = '#000'; g.fillRect(0, 0, CW, CH);
-    g.fillStyle = '#fff'; g.fillText(chars[i], CW / 2, CH / 2 + 1);
+    g.fillStyle = '#fff';
+    R.length = 0;
+    if (pixel && pixelCharRects(chars[i].codePointAt(0), 0, 0, CW, CH, R)) { g.beginPath(); for (let j = 0; j < R.length; j += 4) g.rect(R[j], R[j + 1], R[j + 2], R[j + 3]); g.fill(); }
+    else g.fillText(chars[i], CW / 2, CH / 2 + 1);
     const d = g.getImageData(0, 0, CW, CH).data;
     let sum = 0;
     for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
