@@ -278,6 +278,7 @@ function initUI() {
   initPresent();
   initTour();
   initReveal();
+  initPoster();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

@@ -382,6 +382,13 @@ details.group.fold>summary.h span{margin-left:auto}
 .xsec details.xmore .xbtns,.xsec details.xstick .xbtns{margin-top:4px}
 .looks:not(.all) .look.extra:not(.shown){display:none}
 .moreLooks{margin-top:8px}
+/* printing: only the poster */
+#printArea{display:none}
+@media print{
+  body>*:not(#printArea){display:none!important}
+  body{display:block;height:auto;overflow:visible;background:#fff}
+  #printArea{display:block!important} #printArea img{display:block;width:100vw;height:100vh;object-fit:contain}
+}
 /* first-run tour */
 .tour{position:fixed;inset:0;z-index:85}
 .tourspot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);outline:2px solid var(--accent);transition:all .25s ease;pointer-events:none}

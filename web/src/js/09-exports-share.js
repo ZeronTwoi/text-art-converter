@@ -1298,6 +1298,7 @@ function buildExportPanel() {
   IMG_FORMATS.forEach((f, i) => btn(im, f.label, () => saveImage(f), { primary: i === 0, est: f.ext }));
   btn(im, 'Copy image', actCopyImage, { title: 'Copy PNG to the clipboard' });
   if (canShareFiles('image/png')) btn(im, 'Share…', actSharePicture, { title: 'Send the picture to another app (share sheet)' });
+  btn(im, '🖨 Print / poster…', openPoster, { title: 'The art sharp on A4, A3, A2, Letter or a square poster: print, save as PDF or PNG' });
   if (s.kind !== 'text' && s.kind !== 'webcam') btn(im, '▶ Before → after video…', openRevealDialog, { title: 'A short video (or GIF) in which your picture turns into the text art' });
   opts(im, `<div class="row adv"><label>Scale <output data-out="exportScale" data-suffix="×"></output></label><input type="range" data-key="exportScale" min="0.5" max="4" step="0.25"></div>
     <div class="row adv"><label>JPG / WEBP quality <output data-out="quality"></output></label><input type="range" data-key="quality" min="0.3" max="1" step="0.01"></div>`);

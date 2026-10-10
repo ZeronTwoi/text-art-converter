@@ -72,6 +72,7 @@ function toolList() {
   for (const [lab, k2] of [['PNG', 'picture image save'], ['JPG', 'jpeg'], ['GIF', 'animation'], ['MP4', 'video'], ['WEBM', 'video'], ['APNG', 'animated png'], ['WEBP anim', 'animated webp']])
     add('Save ' + lab, 'Share panel', k2 + ' download export', needSrc(() => showExport('save', lab)));
   add('Before → after video (picture turns into the art)', 'Share panel', 'reveal transformation wipe fade video gif mp4 tiktok reel', needSrc(openRevealDialog));
+  add('Print or poster (A4, A3, PDF)', 'Share panel', 'print paper pdf poster a4 a3 letter', needSrc(openPoster));
   add('Stickers & emoji (Discord, Slack, Telegram)', 'Share panel', 'sticker emoji discord slack telegram', needSrc(() => showExport('save', 'Discord emoji')));
   add('Copy as text', 'Share panel', 'clipboard plain', needSrc(actCopyText));
   add('Copy with colours (Word, email)', 'Share panel', 'rich html clipboard', needSrc(actCopyHTML));

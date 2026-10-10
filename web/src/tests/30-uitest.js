@@ -759,6 +759,25 @@ UI_TESTS.push(async function revealVideo(ok, { wait }) {
   ok('Before → after: an animation plays during the wipe', !!ga && ga.frames.length > 20);
 });
 
+UI_TESTS.push(async function printPoster(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 80 }); renderNow();
+  $('#posterPaper').value = 'a4'; $('#posterDpi').value = '150'; $('#posterOrient').value = 'auto'; $('#posterTitle').value = 'Sunset'; $('#posterWhite').checked = false;
+  const p = posterPage(posterOptions());
+  ok('Poster: A4 at 150 dpi, landscape like the picture', p.canvas.width === 1754 && p.canvas.height === 1240, p.canvas.width + '×' + p.canvas.height);
+  const g = p.canvas.getContext('2d'), corner = g.getImageData(5, 5, 1, 1).data;
+  ok('Poster: the page has the art background', corner[0] === hexToRgb(S.bg)[0] && corner[2] === hexToRgb(S.bg)[2]);
+  $('#posterWhite').checked = true; const w = posterPage(posterOptions()).canvas.getContext('2d').getImageData(5, 5, 1, 1).data;
+  ok('Poster: white paper saves ink', w[0] === 255 && w[1] === 255 && w[2] === 255);
+  const realPrint = window.print; let printed = null;
+  window.print = () => { printed = { img: !!$('#printArea img'), page: $('#printPage').textContent }; };
+  try { await posterPrint(); } finally { window.print = realPrint; }
+  ok('Poster: printing sets the page size and shows only the poster', !!printed && printed.img && /297mm 210mm/.test(printed.page), printed && printed.page);
+  window.dispatchEvent(new Event('afterprint'));
+  ok('Poster: cleaned up after printing', !$('#printArea img'));
+  const got = await uiCaptureDownloads(posterDownload);
+  ok('Poster: PNG download', !!got[0] && got[0].blob.type === 'image/png' && got[0].blob.size > 20000);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

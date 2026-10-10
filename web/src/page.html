@@ -541,6 +541,20 @@
   <div class="row" id="revealSecsRow"><label for="revealSecs">Length <output id="revealSecsOut">4 s</output></label><input type="range" id="revealSecs" min="2" max="10" step="0.5" value="4"></div>
   <div class="acts"><button class="btn" id="revealCancel">Cancel</button><button class="btn primary" id="revealGo">Make it</button></div>
 </dialog>
+<dialog id="posterDialog">
+  <h3>Print or poster</h3>
+  <p class="muted small" style="margin:0 0 8px">The art is drawn again at print sharpness. In the print window you can also choose "Save as PDF".</p>
+  <div class="pair">
+    <div class="row"><label for="posterPaper">Paper</label><select id="posterPaper"></select></div>
+    <div class="row"><label for="posterOrient">Orientation</label><select id="posterOrient"><option value="auto">Like the picture</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></div>
+    <div class="row"><label for="posterDpi">Sharpness</label><select id="posterDpi"><option value="150">Good (150 dpi)</option><option value="300" selected>Best (300 dpi)</option></select></div>
+    <div class="row"><label for="posterMargin">Margin <output id="posterMarginOut">10 mm</output></label><input type="range" id="posterMargin" min="0" max="40" step="1" value="10"></div>
+  </div>
+  <div class="row"><label for="posterTitle">Title under the art (optional)</label><input type="text" id="posterTitle" placeholder="e.g. Summer 2026" autocomplete="off"></div>
+  <div class="row"><label class="chk"><input type="checkbox" id="posterWhite"> White paper around the art (saves ink)</label></div>
+  <div class="acts"><button class="btn left" id="posterCancel">Cancel</button><button class="btn" id="posterPng">Download PNG</button><button class="btn primary" id="posterPrintBtn">🖨 Print / save as PDF</button></div>
+</dialog>
+<div id="printArea" aria-hidden="true"></div>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>
   <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>
