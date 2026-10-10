@@ -30,17 +30,18 @@ for the chat app you choose:
 
 <img src="examples/app-screenshot.png" width="920">
 
-Two sources, three of the twenty-plus looks (all files, including the chat-ready text, are in
+Three sources, four of the twenty-plus looks (all files, including the chat-ready text, are in
 [`examples/`](examples/)):
 
 | | |
 | --- | --- |
-| **A drawn portrait (the source)**<br><img src="examples/portrait.png" width="380"> | **ASCII: colour**<br><img src="examples/portrait-ascii-colour.png" width="380"> |
+| **An illustration (the source)**<br><img src="examples/elf.png" width="380"> | **Pixel art (half blocks)**<br><img src="examples/elf-half-blocks.png" width="380"> |
+| **Comic line art (the source)**<br><img src="examples/comic.png" width="380"> | **Comic (outlines + shading)**<br><img src="examples/comic-outlines.png" width="380"> |
 | **A photo (the source — NASA, 1984)**<br><img src="examples/astronaut.jpg" width="380"> | **Braille: classic**<br><img src="examples/astronaut-braille.png" width="380"> |
-| **Pixel art (half blocks)**<br><img src="examples/portrait-half-blocks.png" width="380"> | **Matrix**<br><img src="examples/astronaut-matrix.png" width="380"> |
+| **Matrix**<br><img src="examples/astronaut-matrix.png" width="380"> | *…and over twenty more looks in the app, each with one slider to re-balance it.* |
 
 The same art as plain text, ready to paste into a chat:
-[portrait-ascii-colour.txt](examples/portrait-ascii-colour.txt) · [astronaut-braille.txt](examples/astronaut-braille.txt)
+[elf-half-blocks.txt](examples/elf-half-blocks.txt) · [astronaut-braille.txt](examples/astronaut-braille.txt)
 
 ## What it does
 
