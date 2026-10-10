@@ -22,21 +22,26 @@
     <button class="step" data-step="4" title="Copy to a chat app or save a file"><b>4</b><span>Share / save</span></button>
   </nav>
   <div class="topacts">
+    <button class="btn findbtn" id="btnFind" title="Find any tool or setting by name (Ctrl+K)" aria-label="Find a tool"><span aria-hidden="true">🔍</span><b>Find a tool</b><kbd>Ctrl K</kbd></button>
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
     <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
+        <div class="menulabel">Start from</div>
         <button id="btnWebcam">📷 Use webcam</button>
         <button id="btnText">✎ Text → Image</button>
         <button id="btnDemoImg">🖼 Demo picture</button>
         <button id="btnDemoAnim">🎞 Demo animation</button>
         <button id="btnBatch">📚 Batch convert files…</button>
-        <hr>
+        <div class="menulabel">Projects</div>
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
+        <div class="menulabel">This browser</div>
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
+        <div class="menulabel">Help</div>
+        <button id="btnNews">✨ What's new</button>
       </div>
     </div>
     <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
@@ -232,9 +237,9 @@
           <button data-val="cell"><b>Tinted</b><small>by the image</small></button>
         </div>
       </div>
-      <div class="group adv">
+      <div class="group">
         <h3 class="h">Drawing</h3>
-        <div data-when="mode:braille,half,quad,halftone">
+        <div data-when="mode:braille,half,quad,halftone" class="adv">
           <div class="row"><label>Draw as</label>
             <select data-key="renderStyle"><option value="shapes">Shapes (crisp, same on every computer)</option><option value="font">Font characters</option></select></div>
           <div data-when="renderStyle:shapes;mode:braille,halftone" class="pair">
@@ -299,7 +304,6 @@
   <!-- ============ CENTER ============ -->
   <div class="center">
     <div class="viewbar">
-      <div class="srcinfo" id="srcInfo">No file loaded</div>
       <div class="seg" id="viewSeg">
         <button data-view="out" class="on" title="The converted picture">Result</button>
         <button data-view="split" title="Original and result side by side">Compare</button>
@@ -409,7 +413,7 @@
       <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
       <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
     </nav>
-    <div class="statusbar"><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+    <div class="statusbar"><span class="srcinfo" id="srcInfo">No file loaded</span><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </div>
 
   <!-- ============ EXPORT ============ -->
@@ -432,6 +436,7 @@
     <li><b>Adjust</b> size, light and outlines in <i>Adjust</i>; colours in <i>Colour</i>; framing in <i>Crop</i>.</li>
     <li><b>Share or save</b> on the right: send to a chat app as text, or save a PNG / GIF / MP4.</li>
   </ol>
+  <div class="acts" style="justify-content:flex-start;margin:4px 0 0"><button class="btn" id="helpNews">✨ What's new</button><span class="muted small" style="align-self:center">Looking for something? Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or 🔍 at the top) and type what you want to do.</span></div>
   <h4>Good to know</h4>
   <ul class="tips">
     <li><b>Outlines</b> keep shapes recognisable, especially when small. Try the <i>Comic</i> or <i>Line art</i> looks.</li>
@@ -511,6 +516,18 @@
   <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="findDialog" class="find" aria-label="Find a tool">
+  <div class="findhead"><span aria-hidden="true">🔍</span><input id="findInput" type="text" placeholder="What do you want to do? e.g. crop, sticker, palette, type text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="findList" aria-label="Search the tools"><button class="btn" id="findClose">Esc</button></div>
+  <ul id="findList" role="listbox" aria-label="Tools"></ul>
+  <p class="muted small" id="findEmpty" hidden>Nothing found. Try another word (e.g. "colour", "save", "gif").</p>
+  <p class="muted small findfoot">↑ ↓ to choose · Enter to open · <kbd>Ctrl</kbd>+<kbd>K</kbd> or <kbd>/</kbd> opens this any time</p>
+</dialog>
+<dialog id="newsDialog">
+  <h3>✨ What's new in Text Art Studio</h3>
+  <p class="muted small" style="margin:0 0 8px">Everything you used before is where it was. These are new:</p>
+  <ul class="news" id="newsList"></ul>
+  <div class="acts"><button class="btn" id="newsFind">🔍 Find a tool…</button><button class="btn primary" id="newsClose" autofocus>Got it</button></div>
 </dialog>
 <dialog id="galleryDialog" class="wide">
   <h3>All looks <span class="muted small">on your picture: click one to apply it</span></h3>

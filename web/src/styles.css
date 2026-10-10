@@ -348,6 +348,26 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
 .palette .palacts select{width:auto;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
 .palacts .btn{flex:none}
 @media (hover:none){.swatch i{opacity:1}}
+/* find a tool, what's new, highlight */
+.findbtn{gap:8px;color:var(--muted)} .findbtn b{font-weight:500} .findbtn kbd{opacity:.8}
+.menulabel{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px 2px;font-weight:700}
+.menulabel:first-child{padding-top:2px}
+dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
+.findhead{display:flex;align-items:center;gap:8px}
+.findhead input{flex:1;font-size:16px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2)}
+#findList{list-style:none;margin:8px 0 4px;padding:0;max-height:min(60vh,520px);overflow:auto}
+#findList li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;cursor:pointer}
+#findList li small{color:var(--muted);white-space:nowrap}
+#findList li.on,#findList li:hover{background:var(--accent-soft)}
+#findList li.on{outline:1px solid var(--accent)}
+.findfoot{margin:6px 4px 0}
+.news{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto}
+.news li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}
+.news li .btn{padding:4px 10px;flex:none}
+.flashfocus{animation:flashfocus 1.8s ease-out}
+@keyframes flashfocus{0%,35%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.statusbar .srcinfo{flex:0 1 auto;max-width:40%}
+@media (max-width:1100px){ .findbtn b,.findbtn kbd{display:none} }
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -390,7 +410,9 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
   .mobilebar button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:11px;padding:10px 8px;font-weight:650;cursor:pointer;color:var(--text)}
   .mobilebar button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .mobilebar button[aria-expanded="true"]{outline:2px solid var(--accent);outline-offset:1px}
-  .statusbar .keys,.statusbar .cellinfo{display:none}
+  .statusbar{display:none}
+  .topacts{flex-wrap:wrap;gap:6px}
+  .topacts .btn{padding:6px 9px}
   .topbar{padding:6px 12px;gap:6px}
   .brand .tag{display:none}
   .brand{font-size:14px}

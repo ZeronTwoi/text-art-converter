@@ -358,6 +358,26 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
 .palette .palacts select{width:auto;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
 .palacts .btn{flex:none}
 @media (hover:none){.swatch i{opacity:1}}
+/* find a tool, what's new, highlight */
+.findbtn{gap:8px;color:var(--muted)} .findbtn b{font-weight:500} .findbtn kbd{opacity:.8}
+.menulabel{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px 2px;font-weight:700}
+.menulabel:first-child{padding-top:2px}
+dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
+.findhead{display:flex;align-items:center;gap:8px}
+.findhead input{flex:1;font-size:16px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2)}
+#findList{list-style:none;margin:8px 0 4px;padding:0;max-height:min(60vh,520px);overflow:auto}
+#findList li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;cursor:pointer}
+#findList li small{color:var(--muted);white-space:nowrap}
+#findList li.on,#findList li:hover{background:var(--accent-soft)}
+#findList li.on{outline:1px solid var(--accent)}
+.findfoot{margin:6px 4px 0}
+.news{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto}
+.news li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}
+.news li .btn{padding:4px 10px;flex:none}
+.flashfocus{animation:flashfocus 1.8s ease-out}
+@keyframes flashfocus{0%,35%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.statusbar .srcinfo{flex:0 1 auto;max-width:40%}
+@media (max-width:1100px){ .findbtn b,.findbtn kbd{display:none} }
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -400,7 +420,9 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
   .mobilebar button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:11px;padding:10px 8px;font-weight:650;cursor:pointer;color:var(--text)}
   .mobilebar button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .mobilebar button[aria-expanded="true"]{outline:2px solid var(--accent);outline-offset:1px}
-  .statusbar .keys,.statusbar .cellinfo{display:none}
+  .statusbar{display:none}
+  .topacts{flex-wrap:wrap;gap:6px}
+  .topacts .btn{padding:6px 9px}
   .topbar{padding:6px 12px;gap:6px}
   .brand .tag{display:none}
   .brand{font-size:14px}
@@ -428,21 +450,26 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
     <button class="step" data-step="4" title="Copy to a chat app or save a file"><b>4</b><span>Share / save</span></button>
   </nav>
   <div class="topacts">
+    <button class="btn findbtn" id="btnFind" title="Find any tool or setting by name (Ctrl+K)" aria-label="Find a tool"><span aria-hidden="true">🔍</span><b>Find a tool</b><kbd>Ctrl K</kbd></button>
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
     <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
+        <div class="menulabel">Start from</div>
         <button id="btnWebcam">📷 Use webcam</button>
         <button id="btnText">✎ Text → Image</button>
         <button id="btnDemoImg">🖼 Demo picture</button>
         <button id="btnDemoAnim">🎞 Demo animation</button>
         <button id="btnBatch">📚 Batch convert files…</button>
-        <hr>
+        <div class="menulabel">Projects</div>
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
+        <div class="menulabel">This browser</div>
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
+        <div class="menulabel">Help</div>
+        <button id="btnNews">✨ What's new</button>
       </div>
     </div>
     <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
@@ -638,9 +665,9 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
           <button data-val="cell"><b>Tinted</b><small>by the image</small></button>
         </div>
       </div>
-      <div class="group adv">
+      <div class="group">
         <h3 class="h">Drawing</h3>
-        <div data-when="mode:braille,half,quad,halftone">
+        <div data-when="mode:braille,half,quad,halftone" class="adv">
           <div class="row"><label>Draw as</label>
             <select data-key="renderStyle"><option value="shapes">Shapes (crisp, same on every computer)</option><option value="font">Font characters</option></select></div>
           <div data-when="renderStyle:shapes;mode:braille,halftone" class="pair">
@@ -705,7 +732,6 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
   <!-- ============ CENTER ============ -->
   <div class="center">
     <div class="viewbar">
-      <div class="srcinfo" id="srcInfo">No file loaded</div>
       <div class="seg" id="viewSeg">
         <button data-view="out" class="on" title="The converted picture">Result</button>
         <button data-view="split" title="Original and result side by side">Compare</button>
@@ -815,7 +841,7 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
       <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
       <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
     </nav>
-    <div class="statusbar"><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+    <div class="statusbar"><span class="srcinfo" id="srcInfo">No file loaded</span><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </div>
 
   <!-- ============ EXPORT ============ -->
@@ -838,6 +864,7 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
     <li><b>Adjust</b> size, light and outlines in <i>Adjust</i>; colours in <i>Colour</i>; framing in <i>Crop</i>.</li>
     <li><b>Share or save</b> on the right: send to a chat app as text, or save a PNG / GIF / MP4.</li>
   </ol>
+  <div class="acts" style="justify-content:flex-start;margin:4px 0 0"><button class="btn" id="helpNews">✨ What's new</button><span class="muted small" style="align-self:center">Looking for something? Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or 🔍 at the top) and type what you want to do.</span></div>
   <h4>Good to know</h4>
   <ul class="tips">
     <li><b>Outlines</b> keep shapes recognisable, especially when small. Try the <i>Comic</i> or <i>Line art</i> looks.</li>
@@ -917,6 +944,18 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
   <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="findDialog" class="find" aria-label="Find a tool">
+  <div class="findhead"><span aria-hidden="true">🔍</span><input id="findInput" type="text" placeholder="What do you want to do? e.g. crop, sticker, palette, type text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="findList" aria-label="Search the tools"><button class="btn" id="findClose">Esc</button></div>
+  <ul id="findList" role="listbox" aria-label="Tools"></ul>
+  <p class="muted small" id="findEmpty" hidden>Nothing found. Try another word (e.g. "colour", "save", "gif").</p>
+  <p class="muted small findfoot">↑ ↓ to choose · Enter to open · <kbd>Ctrl</kbd>+<kbd>K</kbd> or <kbd>/</kbd> opens this any time</p>
+</dialog>
+<dialog id="newsDialog">
+  <h3>✨ What's new in Text Art Studio</h3>
+  <p class="muted small" style="margin:0 0 8px">Everything you used before is where it was. These are new:</p>
+  <ul class="news" id="newsList"></ul>
+  <div class="acts"><button class="btn" id="newsFind">🔍 Find a tool…</button><button class="btn primary" id="newsClose" autofocus>Got it</button></div>
 </dialog>
 <dialog id="galleryDialog" class="wide">
   <h3>All looks <span class="muted small">on your picture: click one to apply it</span></h3>
@@ -5111,6 +5150,7 @@ function initUI() {
   initRamps();
   initPalettes();
   initShareLink();
+  initFindTool();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5380,7 +5420,7 @@ function initUI2() {
   setStep(1);
   updateChoices();
   scheduleLooks();
-  try { if (!localStorage.getItem('textArtStudio.seenHelp')) { localStorage.setItem('textArtStudio.seenHelp', '1'); setTimeout(() => toast('New here? Press ? (top right) for a one-minute guide'), 1200); } } catch (e) {}
+  try { if (!localStorage.getItem('textArtStudio.seenHelp')) { localStorage.setItem('textArtStudio.seenHelp', '1'); setTimeout(() => toast('New here? Press ? (top right) for a one-minute guide, or 🔍 Find a tool (Ctrl+K) to search for anything'), 1200); } } catch (e) {}
 }
 
 /* =====================================================================
@@ -7184,6 +7224,48 @@ UI_TESTS.push(async function shareLinks(ok, { wait }) {
   ok('Link: a broken link is refused', bad === false);
 });
 
+UI_TESTS.push(async function findTool(ok, { wait }) {
+  await demoImage(); await wait(30);
+  openFind();
+  ok('Find a tool: opens with every tool listed', $('#findDialog').open && $$('#findList li').length > 40 && document.activeElement === $('#findInput'), $$('#findList li').length + ' shown');
+  const type = q => { $('#findInput').value = q; $('#findInput').dispatchEvent(new Event('input')); };
+  type('crop'); const first = $('#findList li span').textContent;
+  ok('Find a tool: "crop" finds the crop tools', /crop/i.test(first) && $$('#findList li').length <= 6, first);
+  type('sticker'); ok('Find a tool: "sticker"', /Stickers/.test($('#findList li span').textContent));
+  type('pal'); ok('Find a tool: "pal" → palette', /palette/i.test($('#findList li span').textContent));
+  type('zzzqqq'); ok('Find a tool: nothing found message', !$('#findEmpty').hidden);
+  type('caption');
+  $('#findInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(450);
+  ok('Find a tool: Enter opens the Look tab at the caption', !$('#findDialog').open && $('#tabbtn-look').getAttribute('aria-selected') === 'true' && document.activeElement === $('#capTop'));
+  openFind(); type('wipe'); $('#findInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(100);
+  ok('Find a tool: runs actions too (wipe view)', App.view === 'wipe');
+  setView('out');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  ok('Find a tool: Ctrl+K opens it', $('#findDialog').open); $('#findDialog').close();
+  const names = new Set(toolList().map(t => t.name));
+  ok("What's new: every 'Show me' leads to a tool", WHATS_NEW.every(([, t]) => names.has(t)), WHATS_NEW.filter(([, t]) => !names.has(t)).map(x => x[1]).join(', '));
+  openWhatsNew();
+  ok("What's new: lists the new features", $('#newsDialog').open && $$('#newsList li').length === WHATS_NEW.length);
+  $('#newsDialog').close();
+  ok('Grouping: the More menu has sections', $$('#morePop .menulabel').length === 4);
+  ok('Grouping: the font choice is visible without Advanced', getComputedStyle(key('fontFamily').closest('.group')).display !== 'none');
+  // every entry works: run each one (downloads caught, dialogs closed, the picture reopened when an entry replaced it)
+  const errors = [], realOpen = HTMLInputElement.prototype.click, realWebcam = window.startWebcam;
+  HTMLInputElement.prototype.click = function () {};   // no file chooser in a test
+  window.startWebcam = async () => {};
+  window.addEventListener('error', e => errors.push(e.message));
+  for (const t of toolList()) {
+    try { await uiCaptureDownloads(async () => { await t.run(); await wait(40); }); }
+    catch (e) { errors.push(t.name + ': ' + e.message); }
+    for (const d of $$('dialog[open]')) d.close();
+    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false);
+    if (!App.src || App.src.kind !== 'image') { await demoImage(); await wait(20); }
+    App.zoom = 0; setView('out');
+  }
+  HTMLInputElement.prototype.click = realOpen; window.startWebcam = realWebcam; setAdvanced(false);
+  ok('Find a tool: every entry runs without an error', errors.length === 0, errors.slice(0, 3).join(' | '));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -8623,6 +8705,174 @@ async function videoTest() {
   const fails = log.filter(l => l.startsWith('FAIL')).length;
   say(`\n${fails ? 'FAIL' : 'PASS'} ${log.filter(l => l.startsWith('PASS')).length} passed, ${fails} failed`);
   document.title = fails ? 'VIDEOTEST FAIL' : 'VIDEOTEST PASS';
+}
+/* =====================================================================
+   Find a tool (Ctrl+K or 🔍): every feature by name, with where it lives; Enter opens or runs it.
+   What's new: shown once to people who used an earlier version, each item with "Show me".
+   ===================================================================== */
+/* bring a control into view: the right tab / panel, scrolled to and briefly highlighted */
+function showControl(el, tab) {
+  if (!el) return;
+  if (tab) { setTab(tab); if (isNarrow()) setSheet('settings'); }
+  else if (el.closest('#exportPanel') && isNarrow()) setSheet('export');
+  if (!el.offsetParent) { const g = el.closest('[data-when]'); if (g && g.hidden) toast('That option appears when it applies (e.g. for this style or colour choice)'); }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const box = el.closest('.row, .group, .xsec, button') || el;
+  box.classList.remove('flashfocus'); void box.offsetWidth; box.classList.add('flashfocus');
+  setTimeout(() => box.classList.remove('flashfocus'), 1800);
+  if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName)) setTimeout(() => el.focus({ preventScroll: true }), 350);
+}
+const key = k => $(`[data-key="${k}"]`);
+function showExport(goal, label) {
+  S.exportGoal = goal; saveSettings(); applyGoal();
+  const b = label && $$('#exportBody button, #exportBody label, #exportBody select').find(x => x.textContent.trim().startsWith(label) || x.id === label);
+  showControl(b || $(`#goalSeg [data-goal="${goal}"]`));
+}
+const needSrc = fn => () => { if (!App.src) { toast('Open a picture first'); gotoStep(1); return; } fn(); };
+const MODE_WORDS = { braille: 'dots', ascii: 'letters characters', glyph: 'shape match', edge: 'lines sketch', half: 'pixel blocks', quad: 'mosaic blocks', halftone: 'print dots', word: 'lyrics words', emoji: 'emoji mosaic' };
+function toolList() {
+  const T = [];
+  const add = (name, where, keys, run) => T.push({ name, where, keys, run });
+  add('Open a picture, GIF or video', 'Start', 'file load import upload', () => $('#fileInput').click());
+  add('Use the webcam', 'Start', 'camera live', startWebcam);
+  add('Text → picture (paste text art)', 'Start', 'ascii ansi paste type', () => openTextDialog(''));
+  add('Try the demo picture', 'Start', 'example sample', demoImage);
+  add('Try the demo animation', 'Start', 'example sample gif', demoAnim);
+  add('Batch convert many files (one ZIP)', 'Start', 'many folder zip bulk', openBatchDialog);
+  add('Save project (.textart)', 'Projects', 'save keep later file ctrl+s', saveProject);
+  add('Open a project', 'Projects', 'load textart', () => $('#fileInput').click());
+  add('Forget my last picture', 'This browser', 'privacy delete session', () => sessionForget(false));
+  add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
+  add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
+  for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
+  add('Characters used (character set)', 'Look tab', 'charset ramp letters', () => showControl($('#charsetSel'), 'look'));
+  add('Caption: words on the picture', 'Look tab', 'title subtitle text write', () => showControl($('#capTop'), 'look'));
+  add('Animate a still picture (typewriter, Matrix rain, glitch…)', 'Look tab', 'effect motion gif typewriter rain glitch zoom scanlines', needSrc(() => showControl($('#fxKind'), 'look')));
+  add('Width in characters (size)', 'Adjust tab', 'columns resolution detail size', () => showControl(key('cols'), 'adjust'));
+  for (const [k, n] of [['brightness', 'Brightness'], ['contrast', 'Contrast'], ['gamma', 'Gamma'], ['saturation', 'Saturation'], ['outline', 'Outlines'], ['fill', 'Shading'], ['bgFade', 'Hide plain background']])
+    add(n, 'Adjust tab', 'light tone ' + k, () => { if (['gamma', 'saturation'].includes(k)) setAdvanced(true); showControl(key(k), 'adjust'); });
+  add('Brightness histogram', 'Adjust tab', 'levels clipping graph', () => showControl($('#toneHist'), 'adjust'));
+  add('Change over time (fade in, ramps)', 'Adjust tab', 'animation video keyframe ramp fade', () => showControl($('#rampAdd'), 'adjust'));
+  for (const [v, n] of [['color', 'Original colours'], ['mono', 'Single colour'], ['app', 'App & retro colours (Discord, Game Boy, C64…)'], ['gray', 'Greyscale'], ['gradient', 'Gradient colours']])
+    add(n, 'Colour tab', 'colour color palette ' + v, () => { applySettings({ colorMode: v }); showControl($(`.choices[data-choice="colorMode"] [data-val="${v}"]`), 'colour'); });
+  add('Your own palette (from the picture, paste, lospec)', 'Colour tab', 'palette colors hex gpl lospec custom', () => { applySettings({ colorMode: 'app', appPalette: 'custom' }); showControl($('#palSwatches'), 'colour'); });
+  add('Background: solid, transparent or tinted', 'Colour tab', 'transparent png alpha', () => showControl($('.choices[data-choice="bgMode"]'), 'colour'));
+  add('Font (incl. the built-in pixel font)', 'Colour tab', 'typeface pixel font consolas', () => showControl(key('fontFamily'), 'colour'));
+  add('Draw the crop on the picture', 'Crop tab', 'cut frame trim', needSrc(() => { setTab('crop'); setCropMode(true); }));
+  add('Auto-trim empty borders', 'Crop tab', 'crop border', needSrc(actAutoTrim));
+  add('Turn or mirror the picture', 'Crop tab', 'rotate flip mirror', () => showControl(key('rotate'), 'crop'));
+  add('Paint a mask (hide or keep areas)', 'Crop tab', 'brush erase hide keep', needSrc(() => { setTab('crop'); setMaskMode(true); }));
+  add('Edit single characters (brush)', 'Above the picture', 'draw paint character edit', needSrc(() => setEditMode(true)));
+  add('Type text onto the art', 'Edit', 'write cursor keyboard', needSrc(() => { setEditMode(true); Edit.tool = 'type'; updateEditUI(); }));
+  add('Select, copy, move or fill a box of characters', 'Edit', 'selection clipboard cut paste', needSrc(() => { setEditMode(true); Edit.tool = 'select'; updateEditUI(); }));
+  add('Flood fill an area', 'Edit', 'bucket fill', needSrc(() => { setEditMode(true); Edit.tool = 'fill'; updateEditUI(); }));
+  for (const [v, n, k2] of [['split', 'Compare side by side', 'before after original'], ['wipe', 'Wipe: drag between original and result', 'before after slider'], ['src', 'Show the original', 'source'], ['text', 'Show the raw text', 'select copy'], ['platform', 'Preview in a chat app', 'discord phone']])
+    add(n, 'View', k2, needSrc(() => setView(v)));
+  add('Keep these settings as a version (A–D)', 'Above the picture', 'snapshot compare ab a/b', needSrc(keepVersion));
+  add('Fit the picture / zoom', 'View', 'zoom 100 fit', () => { App.zoom = App.zoom ? 0 : 1; applyZoom(); });
+  add('Send in a chat app (Discord, WhatsApp…)', 'Share panel', 'copy paste message', () => showExport('chat'));
+  add('Fix all for the chat app', 'Share panel', 'fit limit width phone', () => showExport('chat', 'fixAllBtn'));
+  add('Calibrate for my phone', 'Share panel', 'phone width ring', openCalibration);
+  for (const [lab, k2] of [['PNG', 'picture image save'], ['JPG', 'jpeg'], ['GIF', 'animation'], ['MP4', 'video'], ['WEBM', 'video'], ['APNG', 'animated png'], ['WEBP anim', 'animated webp']])
+    add('Save ' + lab, 'Share panel', k2 + ' download export', needSrc(() => showExport('save', lab)));
+  add('Stickers & emoji (Discord, Slack, Telegram)', 'Share panel', 'sticker emoji discord slack telegram', needSrc(() => showExport('save', 'Discord emoji')));
+  add('Copy as text', 'Share panel', 'clipboard plain', needSrc(actCopyText));
+  add('Copy with colours (Word, email)', 'Share panel', 'rich html clipboard', needSrc(actCopyHTML));
+  add('Copy ANSI (terminal colours)', 'Share panel', 'terminal escape', needSrc(actCopyANSI));
+  add('Save .txt / .html / .ans / .svg', 'Share panel', 'text file svg html', needSrc(() => showExport('text', '.txt')));
+  add('Copy as code (JavaScript, Python, C#)', 'Share panel', 'string program developer json', needSrc(() => showExport('text', 'codeLang')));
+  add('Copy a link to this art', 'Share panel', 'url link share', needSrc(actCopyLink));
+  add('Terminal script that plays it (.sh, .ps1, .py)', 'Share panel', 'powershell bash python console', needSrc(() => showExport(App.src.kind === 'anim' || App.src.kind === 'video' ? 'save' : 'text', App.src.kind === 'anim' || App.src.kind === 'video' ? 'Terminal .sh' : '.sh')));
+  if (canShareText()) add('Share to another app', 'Share panel', 'share sheet send', needSrc(() => showExport('save', 'Share…')));
+  add('Undo', 'Top bar', 'back ctrl+z', () => History.step(true));
+  add('Redo', 'Top bar', 'forward ctrl+y', () => History.step(false));
+  add('Light or dark theme', 'Top bar', 'dark mode light colours', () => $('#btnTheme').click());
+  add('Show every expert setting (Advanced)', 'Top bar', 'expert more options', () => setAdvanced(true));
+  add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
+  add("What's new", 'Top bar', 'news changes features', openWhatsNew);
+  if (App.installPrompt) add('Install as an app', 'More', 'offline pwa desktop', () => $('#btnInstall').click());
+  return T;
+}
+const findState = { list: [], sel: 0 };
+function findFilter(q) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean), all = toolList();
+  if (!words.length) return all;
+  return all.map(t => { const hay = (t.name + ' ' + t.keys + ' ' + t.where).toLowerCase(), name = t.name.toLowerCase(); if (!words.every(w => hay.includes(w))) return null;
+    return { t, score: (name.startsWith(words[0]) ? 0 : name.includes(words[0]) ? 1 : 2) }; }).filter(Boolean).sort((a, b) => a.score - b.score).map(x => x.t);
+}
+function renderFind() {
+  const ul = $('#findList'); ul.textContent = '';
+  findState.list.slice(0, 60).forEach((t, i) => {
+    const li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'find-' + i; li.className = i === findState.sel ? 'on' : '';
+    li.setAttribute('aria-selected', i === findState.sel);
+    li.innerHTML = '<span></span><small></small>'; li.firstChild.textContent = t.name; li.lastChild.textContent = t.where;
+    li.addEventListener('pointerdown', e => { e.preventDefault(); runFind(i); });
+    ul.appendChild(li);
+  });
+  $('#findInput').setAttribute('aria-activedescendant', findState.list.length ? 'find-' + findState.sel : '');
+  $('#findEmpty').hidden = findState.list.length > 0;
+  const on = ul.children[findState.sel]; if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function openFind() {
+  const d = $('#findDialog'), inp = $('#findInput');
+  inp.value = ''; findState.list = findFilter(''); findState.sel = 0; renderFind();
+  if (!d.open) d.showModal(); inp.focus();
+}
+function runFind(i) {
+  const t = findState.list[i]; if (!t) return;
+  $('#findDialog').close();
+  setTimeout(() => { try { t.run(); } catch (e) { console.error(e); } }, 30);
+}
+/* ---- what's new: once for people who used an earlier version ---- */
+const WHATS_NEW_ID = '2026-10';
+const WAS_HERE_BEFORE = (() => { try { return !!localStorage.getItem('textArtStudio.seenHelp'); } catch (e) { return false; } })();   // read before start-up marks it
+const WHATS_NEW = [
+  ['Point at a look to preview it', 'Pick a look (styles gallery)'], ['Wipe between original and result', 'Wipe: drag between original and result'],
+  ['Draw the crop on the picture', 'Draw the crop on the picture'], ['Edit characters: brush, type, select, fill', 'Edit single characters (brush)'],
+  ['Captions and big letters', 'Caption: words on the picture'], ['Animate a still picture', 'Animate a still picture (typewriter, Matrix rain, glitch…)'],
+  ['Emoji mosaic, retro palettes and your own palette', 'Your own palette (from the picture, paste, lospec)'], ['Built-in pixel font', 'Font (incl. the built-in pixel font)'],
+  ['Versions A–D to compare settings', 'Keep these settings as a version (A–D)'], ['Settings that change over time', 'Change over time (fade in, ramps)'],
+  ['Projects and "continue where you left off"', 'Save project (.textart)'], ['Stickers, terminal scripts, code and links', 'Stickers & emoji (Discord, Slack, Telegram)'],
+];
+function openWhatsNew() {
+  const box = $('#newsList'); box.textContent = '';
+  for (const [title, tool] of WHATS_NEW) {
+    const li = document.createElement('li'); li.innerHTML = '<span></span><button class="btn">Show me</button>'; li.firstChild.textContent = title;
+    li.lastChild.addEventListener('click', () => { $('#newsDialog').close(); const t = toolList().find(x => x.name === tool); if (t) setTimeout(() => t.run(), 30); });
+    box.appendChild(li);
+  }
+  $('#newsDialog').showModal();
+  try { localStorage.setItem('textArtStudio.seenNews', WHATS_NEW_ID); } catch (e) {}
+}
+function initFindTool() {
+  $('#btnFind').addEventListener('click', openFind);
+  $('#findClose').addEventListener('click', () => $('#findDialog').close());
+  $('#newsClose').addEventListener('click', () => $('#newsDialog').close());
+  $('#btnNews').addEventListener('click', openWhatsNew);
+  $('#helpNews').addEventListener('click', () => { $('#helpDialog').close(); openWhatsNew(); });
+  $('#newsFind').addEventListener('click', () => { $('#newsDialog').close(); openFind(); });
+  const inp = $('#findInput');
+  inp.addEventListener('input', () => { findState.list = findFilter(inp.value); findState.sel = 0; renderFind(); });
+  inp.addEventListener('keydown', e => {
+    const n = Math.min(60, findState.list.length);
+    if (e.key === 'ArrowDown') { e.preventDefault(); findState.sel = (findState.sel + 1) % Math.max(1, n); renderFind(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); findState.sel = (findState.sel - 1 + n) % Math.max(1, n); renderFind(); }
+    else if (e.key === 'Enter') { e.preventDefault(); runFind(findState.sel); }
+  });
+  window.addEventListener('keydown', e => {
+    const typing = e.target.closest && e.target.closest('input,textarea,select,[contenteditable]');
+    if (((e.ctrlKey || e.metaKey) && !e.altKey && (e.key || '').toLowerCase() === 'k') || (e.key === '/' && !typing && !Edit.on)) {
+      if (document.querySelector('dialog[open]:not(#findDialog)')) return;
+      e.preventDefault(); openFind();
+    }
+  });
+  // returning users see what's new once; new users get the "New here?" hint instead
+  let seen = null, returning = false;
+  try { seen = localStorage.getItem('textArtStudio.seenNews'); returning = WAS_HERE_BEFORE; } catch (e) {}
+  if (!/^#./.test(location.hash) && seen !== WHATS_NEW_ID) {
+    if (returning) setTimeout(openWhatsNew, 900);
+    else try { localStorage.setItem('textArtStudio.seenNews', WHATS_NEW_ID); } catch (e) {}
+  }
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

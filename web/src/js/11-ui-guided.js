@@ -258,6 +258,6 @@ function initUI2() {
   setStep(1);
   updateChoices();
   scheduleLooks();
-  try { if (!localStorage.getItem('textArtStudio.seenHelp')) { localStorage.setItem('textArtStudio.seenHelp', '1'); setTimeout(() => toast('New here? Press ? (top right) for a one-minute guide'), 1200); } } catch (e) {}
+  try { if (!localStorage.getItem('textArtStudio.seenHelp')) { localStorage.setItem('textArtStudio.seenHelp', '1'); setTimeout(() => toast('New here? Press ? (top right) for a one-minute guide, or 🔍 Find a tool (Ctrl+K) to search for anything'), 1200); } } catch (e) {}
 }
 

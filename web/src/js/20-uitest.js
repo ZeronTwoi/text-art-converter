@@ -632,6 +632,48 @@ UI_TESTS.push(async function shareLinks(ok, { wait }) {
   ok('Link: a broken link is refused', bad === false);
 });
 
+UI_TESTS.push(async function findTool(ok, { wait }) {
+  await demoImage(); await wait(30);
+  openFind();
+  ok('Find a tool: opens with every tool listed', $('#findDialog').open && $$('#findList li').length > 40 && document.activeElement === $('#findInput'), $$('#findList li').length + ' shown');
+  const type = q => { $('#findInput').value = q; $('#findInput').dispatchEvent(new Event('input')); };
+  type('crop'); const first = $('#findList li span').textContent;
+  ok('Find a tool: "crop" finds the crop tools', /crop/i.test(first) && $$('#findList li').length <= 6, first);
+  type('sticker'); ok('Find a tool: "sticker"', /Stickers/.test($('#findList li span').textContent));
+  type('pal'); ok('Find a tool: "pal" → palette', /palette/i.test($('#findList li span').textContent));
+  type('zzzqqq'); ok('Find a tool: nothing found message', !$('#findEmpty').hidden);
+  type('caption');
+  $('#findInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(450);
+  ok('Find a tool: Enter opens the Look tab at the caption', !$('#findDialog').open && $('#tabbtn-look').getAttribute('aria-selected') === 'true' && document.activeElement === $('#capTop'));
+  openFind(); type('wipe'); $('#findInput').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await wait(100);
+  ok('Find a tool: runs actions too (wipe view)', App.view === 'wipe');
+  setView('out');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  ok('Find a tool: Ctrl+K opens it', $('#findDialog').open); $('#findDialog').close();
+  const names = new Set(toolList().map(t => t.name));
+  ok("What's new: every 'Show me' leads to a tool", WHATS_NEW.every(([, t]) => names.has(t)), WHATS_NEW.filter(([, t]) => !names.has(t)).map(x => x[1]).join(', '));
+  openWhatsNew();
+  ok("What's new: lists the new features", $('#newsDialog').open && $$('#newsList li').length === WHATS_NEW.length);
+  $('#newsDialog').close();
+  ok('Grouping: the More menu has sections', $$('#morePop .menulabel').length === 4);
+  ok('Grouping: the font choice is visible without Advanced', getComputedStyle(key('fontFamily').closest('.group')).display !== 'none');
+  // every entry works: run each one (downloads caught, dialogs closed, the picture reopened when an entry replaced it)
+  const errors = [], realOpen = HTMLInputElement.prototype.click, realWebcam = window.startWebcam;
+  HTMLInputElement.prototype.click = function () {};   // no file chooser in a test
+  window.startWebcam = async () => {};
+  window.addEventListener('error', e => errors.push(e.message));
+  for (const t of toolList()) {
+    try { await uiCaptureDownloads(async () => { await t.run(); await wait(40); }); }
+    catch (e) { errors.push(t.name + ': ' + e.message); }
+    for (const d of $$('dialog[open]')) d.close();
+    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false);
+    if (!App.src || App.src.kind !== 'image') { await demoImage(); await wait(20); }
+    App.zoom = 0; setView('out');
+  }
+  HTMLInputElement.prototype.click = realOpen; window.startWebcam = realWebcam; setAdvanced(false);
+  ok('Find a tool: every entry runs without an error', errors.length === 0, errors.slice(0, 3).join(' | '));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
