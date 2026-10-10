@@ -277,6 +277,12 @@ dialog h4{margin:14px 0 6px}
 .btn.hasz{flex-direction:column;gap:0;line-height:1.2}
 .btn .sz{font-size:10.5px;font-weight:500;opacity:.8}
 .btn .sz:empty{display:none}
+/* ===== gallery preview ===== */
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:2px}
+.peekbadge{position:sticky;top:8px;left:0;margin:8px auto 0;width:max-content;max-width:calc(100% - 24px);z-index:6;background:var(--panel);border:1px solid var(--accent);color:var(--text);border-radius:99px;padding:4px 12px;font-size:12px;box-shadow:var(--shadow);pointer-events:none}
+dialog.wide{width:min(1180px,calc(100vw - 32px))}
+.biglooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-height:calc(100vh - 190px);overflow:auto;padding:2px}
+.look.big span{font-size:12.5px}
 @media (max-width:1320px){ .step span{display:none} .step{padding:4px} }
 @media (max-width:980px){ .steps{display:none} .switch{font-size:0;gap:0} }
 @media (max-width:1180px){

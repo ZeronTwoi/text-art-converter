@@ -51,7 +51,7 @@
 
     <!-- LOOK -->
     <section class="tab" data-tab="look">
-      <h3 class="h">Quick looks <span>tap one to apply</span></h3>
+      <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button></span></h3>
       <div class="looks" id="looks"></div>
       <h3 class="h">Drawn with <span>the kind of characters</span></h3>
       <div class="modes" id="modes"></div>
@@ -245,6 +245,7 @@
       </div>
     </div>
     <div class="stage" id="stage">
+      <div class="peekbadge" id="peekBadge" hidden></div>
       <div class="empty" id="empty">
         <div class="drop">
           <div class="big">⣿⣷⣄ @#%</div>
@@ -387,6 +388,11 @@
   <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="galleryDialog" class="wide">
+  <h3>All looks <span class="muted small">on your picture: click one to apply it</span></h3>
+  <div class="biglooks" id="galleryGrid"></div>
+  <div class="acts"><button class="btn" id="galleryClose" autofocus>Close</button></div>
 </dialog>
 <dialog id="batchDialog">
   <h3>Batch convert files</h3>

@@ -25,8 +25,26 @@ function lookSettings(id) {
 }
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
+  endPeek(true);
   applySettings(Object.assign({}, st));
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
+}
+/* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
+   Nothing changes until the card is clicked: exports and sharing keep using your settings. */
+let peekTimer = 0;
+function startPeek(id) {
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => {
+    const st = lookSettings(id); if (!st || !App.src || App.exporting) return;
+    App.peek = Object.assign({}, S, st); App.peekId = id; App.dirty = true;
+    const b = $('#peekBadge'); b.textContent = 'Preview: ' + id.replace(USER_PREFIX, '') + ' (click the card to apply)'; b.hidden = false;
+  }, 140);
+}
+function endPeek(quiet) {
+  clearTimeout(peekTimer);
+  if (!App.peek) return;
+  App.peek = null; App.peekId = null; $('#peekBadge').hidden = true;
+  if (!quiet) App.dirty = true;
 }
 function saveUserLook(name) {
   name = String(name || '').trim().slice(0, 40); if (!name) return false;
@@ -53,6 +71,10 @@ function buildLooks() {
     const b = document.createElement('button'); b.className = 'look'; b.dataset.look = id; b.title = 'Apply the "' + label + '" look';
     b.innerHTML = '<canvas></canvas><span></span>'; b.querySelector('span').textContent = label;
     b.addEventListener('click', () => applyPreset(id));
+    b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') startPeek(id); });
+    b.addEventListener('pointerleave', () => endPeek());
+    b.addEventListener('focus', () => { if (b.matches(':focus-visible')) startPeek(id); });
+    b.addEventListener('blur', () => endPeek());
     if (user) {
       const x = document.createElement('i'); x.className = 'del'; x.textContent = '✕'; x.title = 'Delete this look'; x.setAttribute('role', 'button');
       x.addEventListener('click', e => { e.stopPropagation(); if (confirm(`Delete your look "${label}"?`)) deleteUserLook(label); });
@@ -67,17 +89,19 @@ function buildLooks() {
   el.appendChild(add);
 }
 let looksTimer = 0, looksSig = '';
-function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(renderLooks, 200); }
-async function renderLooks() {
-  const token = renderLooks.token = {};
+function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
+const renderLooks = () => renderLookCards($$('#looks .look[data-look]'), { cols: 56, fontSize: 4 }, renderLooks);
+/* draws each look card's picture: the current picture (or the demo) in that look */
+async function renderLookCards(cards, size, owner) {
+  const token = owner.token = {};
   const s = App.src;
   let d = s && s.kind !== 'text' ? currentDrawable() : null;
   if (!d) { const c = demoCanvas(); d = [c, c.width, c.height]; }
-  const live = () => renderLooks.token === token && App.src === s;   // not superseded, source not replaced
-  for (const card of $$('.look[data-look]')) {
+  const live = () => owner.token === token && App.src === s;   // not superseded, source not replaced
+  for (const card of cards) {
     if (!live()) return;
     const ls = lookSettings(card.dataset.look); if (!ls) continue;
-    const St = Object.assign({}, S, ls, { cols: 56, fontSize: 4, bgFade: 0 }), canvas = card.querySelector('canvas');
+    const St = Object.assign({}, S, ls, size, { bgFade: 0, margin: 0 }), canvas = card.querySelector('canvas');
     const draw = res => { if (live()) try { renderResult(res, St, canvas, 1); } catch (e) { console.warn(e); } };
     try {
       const memo = peekResult(d[0], d[1], d[2], St);
@@ -90,6 +114,20 @@ async function renderLooks() {
     await nextTick();
   }
 }
+/* the bigger gallery: every look at a larger size, in a dialog */
+function openGallery() {
+  const d = $('#galleryDialog'), box = $('#galleryGrid'); box.innerHTML = '';
+  const ids = Object.keys(PRESETS).concat(userLooks.map(l => USER_PREFIX + l.name));
+  for (const id of ids) {
+    const b = document.createElement('button'); b.className = 'look big'; b.dataset.look = id; b.title = 'Apply this look';
+    b.innerHTML = '<canvas></canvas><span></span>'; b.querySelector('span').textContent = id.replace(USER_PREFIX, '');
+    b.classList.toggle('on', id === App.look);
+    b.addEventListener('click', () => { applyPreset(id); d.close(); });
+    box.appendChild(b);
+  }
+  d.showModal(); renderGallery();
+}
+const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
 function setTab(t) {
   $$('#leftTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $$('#settings .tab').forEach(sec => { sec.hidden = sec.dataset.tab !== t; });
@@ -186,6 +224,9 @@ function updateFilmstrip(force) {
 
 function initUI2() {
   loadUserLooks(); buildLooks();
+  $('#galleryOpen').addEventListener('click', openGallery);
+  $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
+  $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });
   $('#btnUndo').addEventListener('click', () => History.step(true));
   $('#btnRedo').addEventListener('click', () => History.step(false));
   const ld = $('#lookDialog');

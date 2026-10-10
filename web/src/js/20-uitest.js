@@ -28,6 +28,23 @@ const UI_TESTS = [];
 const uiDemoRes = St => { const c = demoCanvas(); return convert(c, c.width, c.height, St); };
 const uiRow = (res, y) => { let s = ''; for (let x = 0; x < res.cols; x++) s += chr(res.cp[y * res.cols + x] || 32); return s; };
 
+UI_TESTS.push(async function gallery(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  const res0 = App.res, out = $('#outCanvas'), before = out.toDataURL();
+  startPeek('Matrix'); await wait(220); renderNow();
+  ok('Look preview: shown on the big picture', !!App.peek && out.toDataURL() !== before && !$('#peekBadge').hidden);
+  ok('Look preview: your result (exports, sharing) is unchanged', App.res === res0 && S.mode === DEFAULTS.mode);
+  endPeek(); renderNow();
+  ok('Look preview: ends without changing anything', !App.peek && out.toDataURL() === before && $('#peekBadge').hidden);
+  openGallery();
+  const cards = $$('#galleryGrid .look');
+  ok('Bigger gallery: a card for every look', cards.length === Object.keys(PRESETS).length + userLooks.length, cards.length + ' cards');
+  await renderGallery();
+  ok('Bigger gallery: every card is drawn', cards.every(c => c.querySelector('canvas').width > 100), cards[0].querySelector('canvas').width + 'px wide');
+  cards[2].click();
+  ok('Bigger gallery: click applies the look and closes', App.look === cards[2].dataset.look && !$('#galleryDialog').open);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

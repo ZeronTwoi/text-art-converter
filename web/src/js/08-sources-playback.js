@@ -226,6 +226,7 @@ function disposeSource(s) {
   if (s.audio) { try { s.audio.ctx.close(); } catch (e) {} }
 }
 function setSource(s) {
+  endPeek(true);
   disposeSource(App.src); Prefetch.clear(); maskClear(); previewCacheClear(); if (Mask.on) setMaskMode(false);
   App.src = s; App.time = 0; App.tin = App.tout = null; App.lastIdx = -1; App.lastVT = -1; App.playing = false;
   if (s.bmp) srcOwner.set(s.bmp, s); if (s.video) srcOwner.set(s.video, s);
