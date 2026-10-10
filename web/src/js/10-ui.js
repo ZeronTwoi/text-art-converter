@@ -284,6 +284,7 @@ function initUI() {
   initDesigner();
   initLookShare();
   initLayers();
+  initLiveLooks();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

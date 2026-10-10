@@ -547,7 +547,7 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
 
     <!-- LOOK -->
     <section class="tab" data-tab="look">
-      <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button></span></h3>
+      <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button><span class="anim-only"> · <button class="linkbtn" id="liveLooks" aria-pressed="true" title="The look pictures play along with your GIF or video (turns itself off if it is too slow)">▶ Play along: on</button></span></span></h3>
       <div class="looks" id="looks"></div>
       <button class="btn wide moreLooks" id="moreLooks" aria-expanded="false">Show all looks ▾</button>
       <h3 class="h">Drawn with <span>the kind of characters</span></h3>
@@ -3462,6 +3462,7 @@ function tick(now) {
   else if (App.dirty) { App.dirty = false; renderNow(); }
   if (s.kind === 'anim' && App.playing) Prefetch.run();
   updatePlayerUI();
+  liveLooksTick(now);
 }
 /* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
 const viewS = () => App.peek || settingsAt(curTime());
@@ -5377,6 +5378,7 @@ function initUI() {
   initDesigner();
   initLookShare();
   initLayers();
+  initLiveLooks();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5499,7 +5501,7 @@ async function renderLookCards(cards, size, owner) {
   const s = App.src;
   let d = s && s.kind !== 'text' ? currentDrawable() : null;
   if (!d) { const c = demoCanvas(); d = [c, c.width, c.height]; }
-  const live = () => owner.token === token && App.src === s;   // not superseded, source not replaced
+  const live = () => owner.token === token && App.src === s, pending = [];   // not superseded, source not replaced
   for (const card of cards) {
     if (!live()) return;
     const ls = lookSettings(card.dataset.look); if (!ls) continue;
@@ -5516,11 +5518,12 @@ async function renderLookCards(cards, size, owner) {
       if (memo || !Pool.size()) draw(memo || convertRaw(d[0], d[1], d[2], St));
       else {   // the cards convert on the workers, all at once; only the pictures are drawn here
         const key = memoKey(d[0], d[1], d[2], St);
-        convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e));
+        pending.push(convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e)));
       }
     } catch (e) { console.warn(e); }
     await nextTick();
   }
+  await Promise.all(pending);
 }
 /* the bigger gallery: every look at a larger size, in a dialog */
 function openGallery() {
@@ -7795,6 +7798,7 @@ function toolList() {
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
   add('Picture on top (logo, watermark, frame)', 'Crop tab', 'layer logo watermark overlay sticker stamp frame image on top composite', () => showControl($('#layerPick'), 'crop'));
   add('Share a look (link or .textlook file)', 'Look tab → Save current look', 'share look send friend preset link file import export', () => openLookDialog());
+  add('Look pictures play along (on / off)', 'Look tab, above the looks', 'animated thumbnails live looks play along slow performance', () => { setLiveLooks(!LiveLooks.on); toast(LiveLooks.on ? 'Look pictures play along with GIFs and videos' : 'Look pictures stay still'); });
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
   add('Design your own characters', 'Look tab', 'character set charset designer letters ramp custom', openDesigner);
@@ -8525,6 +8529,36 @@ function initLayers() {
   $('#layerPick').addEventListener('click', () => inp.click());
   $('#layerRemove').addEventListener('click', () => removeLayer());
   updateLayerUI();
+}
+/* =====================================================================
+   Look pictures that play along: while a GIF or video plays, the look cards show the current frame (a few times a
+   second, only while they are on screen). If that is too slow on this computer it turns itself off; the "Play along"
+   switch above the looks turns it on or off for good.
+   ===================================================================== */
+const LiveLooks = { on: true, busy: false, last: 0, slow: 0, maxMs: 250, every: 300 };
+const LIVE_LOOKS_KEY = 'textArtStudio.liveLooks';
+function setLiveLooks(on, auto) {
+  LiveLooks.on = on; LiveLooks.slow = 0;
+  try { localStorage.setItem(LIVE_LOOKS_KEY, on ? '1' : '0'); } catch (e) {}
+  const b = $('#liveLooks'); b.setAttribute('aria-pressed', on); b.textContent = on ? '▶ Play along: on' : '▶ Play along: off';
+  if (auto) toast('The look pictures stopped playing along: too slow on this computer (turn it on again above the looks)');
+}
+function liveLooksTick(now) {
+  const s = App.src;
+  if (!LiveLooks.on || LiveLooks.busy || !App.playing || !s || !(s.kind === 'anim' || s.kind === 'video') || now - LiveLooks.last < LiveLooks.every) return;
+  if (App.exporting || App.peek || document.hidden || !$('#looks').offsetParent) return;
+  LiveLooks.busy = true; LiveLooks.last = now;
+  const t0 = performance.now();
+  renderLooks().finally(() => {
+    LiveLooks.busy = false;
+    LiveLooks.slow = performance.now() - t0 > LiveLooks.maxMs ? LiveLooks.slow + 1 : 0;
+    if (LiveLooks.slow >= 3 && LiveLooks.on) setLiveLooks(false, true);
+  });
+}
+function initLiveLooks() {
+  let on = true; try { on = localStorage.getItem(LIVE_LOOKS_KEY) !== '0'; } catch (e) {}
+  $('#liveLooks').addEventListener('click', () => { setLiveLooks(!LiveLooks.on); if (!LiveLooks.on) scheduleLooks(); });
+  setLiveLooks(on);
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)
@@ -9839,6 +9873,21 @@ UI_TESTS.push(async function layers(ok, { wait, reset }) {
   await openProject(new File([got[0].blob], got[0].name)); App.dirty = true; renderNow();
   ok('Layer: saved in projects', !!Layer.bmp && Layer.name === 'logo.png' && S.layerOn && resultText(App.res) === t2);
   removeLayer();
+});
+
+UI_TESTS.push(async function liveLooks(ok, { wait, reset }) {
+  reset(); await demoAnim(); await wait(30); setTab('look'); setLiveLooks(true);
+  const card = () => $('#looks .look[data-look] canvas').toDataURL();
+  ok('Play along: the switch shows for animations', !!$('#liveLooks').offsetParent && $('#liveLooks').getAttribute('aria-pressed') === 'true');
+  setPlaying(false); scheduleLooks(); await wait(500); const c0 = card();
+  setPlaying(true); await wait(900); const c1 = card();
+  ok('Play along: the look pictures follow the playing animation', c1 !== c0);
+  setLiveLooks(false); await wait(400); const c2 = card(); await wait(700);
+  ok('Play along: off = the pictures stay still', card() === c2);
+  setLiveLooks(true); LiveLooks.maxMs = -1; await wait(2500); const autoOff = !LiveLooks.on;
+  LiveLooks.maxMs = 250; setPlaying(false);
+  ok('Play along: turns itself off when too slow', autoOff);
+  setLiveLooks(true);
 });
 
 UI_TESTS.push(async function captions(ok) {

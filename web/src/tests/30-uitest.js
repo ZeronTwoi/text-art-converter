@@ -882,6 +882,21 @@ UI_TESTS.push(async function layers(ok, { wait, reset }) {
   removeLayer();
 });
 
+UI_TESTS.push(async function liveLooks(ok, { wait, reset }) {
+  reset(); await demoAnim(); await wait(30); setTab('look'); setLiveLooks(true);
+  const card = () => $('#looks .look[data-look] canvas').toDataURL();
+  ok('Play along: the switch shows for animations', !!$('#liveLooks').offsetParent && $('#liveLooks').getAttribute('aria-pressed') === 'true');
+  setPlaying(false); scheduleLooks(); await wait(500); const c0 = card();
+  setPlaying(true); await wait(900); const c1 = card();
+  ok('Play along: the look pictures follow the playing animation', c1 !== c0);
+  setLiveLooks(false); await wait(400); const c2 = card(); await wait(700);
+  ok('Play along: off = the pictures stay still', card() === c2);
+  setLiveLooks(true); LiveLooks.maxMs = -1; await wait(2500); const autoOff = !LiveLooks.on;
+  LiveLooks.maxMs = 250; setPlaying(false);
+  ok('Play along: turns itself off when too slow', autoOff);
+  setLiveLooks(true);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

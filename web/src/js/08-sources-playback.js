@@ -386,6 +386,7 @@ function tick(now) {
   else if (App.dirty) { App.dirty = false; renderNow(); }
   if (s.kind === 'anim' && App.playing) Prefetch.run();
   updatePlayerUI();
+  liveLooksTick(now);
 }
 /* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
 const viewS = () => App.peek || settingsAt(curTime());

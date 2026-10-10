@@ -39,6 +39,7 @@ function toolList() {
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
   add('Picture on top (logo, watermark, frame)', 'Crop tab', 'layer logo watermark overlay sticker stamp frame image on top composite', () => showControl($('#layerPick'), 'crop'));
   add('Share a look (link or .textlook file)', 'Look tab → Save current look', 'share look send friend preset link file import export', () => openLookDialog());
+  add('Look pictures play along (on / off)', 'Look tab, above the looks', 'animated thumbnails live looks play along slow performance', () => { setLiveLooks(!LiveLooks.on); toast(LiveLooks.on ? 'Look pictures play along with GIFs and videos' : 'Look pictures stay still'); });
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
   add('Design your own characters', 'Look tab', 'character set charset designer letters ramp custom', openDesigner);

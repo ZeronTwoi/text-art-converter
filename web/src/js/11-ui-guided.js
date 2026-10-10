@@ -111,7 +111,7 @@ async function renderLookCards(cards, size, owner) {
   const s = App.src;
   let d = s && s.kind !== 'text' ? currentDrawable() : null;
   if (!d) { const c = demoCanvas(); d = [c, c.width, c.height]; }
-  const live = () => owner.token === token && App.src === s;   // not superseded, source not replaced
+  const live = () => owner.token === token && App.src === s, pending = [];   // not superseded, source not replaced
   for (const card of cards) {
     if (!live()) return;
     const ls = lookSettings(card.dataset.look); if (!ls) continue;
@@ -128,11 +128,12 @@ async function renderLookCards(cards, size, owner) {
       if (memo || !Pool.size()) draw(memo || convertRaw(d[0], d[1], d[2], St));
       else {   // the cards convert on the workers, all at once; only the pictures are drawn here
         const key = memoKey(d[0], d[1], d[2], St);
-        convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e));
+        pending.push(convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e)));
       }
     } catch (e) { console.warn(e); }
     await nextTick();
   }
+  await Promise.all(pending);
 }
 /* the bigger gallery: every look at a larger size, in a dialog */
 function openGallery() {
