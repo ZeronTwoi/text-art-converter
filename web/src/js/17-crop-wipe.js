@@ -111,9 +111,9 @@ const wipeTmp = document.createElement('canvas');
 function drawWipeSource(c, out, d) {
   const W = out.width, H = out.height;
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-  const g = c.getContext('2d'), [, , mx, my] = pictureSize(0, 0, S, 1), iw = Math.max(1, W - 2 * mx), ih = Math.max(1, H - 2 * my);
+  const St = viewS(), g = c.getContext('2d'), [, , mx, my] = pictureSize(0, 0, St, 1), iw = Math.max(1, W - 2 * mx), ih = Math.max(1, H - 2 * my);
   g.setTransform(1, 0, 0, 1, 0, 0);
-  if (S.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = S.bg; g.fillRect(0, 0, W, H); }
+  if (St.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = St.bg; g.fillRect(0, 0, W, H); }
   if (wipeTmp.width !== iw || wipeTmp.height !== ih) { wipeTmp.width = iw; wipeTmp.height = ih; }
   drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S);
   g.drawImage(wipeTmp, mx, my);

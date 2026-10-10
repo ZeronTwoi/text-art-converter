@@ -3211,24 +3211,26 @@ function renderNow() {
   if (res) showResult(res, t0);
 }
 function showResult(res, t0) {
-  const out = $('#outCanvas');
-  if (App.peek) {   // previewing a look: only the picture changes, your result (exports, sharing) stays
-    drawPreview(res, App.peek, out);
-    setText('stats', `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`);
-    applyZoom(); return;
+  const out = $('#outCanvas'), peek = !!App.peek, St = viewS();
+  // previewing a look (pointer on its card): every view shows it and keeps playing, but your result
+  // (exports, sharing, size estimates) stays yours
+  if (!peek) {
+    App.res = res;
+    const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
+    if (Edit.on || Edits.cells.size) updateEditUI();
+    scheduleHistogram();
   }
-  App.res = res;
-  const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
-  if (Edit.on || Edits.cells.size) updateEditUI();
-  scheduleHistogram();
-  drawPreview(res, S, out);
+  drawPreview(res, St, out);
   if (App.view === 'src' || App.view === 'split' || App.view === 'wipe') drawSourceView();
-  if (App.view === 'text') updateRawText();
-  scheduleShareUI();
-  if (App.view === 'platform') updatePlatformView();
-  scheduleSizeEstimate();
+  if (App.view === 'text') updateRawText(res, St);
+  if (!peek) {
+    scheduleShareUI();
+    if (App.view === 'platform') updatePlatformView();
+    scheduleSizeEstimate();
+  }
   App.renderMs = performance.now() - t0;
-  setText('stats', `${res.cols}×${res.rows} characters · ${out.width}×${out.height}px · ${App.renderMs.toFixed(1)} ms/frame`);
+  setText('stats', peek ? `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`
+    : `${res.cols}×${res.rows} characters · ${out.width}×${out.height}px · ${App.renderMs.toFixed(1)} ms/frame`);
   setText('sizeInfo', `${res.cols} × ${res.rows} characters → ${out.width} × ${out.height}px image`);
   applyZoom();
 }
@@ -3238,7 +3240,7 @@ function drawSourceView() {
   if (!d) { c.width = c.height = 1; return; }
   if (Crop.on) return drawCropView(c, d);
   if (App.view === 'wipe') return drawWipeSource(c, out, d);
-  const [, , mx, my] = pictureSize(0, 0, S, 1), ow = Math.max(1, out.width - 2 * mx), oh = Math.max(1, out.height - 2 * my);
+  const [, , mx, my] = pictureSize(0, 0, viewS(), 1), ow = Math.max(1, out.width - 2 * mx), oh = Math.max(1, out.height - 2 * my);
   const k = Math.min(1, 1600 / ow);
   const W = Math.max(1, Math.round(ow * k)), H = Math.max(1, Math.round(oh * k));
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
@@ -3294,9 +3296,9 @@ function updateMaskUI() {
   $('#maskSizeOut').textContent = Mask.size + '%';
   $('#maskUndo').disabled = !MaskHist.undo.length; $('#maskRedo').disabled = !MaskHist.redo.length;
 }
-function updateRawText() {
-  const pre = $('#rawText'), res = App.res; if (!res) return;
-  pre.style.cssText = preStyle(S) + `background:${S.bgMode === 'transparent' ? 'transparent' : S.bg};color:${S.fg}`;
+function updateRawText(res = App.res, St = S) {
+  const pre = $('#rawText'); if (!res) return;
+  pre.style.cssText = preStyle(St) + `background:${St.bgMode === 'transparent' ? 'transparent' : St.bg};color:${St.fg}`;
   if (!res.uniform && res.cols * res.rows <= 80000) pre.innerHTML = resultHTMLInner(res);
   else pre.textContent = resultText(res);
 }
@@ -6150,9 +6152,9 @@ const wipeTmp = document.createElement('canvas');
 function drawWipeSource(c, out, d) {
   const W = out.width, H = out.height;
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-  const g = c.getContext('2d'), [, , mx, my] = pictureSize(0, 0, S, 1), iw = Math.max(1, W - 2 * mx), ih = Math.max(1, H - 2 * my);
+  const St = viewS(), g = c.getContext('2d'), [, , mx, my] = pictureSize(0, 0, St, 1), iw = Math.max(1, W - 2 * mx), ih = Math.max(1, H - 2 * my);
   g.setTransform(1, 0, 0, 1, 0, 0);
-  if (S.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = S.bg; g.fillRect(0, 0, W, H); }
+  if (St.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = St.bg; g.fillRect(0, 0, W, H); }
   if (wipeTmp.width !== iw || wipeTmp.height !== ih) { wipeTmp.width = iw; wipeTmp.height = ih; }
   drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S);
   g.drawImage(wipeTmp, mx, my);
@@ -6423,7 +6425,17 @@ UI_TESTS.push(async function gallery(ok, { wait }) {
   startPeek('Matrix'); await wait(220); renderNow();
   ok('Look preview: shown on the big picture', !!App.peek && out.toDataURL() !== before && !$('#peekBadge').hidden);
   ok('Look preview: your result (exports, sharing) is unchanged', App.res === res0 && S.mode === DEFAULTS.mode);
-  endPeek(); renderNow();
+  // a playing animation in Compare and Text view keeps moving while a look is previewed
+  await demoAnim(); await wait(30); setPlaying(false); setView('split'); renderNow();
+  startPeek('Matrix'); await wait(220);
+  const src = $('#srcCanvas'), frame = () => src.toDataURL();
+  App.time = App.src.frames[5].t0; App.dirty = true; renderNow(); const a = frame(), resA = App.res;
+  App.time = App.src.frames[20].t0; App.dirty = true; renderNow(); const b = frame();
+  ok('Look preview: the original keeps playing in Compare view', a !== b && App.res === resA);
+  setView('text'); renderNow(); const t1 = $('#rawText').textContent;
+  App.time = App.src.frames[30].t0; App.dirty = true; renderNow();
+  ok('Look preview: the Text view shows the previewed look and keeps playing', $('#rawText').textContent !== t1 && /[ｦ-ﾝ]/.test($('#rawText').textContent));
+  endPeek(); setView('out'); await demoImage(); await wait(30); renderNow();
   ok('Look preview: ends without changing anything', !App.peek && out.toDataURL() === before && $('#peekBadge').hidden);
   openGallery();
   const cards = $$('#galleryGrid .look');

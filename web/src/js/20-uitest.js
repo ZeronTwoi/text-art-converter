@@ -36,7 +36,17 @@ UI_TESTS.push(async function gallery(ok, { wait }) {
   startPeek('Matrix'); await wait(220); renderNow();
   ok('Look preview: shown on the big picture', !!App.peek && out.toDataURL() !== before && !$('#peekBadge').hidden);
   ok('Look preview: your result (exports, sharing) is unchanged', App.res === res0 && S.mode === DEFAULTS.mode);
-  endPeek(); renderNow();
+  // a playing animation in Compare and Text view keeps moving while a look is previewed
+  await demoAnim(); await wait(30); setPlaying(false); setView('split'); renderNow();
+  startPeek('Matrix'); await wait(220);
+  const src = $('#srcCanvas'), frame = () => src.toDataURL();
+  App.time = App.src.frames[5].t0; App.dirty = true; renderNow(); const a = frame(), resA = App.res;
+  App.time = App.src.frames[20].t0; App.dirty = true; renderNow(); const b = frame();
+  ok('Look preview: the original keeps playing in Compare view', a !== b && App.res === resA);
+  setView('text'); renderNow(); const t1 = $('#rawText').textContent;
+  App.time = App.src.frames[30].t0; App.dirty = true; renderNow();
+  ok('Look preview: the Text view shows the previewed look and keeps playing', $('#rawText').textContent !== t1 && /[ｦ-ﾝ]/.test($('#rawText').textContent));
+  endPeek(); setView('out'); await demoImage(); await wait(30); renderNow();
   ok('Look preview: ends without changing anything', !App.peek && out.toDataURL() === before && $('#peekBadge').hidden);
   openGallery();
   const cards = $$('#galleryGrid .look');

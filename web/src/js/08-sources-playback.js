@@ -426,24 +426,26 @@ function renderNow() {
   if (res) showResult(res, t0);
 }
 function showResult(res, t0) {
-  const out = $('#outCanvas');
-  if (App.peek) {   // previewing a look: only the picture changes, your result (exports, sharing) stays
-    drawPreview(res, App.peek, out);
-    setText('stats', `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`);
-    applyZoom(); return;
+  const out = $('#outCanvas'), peek = !!App.peek, St = viewS();
+  // previewing a look (pointer on its card): every view shows it and keeps playing, but your result
+  // (exports, sharing, size estimates) stays yours
+  if (!peek) {
+    App.res = res;
+    const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
+    if (Edit.on || Edits.cells.size) updateEditUI();
+    scheduleHistogram();
   }
-  App.res = res;
-  const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
-  if (Edit.on || Edits.cells.size) updateEditUI();
-  scheduleHistogram();
-  drawPreview(res, S, out);
+  drawPreview(res, St, out);
   if (App.view === 'src' || App.view === 'split' || App.view === 'wipe') drawSourceView();
-  if (App.view === 'text') updateRawText();
-  scheduleShareUI();
-  if (App.view === 'platform') updatePlatformView();
-  scheduleSizeEstimate();
+  if (App.view === 'text') updateRawText(res, St);
+  if (!peek) {
+    scheduleShareUI();
+    if (App.view === 'platform') updatePlatformView();
+    scheduleSizeEstimate();
+  }
   App.renderMs = performance.now() - t0;
-  setText('stats', `${res.cols}×${res.rows} characters · ${out.width}×${out.height}px · ${App.renderMs.toFixed(1)} ms/frame`);
+  setText('stats', peek ? `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`
+    : `${res.cols}×${res.rows} characters · ${out.width}×${out.height}px · ${App.renderMs.toFixed(1)} ms/frame`);
   setText('sizeInfo', `${res.cols} × ${res.rows} characters → ${out.width} × ${out.height}px image`);
   applyZoom();
 }
@@ -453,7 +455,7 @@ function drawSourceView() {
   if (!d) { c.width = c.height = 1; return; }
   if (Crop.on) return drawCropView(c, d);
   if (App.view === 'wipe') return drawWipeSource(c, out, d);
-  const [, , mx, my] = pictureSize(0, 0, S, 1), ow = Math.max(1, out.width - 2 * mx), oh = Math.max(1, out.height - 2 * my);
+  const [, , mx, my] = pictureSize(0, 0, viewS(), 1), ow = Math.max(1, out.width - 2 * mx), oh = Math.max(1, out.height - 2 * my);
   const k = Math.min(1, 1600 / ow);
   const W = Math.max(1, Math.round(ow * k)), H = Math.max(1, Math.round(oh * k));
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
@@ -509,9 +511,9 @@ function updateMaskUI() {
   $('#maskSizeOut').textContent = Mask.size + '%';
   $('#maskUndo').disabled = !MaskHist.undo.length; $('#maskRedo').disabled = !MaskHist.redo.length;
 }
-function updateRawText() {
-  const pre = $('#rawText'), res = App.res; if (!res) return;
-  pre.style.cssText = preStyle(S) + `background:${S.bgMode === 'transparent' ? 'transparent' : S.bg};color:${S.fg}`;
+function updateRawText(res = App.res, St = S) {
+  const pre = $('#rawText'); if (!res) return;
+  pre.style.cssText = preStyle(St) + `background:${St.bgMode === 'transparent' ? 'transparent' : St.bg};color:${St.fg}`;
   if (!res.uniform && res.cols * res.rows <= 80000) pre.innerHTML = resultHTMLInner(res);
   else pre.textContent = resultText(res);
 }
