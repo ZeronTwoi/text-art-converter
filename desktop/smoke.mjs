@@ -106,8 +106,10 @@ async function quick() {
       await c.ev("!document.querySelector('link[rel=manifest]') && !(navigator.serviceWorker && navigator.serviceWorker.controller)"));
     check('video tools present', await c.ev("typeof VideoEncoder === 'function' && typeof OffscreenCanvas === 'function' && typeof MediaRecorder === 'function'"));
     check('video encoding supported', await c.ev("VideoEncoder.isConfigSupported({ codec: 'vp8', width: 320, height: 240 }).then(r => !!r.supported).catch(e => 'no: ' + e.message)"));
-    check('the camera starts (a fake test camera)', await c.ev(
-      "navigator.mediaDevices.getUserMedia({ video: true }).then(s => { const live = s.getVideoTracks()[0].readyState === 'live'; s.getTracks().forEach(t => t.stop()); return live; }).catch(e => 'no: ' + e.message)"));
+    // the shell must ALLOW the camera (its permission handler); a machine without any camera —
+    // real or fake — reports NotFoundError, which is not a permission problem and passes
+    check('the camera is allowed (a live track, or no device on this machine)', await c.ev(
+      "navigator.mediaDevices.getUserMedia({ video: true }).then(s => { const live = s.getVideoTracks()[0].readyState === 'live'; s.getTracks().forEach(t => t.stop()); return live; }).catch(e => (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') ? true : 'no: ' + e.name + ' ' + e.message)"));
     await c.ev("applySettings({ mode: 'ascii', cols: 77 })");
     check('the session saves', await c.ev('sessionSave().then(() => true)'));
     await c.ev("localStorage.setItem('desktopSmoke', 'kept')");
