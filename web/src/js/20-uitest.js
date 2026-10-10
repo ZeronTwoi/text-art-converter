@@ -454,6 +454,31 @@ UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
   ok('Session: offered on the start screen', !!$('#resumeBox') && $('#resumeBox').hidden);
 });
 
+UI_TESTS.push(async function versions(ok, { wait }) {
+  Versions.list = []; buildVersions();
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 80 }); renderNow();
+  $('#verAdd').click();
+  applySettings({ mode: 'ascii', charset: 'detailed', colorMode: 'color' }); renderNow();
+  $('#verAdd').click();
+  ok('Versions: two kept', Versions.list.map(v => v.name).join() === 'A,B' && $$('#versions .ver').length === 2 && $('#versions .ver[data-ver="B"]').classList.contains('on'));
+  $('#versions .ver[data-ver="A"]').click(); renderNow();
+  ok('Versions: click switches back', S.mode === 'braille' && $('#versions .ver[data-ver="A"]').classList.contains('on'));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true }));
+  ok('Versions: key 2 switches to B', S.mode === 'ascii' && S.colorMode === 'color');
+  History.step(true);
+  ok('Versions: switching can be undone', S.mode === 'braille');
+  $('#versions .ver[data-ver="A"]').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(200); renderNow();
+  ok('Versions: pointing previews it', !!App.peek && App.peek.mode === 'braille');
+  endPeek();
+  const thumb = $('#versions .ver canvas').getContext('2d').getImageData(0, 0, 44, 28).data;
+  ok('Versions: each has a small picture', thumb.some((v, i) => i % 4 !== 3 && v > 30));
+  const { meta } = await projectParts(false);
+  ok('Versions: kept in projects', meta.versions && meta.versions.length === 2);
+  $('#versions .ver[data-ver="A"] .vdel').click();
+  ok('Versions: delete', Versions.list.length === 1 && Versions.list[0].name === 'B');
+  Versions.list = []; buildVersions();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

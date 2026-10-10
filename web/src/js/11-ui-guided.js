@@ -26,18 +26,20 @@ function lookSettings(id) {
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
   endPeek(true);
-  applySettings(Object.assign({}, st));
+  History.commit(); applySettings(Object.assign({}, st)); History.commit();   // one undo step per look
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
 }
 /* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
    Nothing changes until the card is clicked: exports and sharing keep using your settings. */
 let peekTimer = 0;
-function startPeek(id) {
+function startPeek(id) { const st = lookSettings(id); if (st) startPeekWith(Object.assign({}, S, st), id.replace(USER_PREFIX, '')); }
+/* preview any settings on the big picture (looks, versions) */
+function startPeekWith(settings, label) {
   clearTimeout(peekTimer);
   peekTimer = setTimeout(() => {
-    const st = lookSettings(id); if (!st || !App.src || App.exporting) return;
-    App.peek = Object.assign({}, S, st); App.peekId = id; App.dirty = true;
-    const b = $('#peekBadge'); b.textContent = 'Preview: ' + id.replace(USER_PREFIX, '') + ' (click the card to apply)'; b.hidden = false;
+    if (!App.src || App.exporting) return;
+    App.peek = settings; App.dirty = true;
+    const b = $('#peekBadge'); b.textContent = 'Preview: ' + label + ' (click to use it)'; b.hidden = false;
   }, 140);
 }
 function endPeek(quiet) {
@@ -89,7 +91,7 @@ function buildLooks() {
   el.appendChild(add);
 }
 let looksTimer = 0, looksSig = '';
-function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
+function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
 const renderLooks = () => renderLookCards($$('#looks .look[data-look]'), { cols: 56, fontSize: 4 }, renderLooks);
 /* draws each look card's picture: the current picture (or the demo) in that look */
 async function renderLookCards(cards, size, owner) {

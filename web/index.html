@@ -319,6 +319,19 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 #toneInfo.warn{color:var(--warn)}
 .resume{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;text-align:left;border:1px solid var(--accent);background:var(--accent-soft);border-radius:12px;padding:10px 12px;margin:-10px 0 18px}
 .resume .acts{margin:0}
+/* versions A–D */
+.versions{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:9px;padding:2px 3px 2px 8px}
+.vlabel{font-size:11.5px;color:var(--muted)}
+.verlist{display:inline-flex;gap:3px}
+.ver{position:relative;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;padding:1px;cursor:pointer;display:flex;align-items:center}
+.ver canvas{width:44px;height:28px;display:block;border-radius:4px;background:#000}
+.ver b{position:absolute;left:3px;top:1px;font-size:11px;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000}
+.ver .vdel{position:absolute;right:-5px;top:-6px;width:16px;height:16px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:9px;font-style:normal;display:grid;place-items:center;opacity:0;transition:opacity .1s}
+.ver:hover .vdel,.ver:focus-visible .vdel{opacity:1}
+.ver.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.versions #verAdd{padding:4px 8px}
+.versions.empty .vlabel{display:none}
+@media (hover:none){.ver .vdel{opacity:1}}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -369,6 +382,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
   .viewbar .srcinfo{flex-basis:100%;order:-1;font-size:11.5px}
   .seg button{padding:6px 8px}
   #zoomLabel{display:none}
+  .vlabel{display:none}
   .views{padding:8px}
   .player{padding:6px 12px 8px}
   .player .trimgroup,.player label.seekonly:not(.chk){display:none}
@@ -652,6 +666,10 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
       </div>
       <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
+      <div class="versions empty" id="versions" role="group" aria-label="Versions of your settings">
+        <span class="vlabel">Versions</span><span id="verList" class="verlist"></span>
+        <button class="btn" id="verAdd" title="Keep the current settings as a version (A–D). Try other settings, then click the version to come back or compare">+ Keep</button>
+      </div>
       <div class="zoom">
         <button class="btn" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
         <span id="zoomLabel" aria-live="polite">Fit</span>
@@ -4767,7 +4785,7 @@ function onSettingsChanged() {
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
-  updateRampStrip(); scheduleHistogram(); scheduleSessionSave();
+  updateRampStrip(); scheduleHistogram(); scheduleSessionSave(); markVersions();
 }
 function onControl(el) {
   const key = el.dataset.key; let v;
@@ -5003,6 +5021,7 @@ function initUI() {
   initMobile();
   initA11y();
   initPWA();
+  initVersions();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5040,18 +5059,20 @@ function lookSettings(id) {
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
   endPeek(true);
-  applySettings(Object.assign({}, st));
+  History.commit(); applySettings(Object.assign({}, st)); History.commit();   // one undo step per look
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
 }
 /* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
    Nothing changes until the card is clicked: exports and sharing keep using your settings. */
 let peekTimer = 0;
-function startPeek(id) {
+function startPeek(id) { const st = lookSettings(id); if (st) startPeekWith(Object.assign({}, S, st), id.replace(USER_PREFIX, '')); }
+/* preview any settings on the big picture (looks, versions) */
+function startPeekWith(settings, label) {
   clearTimeout(peekTimer);
   peekTimer = setTimeout(() => {
-    const st = lookSettings(id); if (!st || !App.src || App.exporting) return;
-    App.peek = Object.assign({}, S, st); App.peekId = id; App.dirty = true;
-    const b = $('#peekBadge'); b.textContent = 'Preview: ' + id.replace(USER_PREFIX, '') + ' (click the card to apply)'; b.hidden = false;
+    if (!App.src || App.exporting) return;
+    App.peek = settings; App.dirty = true;
+    const b = $('#peekBadge'); b.textContent = 'Preview: ' + label + ' (click to use it)'; b.hidden = false;
   }, 140);
 }
 function endPeek(quiet) {
@@ -5103,7 +5124,7 @@ function buildLooks() {
   el.appendChild(add);
 }
 let looksTimer = 0, looksSig = '';
-function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
+function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
 const renderLooks = () => renderLookCards($$('#looks .look[data-look]'), { cols: 56, fontSize: 4 }, renderLooks);
 /* draws each look card's picture: the current picture (or the demo) in that look */
 async function renderLookCards(cards, size, owner) {
@@ -6341,6 +6362,7 @@ async function projectParts(withSource = true) {
     meta.mask = { file: 'mask.rgba', w: m.width, h: m.height };
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
+  if (Versions.list.length) meta.versions = Versions.list.map(v => ({ name: v.name, settings: v.settings }));
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
   return { meta, files };
 }
@@ -6391,6 +6413,13 @@ async function openProjectParts(meta, get) {
   if (!App.src || App.src === before) return false;
   applySettings(st);
   History.reset();
+  if (Array.isArray(meta.versions)) {
+    Versions.list = meta.versions.filter(v => v && /^[ABCD]$/.test(v.name) && v.settings).map(v => {
+      const o = {}; for (const k in v.settings) if (k in DEFAULTS && !VERSION_SKIP.has(k) && typeof v.settings[k] === typeof DEFAULTS[k]) o[k] = v.settings[k];
+      return { name: v.name, settings: Object.assign(versionSnap(), o) };
+    });
+    buildVersions();
+  }
   App.look = meta.look && lookSettings(meta.look) ? meta.look : null; markLooks();
   editsClear();
   if (meta.edits && Array.isArray(meta.edits.cells)) {
@@ -6875,6 +6904,31 @@ UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
   await sessionForget(true);
   ok('Session: Forget removes it', !(await sessionLoad()));
   ok('Session: offered on the start screen', !!$('#resumeBox') && $('#resumeBox').hidden);
+});
+
+UI_TESTS.push(async function versions(ok, { wait }) {
+  Versions.list = []; buildVersions();
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 80 }); renderNow();
+  $('#verAdd').click();
+  applySettings({ mode: 'ascii', charset: 'detailed', colorMode: 'color' }); renderNow();
+  $('#verAdd').click();
+  ok('Versions: two kept', Versions.list.map(v => v.name).join() === 'A,B' && $$('#versions .ver').length === 2 && $('#versions .ver[data-ver="B"]').classList.contains('on'));
+  $('#versions .ver[data-ver="A"]').click(); renderNow();
+  ok('Versions: click switches back', S.mode === 'braille' && $('#versions .ver[data-ver="A"]').classList.contains('on'));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true }));
+  ok('Versions: key 2 switches to B', S.mode === 'ascii' && S.colorMode === 'color');
+  History.step(true);
+  ok('Versions: switching can be undone', S.mode === 'braille');
+  $('#versions .ver[data-ver="A"]').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(200); renderNow();
+  ok('Versions: pointing previews it', !!App.peek && App.peek.mode === 'braille');
+  endPeek();
+  const thumb = $('#versions .ver canvas').getContext('2d').getImageData(0, 0, 44, 28).data;
+  ok('Versions: each has a small picture', thumb.some((v, i) => i % 4 !== 3 && v > 30));
+  const { meta } = await projectParts(false);
+  ok('Versions: kept in projects', meta.versions && meta.versions.length === 2);
+  $('#versions .ver[data-ver="A"] .vdel').click();
+  ok('Versions: delete', Versions.list.length === 1 && Versions.list[0].name === 'B');
+  Versions.list = []; buildVersions();
 });
 
 UI_TESTS.push(async function captions(ok) {
@@ -7619,6 +7673,65 @@ async function initSession() {
   box.hidden = false;
   $('#resumeGo').onclick = () => sessionResume(saved);
   $('#resumeNo').onclick = () => sessionForget(true);
+}
+/* =====================================================================
+   Versions (A/B…): keep up to four sets of settings and flip between them on the same picture
+   ===================================================================== */
+const VERSION_SKIP = new Set(['calib', 'exportGoal', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme']);
+const Versions = { list: [] };   // { name: 'A', settings }
+function versionSnap() { const o = {}; for (const k in DEFAULTS) if (!VERSION_SKIP.has(k)) o[k] = S[k]; return o; }
+const versionIsCurrent = v => Object.keys(v.settings).every(k => v.settings[k] === S[k]);
+function keepVersion() {
+  if (!App.src) return toast('Open a picture first');
+  const same = Versions.list.find(versionIsCurrent); if (same) return toast(`These settings are already version ${same.name}`);
+  if (Versions.list.length >= 4) return toast('Four versions at most: delete one first (✕ on it)', 'error');
+  const name = 'ABCD'.split('').find(n => !Versions.list.some(v => v.name === n));
+  Versions.list.push({ name, settings: versionSnap() });
+  Versions.list.sort((a, b) => a.name.localeCompare(b.name));
+  buildVersions(); scheduleSessionSave();
+  toast(`Kept as version ${name}. Change anything, then click ${name} to come back`);
+}
+function applyVersion(name) {
+  const v = Versions.list.find(x => x.name === name); if (!v) return;
+  endPeek(true); History.commit(); applySettings(Object.assign({}, v.settings)); History.commit(); App.look = null; markLooks(); markVersions();
+  toast('Version ' + name);
+}
+function deleteVersion(name) { Versions.list = Versions.list.filter(v => v.name !== name); endPeek(); buildVersions(); scheduleSessionSave(); }
+function markVersions() { $$('#versions .ver').forEach(b => { const v = Versions.list.find(x => x.name === b.dataset.ver); b.classList.toggle('on', !!v && versionIsCurrent(v)); }); }
+function buildVersions() {
+  const box = $('#verList'); box.textContent = '';
+  for (const v of Versions.list) {
+    const b = document.createElement('button'); b.className = 'ver'; b.dataset.ver = v.name;
+    b.title = `Version ${v.name}: click to switch to it (key ${'ABCD'.indexOf(v.name) + 1}), point at it to preview`;
+    b.innerHTML = `<canvas width="44" height="28"></canvas><b>${v.name}</b><i class="vdel" role="button" aria-label="Delete version ${v.name}" title="Delete version ${v.name}">✕</i>`;
+    b.addEventListener('click', e => { if (e.target.classList.contains('vdel')) { e.stopPropagation(); deleteVersion(v.name); } else applyVersion(v.name); });
+    b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') startPeekWith(Object.assign({}, S, v.settings), 'version ' + v.name); });
+    b.addEventListener('pointerleave', () => endPeek());
+    box.appendChild(b);
+  }
+  $('#versions').classList.toggle('empty', !Versions.list.length);
+  markVersions(); renderVersionThumbs();
+}
+/* each version's small picture: the current frame in that version */
+function renderVersionThumbs() {
+  const s = App.src; let d = s && s.kind !== 'text' ? currentDrawable() : null;
+  for (const b of $$('#versions .ver')) {
+    const v = Versions.list.find(x => x.name === b.dataset.ver), c = b.querySelector('canvas'); if (!v) continue;
+    try {
+      const St = Object.assign({}, S, v.settings, { cols: 40, fontSize: 3, margin: 0 });
+      const r = s && s.kind === 'text' ? textResultRaw(s.text, St, s.ansi) : d ? convertRaw(d[0], d[1], d[2], St) : null;
+      if (r) { const t = document.createElement('canvas'); renderResult(r, St, t, 1); const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); const k = Math.min(c.width / t.width, c.height / t.height); g.drawImage(t, (c.width - t.width * k) / 2, (c.height - t.height * k) / 2, t.width * k, t.height * k); }
+    } catch (e) { console.warn(e); }
+  }
+}
+function initVersions() {
+  $('#verAdd').addEventListener('click', keepVersion);
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !/^[1-4]$/.test(e.key) || Edit.on) return;
+    if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]') || document.querySelector('dialog[open]')) return;
+    const v = Versions.list.find(x => x.name === 'ABCD'[+e.key - 1]); if (v) { e.preventDefault(); applyVersion(v.name); }
+  });
+  buildVersions();
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)
