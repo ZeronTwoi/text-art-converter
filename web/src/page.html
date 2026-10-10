@@ -84,6 +84,16 @@
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
         </div>
       </div>
+      <div class="group">
+        <h3 class="h">Caption <span>words written on the picture</span></h3>
+        <div class="row"><label for="capTop">Top</label><input type="text" id="capTop" data-key="captionTop" placeholder="e.g. HAPPY BIRTHDAY" spellcheck="false" autocomplete="off"></div>
+        <div class="row"><label for="capBottom">Bottom</label><input type="text" id="capBottom" data-key="captionBottom" placeholder="a subtitle" spellcheck="false" autocomplete="off"></div>
+        <div class="pair">
+          <div class="row"><label for="capStyle">Style</label><select id="capStyle" data-key="captionStyle"><option value="plain">Plain characters</option><option value="big">Big letters</option></select></div>
+          <div class="row"><label for="capColor">Colour</label><input type="color" id="capColor" data-key="captionColor"></div>
+        </div>
+        <div class="row"><label class="chk"><input type="checkbox" data-key="captionBox"> Clear the picture behind the words</label></div>
+      </div>
     </section>
 
     <!-- ADJUST -->
@@ -249,12 +259,27 @@
         <button data-view="text" title="The raw text, selectable">Text</button>
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
       </div>
+      <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
       <div class="zoom">
         <button class="btn" id="zoomOut" title="Zoom out (-)">−</button>
         <span id="zoomLabel">Fit</span>
         <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
         <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
       </div>
+    </div>
+    <div class="editbar" id="editBar" hidden>
+      <div class="seg" id="editTools" role="group" aria-label="Edit tool">
+        <button data-tool="paint" title="Put the character there (drag to paint)">✎ Brush</button>
+        <button data-tool="pick" title="Take a character and its colour from the picture">⌖ Pick</button>
+        <button data-tool="erase" title="Back to the original character">⌫ Erase</button>
+      </div>
+      <label class="echar" title="Type any character (or press a key while editing)">Character <input id="editChar" class="mono" spellcheck="false" autocomplete="off"></label>
+      <input type="color" id="editColor" aria-label="Brush colour" title="Colour of the new characters">
+      <label class="chk" title="New characters keep the colour of the cell they replace"><input type="checkbox" id="editKeep"> Keep colours</label>
+      <button class="btn icon" id="editUndo" title="Undo (Ctrl+Z)" aria-label="Undo edit">↶</button><button class="btn icon" id="editRedo" title="Redo (Ctrl+Y)" aria-label="Redo edit">↷</button>
+      <button class="btn" id="editClear">Clear edits</button>
+      <span class="einfo" id="editInfo" role="status"></span>
+      <button class="btn primary" id="editDone">Done</button>
     </div>
     <div class="stage" id="stage">
       <div class="peekbadge" id="peekBadge" hidden></div>
@@ -316,7 +341,7 @@
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
     </div>
-    <div class="statusbar"><span id="stats">—</span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+    <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </main>
 
   <!-- ============ EXPORT ============ -->
@@ -361,7 +386,8 @@
     <div class="meta"><span class="muted small" id="progText"></span><button class="btn" id="progCancel">Cancel</button></div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="celltip" id="cellTip" hidden></div>
 <dialog id="textDialog">
   <h3>Text → Image</h3>
   <p class="muted small" style="margin:0 0 8px">Paste ASCII, braille or block text art, or coloured ANSI art (terminal escape codes, .ans files). It is drawn with the current font, colour and size settings and can be exported as PNG, JPG, WEBP, SVG or HTML.</p>

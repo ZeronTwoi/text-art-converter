@@ -40,6 +40,7 @@ function withOverlay(res, S) {
 /* pure (runs on workers too): a copy of res with the captions and edits of spec */
 function applyOverlay(res, spec) {
   const { cols, rows, mode } = res, n = cols * rows;
+  if (!spec.cap && !(spec.edits && spec.edits.cols === cols && spec.edits.rows === rows)) return res;   // nothing applies to this grid
   const out = Object.assign({}, res, { cp: res.cp.slice(), fg: res.fg.slice(), bgc: res.bgc && res.bgc.slice(), bits: res.bits && res.bits.slice(), val: res.val && res.val.slice(), ov: new Uint8Array(n) });
   const { cp, fg, bgc, bits, val, ov } = out;
   let u0 = res.uniform ? (fg[0] << 16) | (fg[1] << 8) | fg[2] : -1;

@@ -262,10 +262,12 @@ function initUI() {
   initUI2();
   initCropWipe();
   initProjects();
+  initEditTools();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
 function setView(v) {
   if (Crop.on && v !== 'split' && v !== 'src') { Crop.prevView = null; setCropMode(false); }
+  if (Edit.on && v !== 'out') setEditMode(false);
   App.view = v; $$('#viewSeg button').forEach(x => x.classList.toggle('on', x.dataset.view === v)); App.dirty = true; applyZoom();
 }

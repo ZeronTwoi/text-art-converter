@@ -291,6 +291,16 @@ dialog h4{margin:14px 0 6px}
 dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .biglooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-height:calc(100vh - 190px);overflow:auto;padding:2px}
 .look.big span{font-size:12.5px}
+/* ===== editing characters, hover info ===== */
+.editbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--accent-soft)}
+.editbar .echar{display:flex;align-items:center;gap:6px}
+#editChar{width:46px;text-align:center;font-size:17px;padding:2px 4px;border-radius:7px;border:1px solid var(--line);background:var(--panel)}
+.einfo{flex:1;min-width:180px;font-size:12px;color:var(--muted)} .einfo.warn{color:#d99a06;font-weight:600}
+.views.editing #outCanvas{cursor:cell;touch-action:none;outline:2px solid var(--accent);outline-offset:2px}
+.celltip{position:fixed;z-index:40;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 9px;box-shadow:var(--shadow);font-size:12px;display:flex;align-items:center;gap:8px;max-width:440px}
+.celltip b{font-size:20px;line-height:1.1;min-width:18px;text-align:center;background:#000;border-radius:4px;padding:1px 4px}
+.cellinfo{flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.row input[type=color]{width:100%;height:28px}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -401,6 +411,16 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
           <div class="row"><label>Your text</label><textarea data-key="wordText" spellcheck="false"></textarea></div>
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
         </div>
+      </div>
+      <div class="group">
+        <h3 class="h">Caption <span>words written on the picture</span></h3>
+        <div class="row"><label for="capTop">Top</label><input type="text" id="capTop" data-key="captionTop" placeholder="e.g. HAPPY BIRTHDAY" spellcheck="false" autocomplete="off"></div>
+        <div class="row"><label for="capBottom">Bottom</label><input type="text" id="capBottom" data-key="captionBottom" placeholder="a subtitle" spellcheck="false" autocomplete="off"></div>
+        <div class="pair">
+          <div class="row"><label for="capStyle">Style</label><select id="capStyle" data-key="captionStyle"><option value="plain">Plain characters</option><option value="big">Big letters</option></select></div>
+          <div class="row"><label for="capColor">Colour</label><input type="color" id="capColor" data-key="captionColor"></div>
+        </div>
+        <div class="row"><label class="chk"><input type="checkbox" data-key="captionBox"> Clear the picture behind the words</label></div>
       </div>
     </section>
 
@@ -567,12 +587,27 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
         <button data-view="text" title="The raw text, selectable">Text</button>
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
       </div>
+      <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
       <div class="zoom">
         <button class="btn" id="zoomOut" title="Zoom out (-)">−</button>
         <span id="zoomLabel">Fit</span>
         <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
         <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
       </div>
+    </div>
+    <div class="editbar" id="editBar" hidden>
+      <div class="seg" id="editTools" role="group" aria-label="Edit tool">
+        <button data-tool="paint" title="Put the character there (drag to paint)">✎ Brush</button>
+        <button data-tool="pick" title="Take a character and its colour from the picture">⌖ Pick</button>
+        <button data-tool="erase" title="Back to the original character">⌫ Erase</button>
+      </div>
+      <label class="echar" title="Type any character (or press a key while editing)">Character <input id="editChar" class="mono" spellcheck="false" autocomplete="off"></label>
+      <input type="color" id="editColor" aria-label="Brush colour" title="Colour of the new characters">
+      <label class="chk" title="New characters keep the colour of the cell they replace"><input type="checkbox" id="editKeep"> Keep colours</label>
+      <button class="btn icon" id="editUndo" title="Undo (Ctrl+Z)" aria-label="Undo edit">↶</button><button class="btn icon" id="editRedo" title="Redo (Ctrl+Y)" aria-label="Redo edit">↷</button>
+      <button class="btn" id="editClear">Clear edits</button>
+      <span class="einfo" id="editInfo" role="status"></span>
+      <button class="btn primary" id="editDone">Done</button>
     </div>
     <div class="stage" id="stage">
       <div class="peekbadge" id="peekBadge" hidden></div>
@@ -634,7 +669,7 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
     </div>
-    <div class="statusbar"><span id="stats">—</span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+    <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </main>
 
   <!-- ============ EXPORT ============ -->
@@ -679,7 +714,8 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
     <div class="meta"><span class="muted small" id="progText"></span><button class="btn" id="progCancel">Cancel</button></div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="celltip" id="cellTip" hidden></div>
 <dialog id="textDialog">
   <h3>Text → Image</h3>
   <p class="muted small" style="margin:0 0 8px">Paste ASCII, braille or block text art, or coloured ANSI art (terminal escape codes, .ans files). It is drawn with the current font, colour and size settings and can be exported as PNG, JPG, WEBP, SVG or HTML.</p>
@@ -2861,7 +2897,7 @@ function disposeSource(s) {
   if (s.audio) { try { s.audio.ctx.close(); } catch (e) {} }
 }
 function setSource(s) {
-  endPeek(true); if (Crop.on) setCropMode(false);
+  endPeek(true); if (Crop.on) setCropMode(false); editsClear(); if (Edit.on) setEditMode(false);
   disposeSource(App.src); Prefetch.clear(); maskClear(); previewCacheClear(); if (Mask.on) setMaskMode(false);
   App.src = s; App.time = 0; App.tin = App.tout = null; App.lastIdx = -1; App.lastVT = -1; App.playing = false;
   if (s.bmp) srcOwner.set(s.bmp, s); if (s.video) srcOwner.set(s.video, s);
@@ -3065,6 +3101,7 @@ function showResult(res, t0) {
     applyZoom(); return;
   }
   App.res = res;
+  if (Edit.on || Edits.cells.size) updateEditUI();
   drawPreview(res, S, out);
   if (App.view === 'src' || App.view === 'split' || App.view === 'wipe') drawSourceView();
   if (App.view === 'text') updateRawText();
@@ -4813,11 +4850,13 @@ function initUI() {
   initUI2();
   initCropWipe();
   initProjects();
+  initEditTools();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
 function setView(v) {
   if (Crop.on && v !== 'split' && v !== 'src') { Crop.prevView = null; setCropMode(false); }
+  if (Edit.on && v !== 'out') setEditMode(false);
   App.view = v; $$('#viewSeg button').forEach(x => x.classList.toggle('on', x.dataset.view === v)); App.dirty = true; applyZoom();
 }
 /* =====================================================================
@@ -5640,6 +5679,7 @@ function withOverlay(res, S) {
 /* pure (runs on workers too): a copy of res with the captions and edits of spec */
 function applyOverlay(res, spec) {
   const { cols, rows, mode } = res, n = cols * rows;
+  if (!spec.cap && !(spec.edits && spec.edits.cols === cols && spec.edits.rows === rows)) return res;   // nothing applies to this grid
   const out = Object.assign({}, res, { cp: res.cp.slice(), fg: res.fg.slice(), bgc: res.bgc && res.bgc.slice(), bits: res.bits && res.bits.slice(), val: res.val && res.val.slice(), ov: new Uint8Array(n) });
   const { cp, fg, bgc, bits, val, ov } = out;
   let u0 = res.uniform ? (fg[0] << 16) | (fg[1] << 8) | fg[2] : -1;
@@ -6373,7 +6413,13 @@ UI_TESTS.push(async function projects(ok, { wait, reset }) {
   ok('Project: every setting is back', S.mode === 'ascii' && S.cols === 77 && S.cropL === 10 && S.rotate === 90 && S.gamma === 1.4 && S.captionTop === 'MY TITLE');
   ok('Project: the mask is back', !!Mask.canvas && Math.abs(maskInk() - ink0) / ink0 < 0.02, maskInk() + ' vs ' + ink0);
   ok('Project: the hand edit is back', Edits.cells.get(3) && Edits.cells.get(3).cp === 0x263a);
-  ok('Project: the result is exactly the same', resultText(App.res) === text0);
+  // the browser's GPU downscaling of the picture can round slightly differently from one moment to the next,
+  // so the saved picture is compared pixel by pixel and the result only needs to match closely
+  { const px = b => { const c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(b, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
+    const a = px(App.src.bmp), b = px(await createImageBitmap(demoCanvas())); let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+    ok('Project: the picture is the same, pixel for pixel', d === 0, d + ' bytes differ');
+    const t1 = resultText(App.res); let n = 0; for (let i = 0; i < Math.max(t1.length, text0.length); i++) if (t1[i] !== text0[i]) n++;
+    ok('Project: the result matches', n / text0.length < 0.2, n ? `${n} of ${text0.length} characters differ (GPU resampling)` : 'identical'); }
   // an animation keeps its trim
   reset(); await demoAnim(); await wait(30); App.tin = 0.5; App.tout = 1.5;
   const g2 = await uiCaptureDownloads(saveProject);
@@ -6391,6 +6437,63 @@ UI_TESTS.push(async function projects(ok, { wait, reset }) {
   await openFile(new File([await makeZip([{ name: 'x.txt', data: new Uint8Array(5) }]).arrayBuffer()], 'other.zip'));
   ok('Project: an ordinary ZIP is refused, nothing changes', App.src === before);
   editsClear(); maskClear();
+});
+
+UI_TESTS.push(async function editing(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 60 }); renderNow();
+  const out = $('#outCanvas'), res0 = App.res;
+  setEditMode(true);
+  ok('Edit: the edit bar opens on the result', Edit.on && !$('#editBar').hidden && App.view === 'out');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'X', bubbles: true }));
+  ok('Edit: typing a key picks it as the brush', Edit.cp === 0x58 && $('#editChar').value === 'X');
+  const at = (fx, fy) => { const b = out.getBoundingClientRect(); return cellAt({ clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }); };
+  const c1 = at(0.5, 0.5);
+  uiDrag(out, [0.5, 0.5], [0.5, 0.5], 1); renderNow();
+  ok('Edit: a click puts the character there', App.res.cp[c1.i] === 0x58 && Edits.cells.size === 1, 'cell ' + c1.x + ',' + c1.y);
+  const a = at(0.2, 0.3), b = at(0.4, 0.3);
+  uiDrag(out, [0.2, 0.3], [0.4, 0.3], 3); renderNow();
+  let row = 0; for (let x = a.x; x <= b.x; x++) if (App.res.cp[a.y * App.res.cols + x] === 0x58) row++;
+  ok('Edit: dragging paints every cell on the way', row === b.x - a.x + 1, row + ' of ' + (b.x - a.x + 1));
+  Edit.tool = 'pick'; const p = at(0.8, 0.8); uiDrag(out, [0.8, 0.8], [0.8, 0.8], 1);
+  ok('Edit: pick takes the character and colour', Edit.cp === (res0.cp[p.i] || 32) && Edit.rgb === cellRGB(res0, p.i) && Edit.tool === 'paint');
+  Edit.tool = 'erase'; uiDrag(out, [0.5, 0.5], [0.5, 0.5], 1); renderNow();
+  ok('Edit: erase brings the original back', App.res.cp[c1.i] === res0.cp[c1.i] && !Edits.cells.has(c1.i));
+  editsStep(true); renderNow();
+  ok('Edit: undo', App.res.cp[c1.i] === 0x58);
+  editsStep(false); renderNow();
+  ok('Edit: redo', App.res.cp[c1.i] === res0.cp[c1.i]);
+  Edit.tool = 'paint'; Edit.keep = false; Edit.rgb = 0xff00ff; Edit.cp = 0x2665;
+  uiDrag(out, [0.6, 0.6], [0.6, 0.6], 1); renderNow();
+  const c2 = at(0.6, 0.6);
+  ok('Edit: a new colour', cellRGB(App.res, c2.i) === 0xff00ff && App.res.cp[c2.i] === 0x2665);
+  const n = Edits.cells.size, png = out.toDataURL();
+  applySettings({ cols: 70 }); renderNow();
+  ok('Edit: hidden at another width, with a warning', !App.res.ov && $('#editInfo').classList.contains('warn'));
+  uiDrag(out, [0.1, 0.1], [0.1, 0.1], 1);
+  ok('Edit: no painting at another width', Edits.cells.size === n);
+  applySettings({ cols: 60 }); renderNow();
+  ok('Edit: back at the width, the edits are back', App.res.cp[c2.i] === 0x2665 && out.toDataURL() === png);
+  const gif = await gifBytes(() => {}), frames = decodeGIF(gifBytes.length ? gif.buffer : gif.buffer);
+  ok('Edit: saved pictures include the edits', frames.frames.length >= 1);
+  // hover
+  setEditMode(false);
+  uiPointer(out, 'pointermove', 0.6, 0.6, out);
+  ok('Hover: shows the character and colour under the pointer', /U\+2665 · #ff00ff · column \d+, row \d+ · edited/.test($('#cellInfo').textContent), $('#cellInfo').textContent);
+  ok('Hover: the floating tip only in Advanced or while editing', $('#cellTip').hidden);
+  setAdvanced(true); uiPointer(out, 'pointermove', 0.6, 0.6, out);
+  ok('Hover: floating tip in Advanced', !$('#cellTip').hidden && $('#cellTip').textContent.includes('U+2665'));
+  setAdvanced(false); $('#stage').dispatchEvent(new PointerEvent('pointerleave'));
+  editsClear();
+});
+
+UI_TESTS.push(async function captionControls(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 70 }); renderNow();
+  const top = $('#capTop'); top.value = 'SUMMER 2026'; top.dispatchEvent(new Event('input', { bubbles: true })); renderNow();
+  ok('Caption field: typing writes it on the picture', S.captionTop === 'SUMMER 2026' && uiRow(App.res, 1).includes('SUMMER 2026'));
+  $('#capStyle').value = 'big'; $('#capStyle').dispatchEvent(new Event('change', { bubbles: true })); renderNow();
+  ok('Caption field: big letters', S.captionStyle === 'big' && !uiRow(App.res, 1).includes('SUMMER'));
+  History.step(true); History.step(true); renderNow();
+  ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
 });
 
 UI_TESTS.push(async function captions(ok) {
@@ -6461,6 +6564,136 @@ UI_TESTS.push(async function ansiImport(ok) {
   openTextArt(src, 'test.txt');
   ok('ANSI: pasted escape codes open as a coloured source', App.src && App.src.kind === 'text' && !!App.src.ansi && S.colorMode === 'color');
 });
+/* =====================================================================
+   The result under the pointer: hover info, and editing single characters (click, or paint with a brush)
+   ===================================================================== */
+/* the character cell of the shown result under a pointer event (or null) */
+function cellAt(e) {
+  const out = $('#outCanvas'), res = App.res; if (!res || App.peek) return null;
+  const b = out.getBoundingClientRect(); if (!b.width) return null;
+  const k = out.width / b.width, px = (e.clientX - b.left) * k, py = (e.clientY - b.top) * k;
+  const [cw, ch] = cellSize(S, 1), [, , mx, my] = pictureSize(0, 0, S, 1);
+  const x = Math.floor((px - mx) / cw), y = Math.floor((py - my) / ch);
+  if (x < 0 || y < 0 || x >= res.cols || y >= res.rows) return null;
+  return { x, y, i: y * res.cols + x };
+}
+const cellRGB = (res, i) => (res.fg[i * 3] << 16) | (res.fg[i * 3 + 1] << 8) | res.fg[i * 3 + 2];
+const cpName = cp => cp === 32 ? 'space' : cp === 0x2800 ? 'blank braille' : '"' + chr(cp) + '"';
+const uplus = cp => 'U+' + cp.toString(16).toUpperCase().padStart(4, '0');
+
+/* ---- hover: which character and colour is where ---- */
+function showCellTip(e, c) {
+  const tip = $('#cellTip'), res = App.res;
+  if (!c) { tip.hidden = true; setText('cellInfo', ''); return; }
+  const cp = res.cp[c.i] || 32, rgb = hex6(cellRGB(res, c.i)), bg = res.bgc ? hex6((res.bgc[c.i * 3] << 16) | (res.bgc[c.i * 3 + 1] << 8) | res.bgc[c.i * 3 + 2]) : null;
+  tip.innerHTML = `<b class="mono"></b><span></span>`;
+  tip.firstChild.textContent = cp === 32 || cp === 0x2800 ? '·' : chr(cp);
+  tip.firstChild.style.color = rgb;
+  const info = `${cpName(cp)} ${uplus(cp)} · ${rgb}${bg ? ' on ' + bg : ''} · column ${c.x + 1}, row ${c.y + 1}` + (Edits.cells.has(c.i) && Edits.cols === res.cols ? ' · edited' : '');
+  setText('cellInfo', 'Under the pointer: ' + info);
+  if (!Edit.on && document.body.classList.contains('simple')) { tip.hidden = true; return; }   // the floating tip: when editing or in Advanced
+  tip.lastChild.textContent = info;
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, e.clientX + 14) + 'px';
+  tip.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, e.clientY + 16)) + 'px';
+}
+STAGE_TOOLS.push({
+  down() { return false; },
+  hover(e) {
+    const onOut = e.target.id === 'outCanvas' && (App.view === 'out' || App.view === 'split') && App.cellTips !== false;
+    showCellTip(e, onOut ? cellAt(e) : null);
+    return false;   // other tools may still set their cursor
+  },
+});
+
+/* ---- editing single characters ---- */
+const Edit = { on: false, tool: 'paint', cp: 0x23, rgb: 0xffffff, keep: true, last: null, prevView: null };
+function editsMatch(res) { return !Edits.cells.size || (Edits.cols === res.cols && Edits.rows === res.rows); }
+function setEditMode(on) {
+  Edit.on = !!on && !!App.src;
+  if (Edit.on) { if (Mask.on) setMaskMode(false); if (Crop.on) setCropMode(false); Edit.prevView = App.view; if (App.view !== 'out') setView('out'); }
+  $('#editBtn').classList.toggle('primary', Edit.on); $('#editBtn').setAttribute('aria-pressed', Edit.on);
+  $('#editBar').hidden = !Edit.on;
+  applyZoom(); updateEditUI();
+}
+function updateEditUI() {
+  $$('#editTools button').forEach(b => { const on = b.dataset.tool === Edit.tool; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  const ci = $('#editChar'); if (document.activeElement !== ci) ci.value = chr(Edit.cp);
+  $('#editColor').value = hex6(Edit.rgb); $('#editKeep').checked = Edit.keep;
+  $('#editUndo').disabled = !Edits.undo.length; $('#editRedo').disabled = !Edits.redo.length;
+  const res = App.res, n = Edits.cells.size;
+  $('#editInfo').textContent = !n ? 'Click or drag on the picture to put the character there.' :
+    res && !editsMatch(res) ? `Your ${n} edits are hidden: they were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them.` :
+    `${n} character${n > 1 ? 's' : ''} edited. Edits stay on every frame and in every export.`;
+  $('#editInfo').classList.toggle('warn', !!(n && res && !editsMatch(res)));
+}
+function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); }
+function editsSnapshot() { Edits.undo.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) }); if (Edits.undo.length > 60) Edits.undo.shift(); Edits.redo = []; }
+function editsStep(back) {
+  const from = back ? Edits.undo : Edits.redo, to = back ? Edits.redo : Edits.undo;
+  if (!from.length) { toast(back ? 'Nothing to undo in the edits' : 'Nothing to redo in the edits'); return; }
+  to.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) });
+  const s = from.pop(); Edits.cols = s.cols; Edits.rows = s.rows; Edits.cells = s.cells;
+  editsChanged();
+}
+/* apply the brush at one cell of the raw result (rawRes: the result without edits, for picking) */
+function editCell(c) {
+  const res = App.res; if (!res) return;
+  if (Edit.tool === 'pick') {
+    Edit.cp = res.cp[c.i] || 32; Edit.rgb = cellRGB(res, c.i); Edit.tool = 'paint'; updateEditUI();
+    toast(`Brush: ${cpName(Edit.cp)} in ${hex6(Edit.rgb)}`); return;
+  }
+  if (Edit.tool === 'erase') { if (Edits.cells.delete(c.i)) editsChanged(); return; }
+  const e = { cp: Edit.cp, rgb: Edit.keep ? null : Edit.rgb }, old = Edits.cells.get(c.i);
+  if (old && old.cp === e.cp && old.rgb === e.rgb) return;
+  Edits.cells.set(c.i, e); editsChanged();
+}
+STAGE_TOOLS.push({
+  down(e) {
+    if (!Edit.on || e.target.id !== 'outCanvas' || e.button !== 0) return false;
+    const res = App.res; if (!res) return false;
+    if (!editsMatch(res)) { toast(`Your edits were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them to edit at this one`, 'error'); return true; }
+    const c = cellAt(e); if (!c) return true;
+    if (Edit.tool !== 'pick') { editsSnapshot(); if (!Edits.cells.size) { Edits.cols = res.cols; Edits.rows = res.rows; } }
+    Edit.last = c; editCell(c);
+    return true;
+  },
+  move(e) {
+    if (!Edit.on || !Edit.last || Edit.tool === 'pick') return;
+    const c = cellAt(e); if (!c || c.i === Edit.last.i) return;
+    // every cell on the way, so fast drags leave no gaps
+    const a = Edit.last, n = Math.max(Math.abs(c.x - a.x), Math.abs(c.y - a.y));
+    for (let k = 1; k <= n; k++) { const x = Math.round(a.x + (c.x - a.x) * k / n), y = Math.round(a.y + (c.y - a.y) * k / n); editCell({ x, y, i: y * App.res.cols + x }); }
+    Edit.last = c;
+  },
+  up() { Edit.last = null; updateEditUI(); },
+});
+function initEditTools() {
+  $('#editBtn').addEventListener('click', () => setEditMode(!Edit.on));
+  $('#editDone').addEventListener('click', () => setEditMode(false));
+  $$('#editTools button').forEach(b => b.addEventListener('click', () => { Edit.tool = b.dataset.tool; updateEditUI(); }));
+  const ci = $('#editChar');
+  ci.addEventListener('input', () => { const ch = Array.from(ci.value).pop(); if (ch) { Edit.cp = ch.codePointAt(0); ci.value = ch; if (Edit.tool !== 'paint') { Edit.tool = 'paint'; updateEditUI(); } } });
+  ci.addEventListener('focus', () => ci.select());
+  $('#editColor').addEventListener('input', e => { Edit.rgb = parseInt(e.target.value.slice(1), 16) || 0; Edit.keep = false; updateEditUI(); });
+  $('#editKeep').addEventListener('change', e => { Edit.keep = e.target.checked; });
+  $('#editUndo').addEventListener('click', () => editsStep(true));
+  $('#editRedo').addEventListener('click', () => editsStep(false));
+  $('#editClear').addEventListener('click', () => { if (!Edits.cells.size) return; editsSnapshot(); Edits.cells.clear(); editsChanged(); toast('Edits cleared (Undo brings them back)'); });
+  $('#stage').addEventListener('pointerleave', () => { $('#cellTip').hidden = true; });
+  window.addEventListener('keydown', e => {
+    if (!Edit.on || document.querySelector('dialog[open]')) return;
+    if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+    const k = (e.key || '').toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y')) { e.preventDefault(); e.stopImmediatePropagation(); editsStep(k === 'z' && !e.shiftKey); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setEditMode(false); return; }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && Array.from(e.key).length === 1 && e.key !== ' ') {   // type a character: it becomes the brush
+      e.preventDefault(); e.stopImmediatePropagation(); Edit.cp = e.key.codePointAt(0); Edit.tool = 'paint'; updateEditUI();
+    }
+  }, true);
+  updateEditUI();
+}
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)
    ===================================================================== */

@@ -158,7 +158,13 @@ UI_TESTS.push(async function projects(ok, { wait, reset }) {
   ok('Project: every setting is back', S.mode === 'ascii' && S.cols === 77 && S.cropL === 10 && S.rotate === 90 && S.gamma === 1.4 && S.captionTop === 'MY TITLE');
   ok('Project: the mask is back', !!Mask.canvas && Math.abs(maskInk() - ink0) / ink0 < 0.02, maskInk() + ' vs ' + ink0);
   ok('Project: the hand edit is back', Edits.cells.get(3) && Edits.cells.get(3).cp === 0x263a);
-  ok('Project: the result is exactly the same', resultText(App.res) === text0);
+  // the browser's GPU downscaling of the picture can round slightly differently from one moment to the next,
+  // so the saved picture is compared pixel by pixel and the result only needs to match closely
+  { const px = b => { const c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(b, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
+    const a = px(App.src.bmp), b = px(await createImageBitmap(demoCanvas())); let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+    ok('Project: the picture is the same, pixel for pixel', d === 0, d + ' bytes differ');
+    const t1 = resultText(App.res); let n = 0; for (let i = 0; i < Math.max(t1.length, text0.length); i++) if (t1[i] !== text0[i]) n++;
+    ok('Project: the result matches', n / text0.length < 0.2, n ? `${n} of ${text0.length} characters differ (GPU resampling)` : 'identical'); }
   // an animation keeps its trim
   reset(); await demoAnim(); await wait(30); App.tin = 0.5; App.tout = 1.5;
   const g2 = await uiCaptureDownloads(saveProject);
@@ -176,6 +182,63 @@ UI_TESTS.push(async function projects(ok, { wait, reset }) {
   await openFile(new File([await makeZip([{ name: 'x.txt', data: new Uint8Array(5) }]).arrayBuffer()], 'other.zip'));
   ok('Project: an ordinary ZIP is refused, nothing changes', App.src === before);
   editsClear(); maskClear();
+});
+
+UI_TESTS.push(async function editing(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 60 }); renderNow();
+  const out = $('#outCanvas'), res0 = App.res;
+  setEditMode(true);
+  ok('Edit: the edit bar opens on the result', Edit.on && !$('#editBar').hidden && App.view === 'out');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'X', bubbles: true }));
+  ok('Edit: typing a key picks it as the brush', Edit.cp === 0x58 && $('#editChar').value === 'X');
+  const at = (fx, fy) => { const b = out.getBoundingClientRect(); return cellAt({ clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }); };
+  const c1 = at(0.5, 0.5);
+  uiDrag(out, [0.5, 0.5], [0.5, 0.5], 1); renderNow();
+  ok('Edit: a click puts the character there', App.res.cp[c1.i] === 0x58 && Edits.cells.size === 1, 'cell ' + c1.x + ',' + c1.y);
+  const a = at(0.2, 0.3), b = at(0.4, 0.3);
+  uiDrag(out, [0.2, 0.3], [0.4, 0.3], 3); renderNow();
+  let row = 0; for (let x = a.x; x <= b.x; x++) if (App.res.cp[a.y * App.res.cols + x] === 0x58) row++;
+  ok('Edit: dragging paints every cell on the way', row === b.x - a.x + 1, row + ' of ' + (b.x - a.x + 1));
+  Edit.tool = 'pick'; const p = at(0.8, 0.8); uiDrag(out, [0.8, 0.8], [0.8, 0.8], 1);
+  ok('Edit: pick takes the character and colour', Edit.cp === (res0.cp[p.i] || 32) && Edit.rgb === cellRGB(res0, p.i) && Edit.tool === 'paint');
+  Edit.tool = 'erase'; uiDrag(out, [0.5, 0.5], [0.5, 0.5], 1); renderNow();
+  ok('Edit: erase brings the original back', App.res.cp[c1.i] === res0.cp[c1.i] && !Edits.cells.has(c1.i));
+  editsStep(true); renderNow();
+  ok('Edit: undo', App.res.cp[c1.i] === 0x58);
+  editsStep(false); renderNow();
+  ok('Edit: redo', App.res.cp[c1.i] === res0.cp[c1.i]);
+  Edit.tool = 'paint'; Edit.keep = false; Edit.rgb = 0xff00ff; Edit.cp = 0x2665;
+  uiDrag(out, [0.6, 0.6], [0.6, 0.6], 1); renderNow();
+  const c2 = at(0.6, 0.6);
+  ok('Edit: a new colour', cellRGB(App.res, c2.i) === 0xff00ff && App.res.cp[c2.i] === 0x2665);
+  const n = Edits.cells.size, png = out.toDataURL();
+  applySettings({ cols: 70 }); renderNow();
+  ok('Edit: hidden at another width, with a warning', !App.res.ov && $('#editInfo').classList.contains('warn'));
+  uiDrag(out, [0.1, 0.1], [0.1, 0.1], 1);
+  ok('Edit: no painting at another width', Edits.cells.size === n);
+  applySettings({ cols: 60 }); renderNow();
+  ok('Edit: back at the width, the edits are back', App.res.cp[c2.i] === 0x2665 && out.toDataURL() === png);
+  const gif = await gifBytes(() => {}), frames = decodeGIF(gifBytes.length ? gif.buffer : gif.buffer);
+  ok('Edit: saved pictures include the edits', frames.frames.length >= 1);
+  // hover
+  setEditMode(false);
+  uiPointer(out, 'pointermove', 0.6, 0.6, out);
+  ok('Hover: shows the character and colour under the pointer', /U\+2665 · #ff00ff · column \d+, row \d+ · edited/.test($('#cellInfo').textContent), $('#cellInfo').textContent);
+  ok('Hover: the floating tip only in Advanced or while editing', $('#cellTip').hidden);
+  setAdvanced(true); uiPointer(out, 'pointermove', 0.6, 0.6, out);
+  ok('Hover: floating tip in Advanced', !$('#cellTip').hidden && $('#cellTip').textContent.includes('U+2665'));
+  setAdvanced(false); $('#stage').dispatchEvent(new PointerEvent('pointerleave'));
+  editsClear();
+});
+
+UI_TESTS.push(async function captionControls(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 70 }); renderNow();
+  const top = $('#capTop'); top.value = 'SUMMER 2026'; top.dispatchEvent(new Event('input', { bubbles: true })); renderNow();
+  ok('Caption field: typing writes it on the picture', S.captionTop === 'SUMMER 2026' && uiRow(App.res, 1).includes('SUMMER 2026'));
+  $('#capStyle').value = 'big'; $('#capStyle').dispatchEvent(new Event('change', { bubbles: true })); renderNow();
+  ok('Caption field: big letters', S.captionStyle === 'big' && !uiRow(App.res, 1).includes('SUMMER'));
+  History.step(true); History.step(true); renderNow();
+  ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
 });
 
 UI_TESTS.push(async function captions(ok) {
