@@ -74,7 +74,7 @@
       <div class="hint" id="modeHint"></div>
       <div class="group">
         <div data-when="mode:ascii,edge">
-          <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span></label>
+          <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span> <button class="linkbtn" id="csOpen" title="Pick your own characters, sorted and previewed">Design…</button></label>
             <select id="charsetSel" data-key="charset"></select></div>
           <div class="ramp" id="rampStrip" role="img"></div>
           <div class="row" data-when="charset:custom"><label>Your characters (light → dense)</label>
@@ -565,6 +565,20 @@
   </div>
   <p class="hint" id="plotInfo"></p>
   <div class="acts"><button class="btn" id="plotCancel">Cancel</button><button class="btn primary" id="plotSave">Save SVG</button></div>
+</dialog>
+<dialog id="csDialog" class="wide">
+  <h3>Design your characters <span class="muted small" id="csCount"></span></h3>
+  <p class="muted small" style="margin:0 0 6px">Click characters to use them (or type any). They are sorted from light to dense in your font.</p>
+  <div class="ramp" id="csRamp" role="img" aria-label="Your characters from light to dense"></div>
+  <div class="cslayout">
+    <div class="csgroups" id="csGroups"></div>
+    <div class="csside">
+      <canvas id="csPreview" class="cspreview" role="img" aria-label="Your picture with these characters"></canvas>
+      <div class="row"><label for="csType">Add any characters</label><input type="text" id="csType" class="mono" placeholder="type or paste here" autocomplete="off" spellcheck="false"></div>
+      <div class="row"><label for="csName">Name (to save the set)</label><input type="text" id="csName" maxlength="30" placeholder="e.g. My blocks" autocomplete="off"></div>
+    </div>
+  </div>
+  <div class="acts"><button class="btn left" id="csClear">Clear</button><button class="btn" id="csCancel">Cancel</button><button class="btn" id="csSave">Save as…</button><button class="btn primary" id="csUse">Use these characters</button></div>
 </dialog>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>

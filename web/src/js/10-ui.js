@@ -280,6 +280,7 @@ function initUI() {
   initReveal();
   initPoster();
   initPlotter();
+  initDesigner();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

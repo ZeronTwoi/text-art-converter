@@ -389,6 +389,14 @@ details.group.fold>summary.h span{margin-left:auto}
   body{display:block;height:auto;overflow:visible;background:#fff}
   #printArea{display:block!important} #printArea img{display:block;width:100vw;height:100vh;object-fit:contain}
 }
+/* character designer */
+.cslayout{display:grid;grid-template-columns:1fr 260px;gap:12px;max-height:calc(100vh - 300px);overflow:auto}
+.csgroup{margin-bottom:8px} .cshead{display:flex;gap:8px;align-items:baseline;font-size:12px;margin-bottom:3px}
+.cschars{display:flex;flex-wrap:wrap;gap:3px}
+.csch{width:28px;height:28px;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;cursor:pointer;font:16px ui-monospace,Consolas,"Segoe UI Symbol",monospace;padding:0;color:var(--text)}
+.csch.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+.cspreview{width:100%;border-radius:8px;background:#000;display:block;margin-bottom:6px}
+@media (max-width:820px){.cslayout{grid-template-columns:1fr}}
 /* first-run tour */
 .tour{position:fixed;inset:0;z-index:85}
 .tourspot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);outline:2px solid var(--accent);transition:all .25s ease;pointer-events:none}

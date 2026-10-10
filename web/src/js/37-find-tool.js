@@ -39,6 +39,7 @@ function toolList() {
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
+  add('Design your own characters', 'Look tab', 'character set charset designer letters ramp custom', openDesigner);
   add('Characters used (character set)', 'Look tab', 'charset ramp letters', () => showControl($('#charsetSel'), 'look'));
   add('Caption: words on the picture', 'Look tab', 'title subtitle text write', () => showControl($('#capTop'), 'look'));
   add('Animate a still picture (typewriter, Matrix rain, glitch…)', 'Look tab', 'effect motion gif typewriter rain glitch zoom scanlines', needSrc(() => showControl($('#fxKind'), 'look')));

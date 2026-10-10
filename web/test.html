@@ -399,6 +399,14 @@ details.group.fold>summary.h span{margin-left:auto}
   body{display:block;height:auto;overflow:visible;background:#fff}
   #printArea{display:block!important} #printArea img{display:block;width:100vw;height:100vh;object-fit:contain}
 }
+/* character designer */
+.cslayout{display:grid;grid-template-columns:1fr 260px;gap:12px;max-height:calc(100vh - 300px);overflow:auto}
+.csgroup{margin-bottom:8px} .cshead{display:flex;gap:8px;align-items:baseline;font-size:12px;margin-bottom:3px}
+.cschars{display:flex;flex-wrap:wrap;gap:3px}
+.csch{width:28px;height:28px;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;cursor:pointer;font:16px ui-monospace,Consolas,"Segoe UI Symbol",monospace;padding:0;color:var(--text)}
+.csch.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+.cspreview{width:100%;border-radius:8px;background:#000;display:block;margin-bottom:6px}
+@media (max-width:820px){.cslayout{grid-template-columns:1fr}}
 /* first-run tour */
 .tour{position:fixed;inset:0;z-index:85}
 .tourspot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);outline:2px solid var(--accent);transition:all .25s ease;pointer-events:none}
@@ -546,7 +554,7 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
       <div class="hint" id="modeHint"></div>
       <div class="group">
         <div data-when="mode:ascii,edge">
-          <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span></label>
+          <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span> <button class="linkbtn" id="csOpen" title="Pick your own characters, sorted and previewed">Design…</button></label>
             <select id="charsetSel" data-key="charset"></select></div>
           <div class="ramp" id="rampStrip" role="img"></div>
           <div class="row" data-when="charset:custom"><label>Your characters (light → dense)</label>
@@ -1037,6 +1045,20 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
   </div>
   <p class="hint" id="plotInfo"></p>
   <div class="acts"><button class="btn" id="plotCancel">Cancel</button><button class="btn primary" id="plotSave">Save SVG</button></div>
+</dialog>
+<dialog id="csDialog" class="wide">
+  <h3>Design your characters <span class="muted small" id="csCount"></span></h3>
+  <p class="muted small" style="margin:0 0 6px">Click characters to use them (or type any). They are sorted from light to dense in your font.</p>
+  <div class="ramp" id="csRamp" role="img" aria-label="Your characters from light to dense"></div>
+  <div class="cslayout">
+    <div class="csgroups" id="csGroups"></div>
+    <div class="csside">
+      <canvas id="csPreview" class="cspreview" role="img" aria-label="Your picture with these characters"></canvas>
+      <div class="row"><label for="csType">Add any characters</label><input type="text" id="csType" class="mono" placeholder="type or paste here" autocomplete="off" spellcheck="false"></div>
+      <div class="row"><label for="csName">Name (to save the set)</label><input type="text" id="csName" maxlength="30" placeholder="e.g. My blocks" autocomplete="off"></div>
+    </div>
+  </div>
+  <div class="acts"><button class="btn left" id="csClear">Clear</button><button class="btn" id="csCancel">Cancel</button><button class="btn" id="csSave">Save as…</button><button class="btn primary" id="csUse">Use these characters</button></div>
 </dialog>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>
@@ -5278,6 +5300,7 @@ function initUI() {
   initReveal();
   initPoster();
   initPlotter();
+  initDesigner();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -7692,6 +7715,7 @@ function toolList() {
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
+  add('Design your own characters', 'Look tab', 'character set charset designer letters ramp custom', openDesigner);
   add('Characters used (character set)', 'Look tab', 'charset ramp letters', () => showControl($('#charsetSel'), 'look'));
   add('Caption: words on the picture', 'Look tab', 'title subtitle text write', () => showControl($('#capTop'), 'look'));
   add('Animate a still picture (typewriter, Matrix rain, glitch…)', 'Look tab', 'effect motion gif typewriter rain glitch zoom scanlines', needSrc(() => showControl($('#fxKind'), 'look')));
@@ -8215,6 +8239,102 @@ function initPlotter() {
   for (const id of ['plotWidth', 'plotPen', 'plotHatch']) $('#' + id).addEventListener('input', () => { $('#plotWidthOut').textContent = $('#plotWidth').value + ' mm'; updatePlotInfo(); });
   $('#plotCancel').addEventListener('click', () => $('#plotDialog').close());
   $('#plotSave').addEventListener('click', () => { const r = plotterSVG(App.res, plotterOptions()); $('#plotDialog').close(); download(new Blob([r.svg], { type: 'image/svg+xml' }), baseName() + '_plotter.svg'); toast(`Plotter SVG saved: ${r.lines.toLocaleString()} lines, ${r.lengthM.toFixed(1)} m`); });
+}
+/* =====================================================================
+   Character set designer: pick characters (or type them), sorted from light to dense in your font, previewed on
+   your picture; use them, or save them under a name (they appear in the character list).
+   A set is plain custom characters, so looks and projects carry it.
+   ===================================================================== */
+const CHAR_GROUPS = [
+  ['Letters', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'],
+  ['Digits', '0123456789'],
+  ['Symbols', `.,:;'"\`^~-_=+*#%@&$!?|/\\()[]{}<>`],
+  ['Blocks & shades', '░▒▓█▀▄▌▐▖▗▘▝▚▞■□▪▫'],
+  ['Lines & boxes', '─│┌┐└┘├┤┬┴┼═║╬╱╲╳'],
+  ['Dots & shapes', '·•●○◦◉◎◌∙⁘⁙⋅∘★☆✦✧◆◇▲△▼▽'],
+  ['Katakana', 'ｦｧｨｩｪｫｬｭｮｯｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ'],
+  ['Arrows & math', '←↑→↓↔↕∞≈≠≤≥±×÷√∑∏∂∫Δπσμ'],
+];
+const CHARSET_STORE = 'textArtStudio.charsets';
+const Designer = { chars: new Set(), timer: 0 };
+function userCharsets() { try { const a = JSON.parse(localStorage.getItem(CHARSET_STORE) || '[]'); return Array.isArray(a) ? a.filter(x => x && typeof x.name === 'string' && typeof x.chars === 'string') : []; } catch (e) { return []; } }
+/* the chosen characters from light to dense in the current font (a space first) */
+function designerRamp() {
+  const list = [' '].concat([...Designer.chars].filter(c => c !== ' '));
+  if (list.length < 2) return list;
+  const t = getGlyphTable(list, fontCss(S));
+  return list.map((c, i) => [c, t.mean[i]]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+}
+function designerRender() {
+  const ramp = designerRamp(), strip = $('#csRamp');
+  strip.textContent = ''; strip.style.background = S.bg; strip.style.color = S.fg; strip.style.fontFamily = fontCss(S);
+  for (const ch of ramp) { const s = document.createElement('span'); s.textContent = ch === ' ' ? ' ' : ch; strip.appendChild(s); }
+  $('#csCount').textContent = `${ramp.length - 1} characters`;
+  $$('#csGroups button[data-ch]').forEach(b => { const on = Designer.chars.has(b.dataset.ch); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  clearTimeout(Designer.timer);
+  Designer.timer = setTimeout(() => {   // the picture with these characters
+    const c = $('#csPreview'), s = App.src; let d = s && s.kind !== 'text' ? currentDrawable() : null;
+    if (!d) { const dc = demoCanvas(); d = [dc, dc.width, dc.height]; }
+    if (ramp.length < 2) { c.width = c.height = 1; return; }
+    const St = Object.assign({}, S, { mode: S.mode === 'edge' ? 'edge' : 'ascii', charset: 'custom', customChars: ramp.join(''), sortRamp: false, cols: Math.min(S.cols, 90), margin: 0 });
+    try { renderResult(convertRaw(d[0], d[1], d[2], St), St, c, 1); } catch (e) { console.warn(e); }
+  }, 120);
+}
+function openDesigner() {
+  Designer.chars = new Set(Array.from(S.charset === 'custom' ? S.customChars : getRamp(S).join('')).filter(c => c !== ' '));
+  const box = $('#csGroups');
+  if (!box.childElementCount) for (const [name, chars] of CHAR_GROUPS) {
+    const g = document.createElement('div'); g.className = 'csgroup';
+    g.innerHTML = `<div class="cshead"><b></b><button class="linkbtn" data-all>all</button> <button class="linkbtn" data-none>none</button></div><div class="cschars"></div>`;
+    g.querySelector('b').textContent = name;
+    for (const ch of Array.from(chars)) { const b = document.createElement('button'); b.className = 'csch'; b.dataset.ch = ch; b.textContent = ch; b.title = uplus(ch.codePointAt(0)); g.querySelector('.cschars').appendChild(b); }
+    g.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.ch) { if (Designer.chars.has(b.dataset.ch)) Designer.chars.delete(b.dataset.ch); else Designer.chars.add(b.dataset.ch); }
+      else for (const ch of Array.from(chars)) { if (b.hasAttribute('data-all')) Designer.chars.add(ch); else Designer.chars.delete(ch); }
+      designerRender();
+    });
+    box.appendChild(g);
+  }
+  $('#csName').value = ''; $('#csType').value = '';
+  $('#csDialog').showModal(); designerRender();
+}
+function designerUse() {
+  const ramp = designerRamp(); if (ramp.length < 2) return toast('Choose at least one character');
+  App.look = null; markLooks();
+  applySettings({ mode: S.mode === 'ascii' || S.mode === 'edge' ? S.mode : 'ascii', charset: 'custom', customChars: ramp.join(''), sortRamp: false });
+  $('#csDialog').close(); toast(`Using ${ramp.length - 1} characters`);
+}
+function designerSave() {
+  const name = $('#csName').value.trim().slice(0, 30), ramp = designerRamp();
+  if (!name) { $('#csName').focus(); return toast('Give the set a name'); }
+  if (ramp.length < 2) return toast('Choose at least one character');
+  const list = userCharsets().filter(x => x.name !== name); list.push({ name, chars: ramp.join('') });
+  try { localStorage.setItem(CHARSET_STORE, JSON.stringify(list)); } catch (e) { return toast('This browser cannot store it', 'error'); }
+  fillCharsetSelect(); designerUse(); toast(`Saved "${name}": it is in the character list`);
+}
+/* the character list with your saved sets at the end */
+function fillCharsetSelect() {
+  const cs = $('#charsetSel'); cs.querySelectorAll('optgroup.user').forEach(g => g.remove());
+  const sets = userCharsets(); if (!sets.length) return;
+  const g = document.createElement('optgroup'); g.className = 'user'; g.label = 'Your character sets';
+  for (const s of sets) { const o = document.createElement('option'); o.value = 'user:' + s.name; o.textContent = s.name; g.appendChild(o); }
+  cs.appendChild(g);
+}
+function initDesigner() {
+  fillCharsetSelect();
+  // choosing a saved set fills the custom characters (the setting stays 'custom', so looks and projects keep the characters)
+  $('#charsetSel').addEventListener('change', e => {
+    const v = e.target.value; if (!v.startsWith('user:')) return;
+    const s = userCharsets().find(x => 'user:' + x.name === v); if (!s) return;
+    e.stopImmediatePropagation(); applySettings({ charset: 'custom', customChars: s.chars, sortRamp: false });
+  }, true);
+  $('#csOpen').addEventListener('click', openDesigner);
+  $('#csType').addEventListener('input', e => { for (const ch of Array.from(e.target.value)) if (ch.trim()) Designer.chars.add(ch); e.target.value = ''; designerRender(); });
+  $('#csClear').addEventListener('click', () => { Designer.chars.clear(); designerRender(); });
+  $('#csUse').addEventListener('click', designerUse);
+  $('#csSave').addEventListener('click', designerSave);
+  $('#csCancel').addEventListener('click', () => $('#csDialog').close());
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)
@@ -9440,6 +9560,26 @@ UI_TESTS.push(async function plotterSvg(ok) {
   ok('Plotter: valid SVG', !doc.querySelector('parsererror') && doc.querySelectorAll('path').length === 1);
   const b = textResult('██\n  ', Object.assign({}, DEFAULTS)), h = plotterLines(b, { hatch: true });
   ok('Plotter: dense characters are shaded with 4 lines', h.length === 4 && h.every(l => l[1] === l[3] && Math.abs(l[2] - l[0]) === 8));
+});
+
+UI_TESTS.push(async function charsetDesigner(ok, { wait }) {
+  try { localStorage.removeItem(CHARSET_STORE); } catch (e) {}
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', charset: 'standard' }); fillCharsetSelect();
+  openDesigner();
+  ok('Designer: starts with the current characters', Designer.chars.size === CHARSETS.standard.chars.length - 1 && $$('#csGroups .csch.on').length >= 5);
+  $('#csClear').click();
+  for (const ch of ['█', '░', '▒', '.']) $(`#csGroups .csch[data-ch="${ch}"]`).click();
+  $('#csType').value = 'oO'; $('#csType').dispatchEvent(new Event('input'));
+  const ramp = designerRamp();
+  ok('Designer: sorted from light to dense', ramp[0] === ' ' && ramp[ramp.length - 1] === '█' && ramp.indexOf('.') < ramp.indexOf('O') && ramp.length === 7, JSON.stringify(ramp.join('')));
+  await wait(200);
+  ok('Designer: preview of the picture', $('#csPreview').width > 100);
+  $('#csName').value = 'My blocks'; $('#csSave').click();
+  ok('Designer: saved and used', S.charset === 'custom' && S.customChars === ramp.join('') && !$('#csDialog').open && !!$('#charsetSel option[value="user:My blocks"]'));
+  applySettings({ charset: 'standard' });
+  const sel = $('#charsetSel'); sel.value = 'user:My blocks'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  ok('Designer: a saved set can be chosen again from the list', S.charset === 'custom' && S.customChars === ramp.join(''));
+  try { localStorage.removeItem(CHARSET_STORE); } catch (e) {} fillCharsetSelect(); applySettings({ charset: 'standard' });
 });
 
 UI_TESTS.push(async function captions(ok) {

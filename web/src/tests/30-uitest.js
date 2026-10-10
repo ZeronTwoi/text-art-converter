@@ -793,6 +793,26 @@ UI_TESTS.push(async function plotterSvg(ok) {
   ok('Plotter: dense characters are shaded with 4 lines', h.length === 4 && h.every(l => l[1] === l[3] && Math.abs(l[2] - l[0]) === 8));
 });
 
+UI_TESTS.push(async function charsetDesigner(ok, { wait }) {
+  try { localStorage.removeItem(CHARSET_STORE); } catch (e) {}
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', charset: 'standard' }); fillCharsetSelect();
+  openDesigner();
+  ok('Designer: starts with the current characters', Designer.chars.size === CHARSETS.standard.chars.length - 1 && $$('#csGroups .csch.on').length >= 5);
+  $('#csClear').click();
+  for (const ch of ['█', '░', '▒', '.']) $(`#csGroups .csch[data-ch="${ch}"]`).click();
+  $('#csType').value = 'oO'; $('#csType').dispatchEvent(new Event('input'));
+  const ramp = designerRamp();
+  ok('Designer: sorted from light to dense', ramp[0] === ' ' && ramp[ramp.length - 1] === '█' && ramp.indexOf('.') < ramp.indexOf('O') && ramp.length === 7, JSON.stringify(ramp.join('')));
+  await wait(200);
+  ok('Designer: preview of the picture', $('#csPreview').width > 100);
+  $('#csName').value = 'My blocks'; $('#csSave').click();
+  ok('Designer: saved and used', S.charset === 'custom' && S.customChars === ramp.join('') && !$('#csDialog').open && !!$('#charsetSel option[value="user:My blocks"]'));
+  applySettings({ charset: 'standard' });
+  const sel = $('#charsetSel'); sel.value = 'user:My blocks'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  ok('Designer: a saved set can be chosen again from the list', S.charset === 'custom' && S.customChars === ramp.join(''));
+  try { localStorage.removeItem(CHARSET_STORE); } catch (e) {} fillCharsetSelect(); applySettings({ charset: 'standard' });
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
