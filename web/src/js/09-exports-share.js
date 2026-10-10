@@ -1273,6 +1273,10 @@ function buildExportPanel() {
   btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)' });
   btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals' });
   btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image' });
+  t.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
+    ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
+  t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
+  if (!animated) for (const k of ['sh', 'ps1', 'py']) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = '.' + k; b.title = ({ sh: 'Shell script (macOS, Linux, Git Bash)', ps1: 'PowerShell script (Windows)', py: 'Python script (any computer)' })[k]; b.addEventListener('click', () => exportTerminalScript(k)); t.querySelector('#scriptBtns').appendChild(b); }
 
   if (s.kind !== 'text' || true) {
     const qs = section('Size &amp; quality', ''); qs.dataset.goal = 'save'; qs.classList.add('quality');
@@ -1303,6 +1307,9 @@ function buildExportPanel() {
     btn(an, 'Frames .json', () => exportFramesText('json'), { title: 'Every frame as text with delays (JSON)' });
     btn(an, 'HTML player', exportHTMLPlayer, { title: 'Stand-alone web page that plays the text animation' });
     btn(an, 'PNG frames .zip', exportZip, { title: 'ZIP of PNG + TXT for every frame' });
+    btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)' });
+    btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour' });
+    btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour' });
     let o = '';
     if (s.kind === 'video') o += `<div class="row"><label>Frames per second (GIF / text) <output data-out="gifFps"></output></label><input type="range" data-key="gifFps" min="1" max="30" step="1"></div>`;
     else o += `<div class="row"><label>Use every Nth frame <output data-out="frameStep"></output></label><input type="range" data-key="frameStep" min="1" max="10" step="1"></div>`;
@@ -1317,6 +1324,9 @@ function buildExportPanel() {
     o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p>`;
     opts(an, o);
   }
+  { const st = section('Stickers &amp; emoji', animated ? 'animated' : ''); st.dataset.goal = 'save';
+    for (const [id, P] of Object.entries(STICKERS)) btn(st, P.name, () => exportSticker(id), { title: P.note + '. Made to fit: fewer colours or frames when needed' });
+    st.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:6px 0 0">Square, in each app\'s size and file limit (it is made smaller automatically when needed).</p>'); }
   if (s.kind === 'webcam') {
     const lv = section('Live recording'); lv.dataset.goal = 'save';
     btn(lv, App.recorder ? '■ Stop & save' : '● Record video', toggleLiveRecord, { primary: true });

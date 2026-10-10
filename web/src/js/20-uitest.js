@@ -585,6 +585,36 @@ UI_TESTS.push(async function paletteTools(ok, { wait }) {
   ok('Palette: kept in projects', meta.settings.customPalette === S.customPalette);
 });
 
+UI_TESTS.push(async function exportTargets(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', colorMode: 'color', cols: 60 }); renderNow(); buildExportPanel();
+  const t = 'a`b\\c${x} "q"\nline 2';
+  const js = codeLiteral(t, 'js'); let jsVal; try { jsVal = new Function(js + ';return art')(); } catch (e) {}
+  ok('Copy as code: JavaScript string gives the text back', jsVal === t);
+  ok('Copy as code: JSON string gives the text back', JSON.parse(codeLiteral(t, 'json')) === t);
+  ok('Copy as code: C# verbatim string', codeLiteral('say "hi"', 'cs') === 'var art = @"say ""hi""";\n');
+  ok('Copy as code: Python lines', codeLiteral('ab\ncd', 'py') === 'art = (\n    "ab\\n"\n    "cd"\n)\n');
+  let got = await uiCaptureDownloads(() => exportSticker('discordEmoji'));
+  const bmp = got[0] && await createImageBitmap(got[0].blob);
+  ok('Sticker: Discord emoji is a 128 × 128 PNG under 256 KB', !!bmp && bmp.width === 128 && bmp.height === 128 && got[0].blob.size < 256 * 1024 && /\.png$/.test(got[0].name), got[0] && fmtBytes(got[0].blob.size));
+  got = await uiCaptureDownloads(() => exportSticker('telegram'));
+  ok('Sticker: Telegram is a 512 × 512 WEBP', !!got[0] && got[0].blob.type === 'image/webp' && (await createImageBitmap(got[0].blob)).width === 512);
+  await demoAnim(); await wait(30);
+  got = await uiCaptureDownloads(() => exportSticker('slackEmoji'));
+  const gif = got[0] && decodeGIF(await got[0].blob.arrayBuffer());
+  ok('Sticker: Slack emoji is an animated GIF under 128 KB', !!gif && gif.frames.length > 4 && gif.width === 128 && got[0].blob.size <= 128 * 1024, got[0] && `${gif.frames.length} frames, ${fmtBytes(got[0].blob.size)}`);
+  got = await uiCaptureDownloads(() => exportSticker('discordSticker'));
+  ok('Sticker: Discord sticker is an animated PNG', !!got[0] && isAPNG(new Uint8Array(await got[0].blob.arrayBuffer())) && got[0].blob.size <= 512 * 1024, got[0] && fmtBytes(got[0].blob.size));
+  got = await uiCaptureDownloads(() => exportTerminalScript('sh'));
+  const sh = got[0] && await got[0].blob.text();
+  ok('Terminal script: .sh loops every frame', !!sh && sh.startsWith('#!/bin/sh') && (sh.match(/^TAS_FRAME$/gm) || []).length === 48 && sh.includes('\x1b[38;2;'), sh && sh.length + ' chars');
+  got = await uiCaptureDownloads(() => exportTerminalScript('py'));
+  const py = got[0] && await got[0].blob.text();
+  ok('Terminal script: .py has frames and delays', !!py && /FRAMES = \[/.test(py) && /DELAYS = \[60, 60/.test(py));
+  got = await uiCaptureDownloads(() => exportTerminalScript('ps1'));
+  const ps = got[0] && new Uint8Array(await got[0].blob.arrayBuffer());
+  ok('Terminal script: .ps1 is UTF-8 with BOM for Windows PowerShell', !!ps && ps[0] === 0xEF && ps[1] === 0xBB && ps[2] === 0xBF);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
