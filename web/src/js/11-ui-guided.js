@@ -1,7 +1,10 @@
 /* =====================================================================
    UI 2: tabs, guided steps, goals, looks gallery, choices, filmstrip
    ===================================================================== */
-const PRESET_BASE = { invert: false, edge: 0, sharpen: 0, outline: DEFAULTS.outline, outlineWidth: 1, fill: 1, localContrast: 0, bgFade: 0, bgMode: 'solid', sortRamp: false, saturation: 1, threshold: 0.5, brightness: 0, contrast: 0, gamma: 1 };
+/* what every built-in look sets (so a look gives the same result whatever was set before); every look adapts to the
+   picture's own light (auto levels) */
+const PRESET_BASE = { invert: false, edge: 0, sharpen: 0, outline: DEFAULTS.outline, outlineWidth: 1, outlineDir: true, fill: 1, localContrast: 0, bgFade: 0, bgMode: 'solid', sortRamp: false, saturation: 1, threshold: 0.5, brightness: 0, contrast: 0, gamma: 1,
+  autoLevels: true, dither: 'floyd', dotShape: 'circle', dotSize: DEFAULTS.dotSize, edgeThreshold: DEFAULTS.edgeThreshold, edgeFill: true };
 /* Your own looks: everything except settings that belong to one picture (width, crop, turn) or to sharing/exporting. */
 const LOOK_STORE = 'textArtStudio.looks.v1';
 const LOOK_SKIP = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'playOrder', 'playSpeed', 'loopFade', 'layerOn', 'layerX', 'layerY', 'layerSize', 'layerOpacity', 'layerBlend', 'fontSize']);

@@ -25,7 +25,7 @@ const HATCH_ROWS = [2, 1, 3, 0.5];   // the y of the 1st, 2nd… hatching line i
 /* how much ink a cell has (0..1) */
 function cellInk(res, i) {
   if (res.bits) { const b = res.bits[i]; let n = 0; for (let k = b; k; k &= k - 1) n++; return n / (res.mode === 'braille' ? 8 : res.mode === 'quad' ? 4 : 2); }
-  if (res.val) return res.val[i];
+  if (res.val) return (res.val[2 * i] + res.val[2 * i + 1]) / 2;   // halftone: two dots per cell
   const cp = res.cp[i] || 32; if (isBlankCp(cp)) return 0;
   const B = BLOCK_RECTS[cp]; if (B) return Math.min(1, B.reduce((a, r) => a + r[2] * r[3], 0));   // blocks: their area
   if (cp >= 0x2591 && cp <= 0x2593) return (cp - 0x2590) / 4;                                     // shades

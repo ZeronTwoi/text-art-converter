@@ -924,6 +924,21 @@ UI_TESTS.push(async function languages(ok, { wait, reset }) {
   try { localStorage.removeItem(LANG_KEY); } catch (e) {}
 });
 
+UI_TESTS.push(async function looksAdapt(ok) {
+  // a very dark, low-contrast picture: every look must still show it (the looks adapt to the picture's own light)
+  const c = document.createElement('canvas'); c.width = 240; c.height = 160; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 240, 0); gr.addColorStop(0, '#08080a'); gr.addColorStop(1, '#24242a'); g.fillStyle = gr; g.fillRect(0, 0, 240, 160);
+  g.fillStyle = '#2c2c36'; g.beginPath(); g.arc(120, 80, 45, 0, 7); g.fill();
+  const variety = r => { const s = new Set(); for (let i = 0; i < r.cols * r.rows; i++) s.add(r.cp[i] + ',' + r.fg[i * 3] + ',' + r.fg[i * 3 + 1] + ',' + (r.bgc ? r.bgc[i * 3] : '') + ',' + (r.val ? Math.round(r.val[2 * i] * 8) : '')); return s.size; };
+  const flat = [];
+  for (const name of Object.keys(PRESETS)) { const St = Object.assign({}, DEFAULTS, PRESET_BASE, PRESETS[name], { cols: 60 }); if (variety(convert(c, 240, 160, St)) < 4) flat.push(name); }
+  ok('Looks: every look shows a very dark picture', !flat.length, flat.join(', ') || Object.keys(PRESETS).length + ' looks');
+  // depth (local contrast) leaves a plain background plain
+  const p = document.createElement('canvas'); p.width = 200; p.height = 200; const pg = p.getContext('2d'); pg.fillStyle = '#000000'; pg.fillRect(0, 0, 200, 200); pg.fillStyle = '#f0f0f0'; pg.fillRect(80, 80, 40, 40);
+  const r = convert(p, 200, 200, Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 40, outline: 0, localContrast: 1, charAspect: 2 }));
+  ok('Looks: depth keeps a plain background plain', resultText(r).split('\n').slice(0, 5).every(l => !l.trim()));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

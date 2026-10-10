@@ -79,13 +79,15 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       ctx.fill();
     }
   } else if (shapes && m === 'halftone') {
-    const val = res.val, R = Math.min(cw, ch) * 0.5 * S.dotSize * 1.2, sq = S.dotShape === 'square';
-    const groups = groupsOf(res, c => val[c] < 0.02);
+    // two dots per cell, the lower one half a cell to the right; a dot covers as much of its half cell as its value
+    const val = res.val, sq = S.dotShape === 'square', hh = ch / 2, R = Math.sqrt(cw * hh / Math.PI) * S.dotSize, Q = Math.sqrt(cw * hh) / 2 * S.dotSize;
+    const groups = groupsOf(res, c => val[2 * c] < 0.02 && val[2 * c + 1] < 0.02);
     for (const [k, list] of groups) {
       ctx.fillStyle = hex6(k); ctx.beginPath();
-      for (const c of list) {
-        const rr = Math.sqrt(val[c]) * R, px = X(c) + cw / 2, py = Y(c) + ch / 2;
-        if (sq) ctx.rect(px - rr, py - rr, 2 * rr, 2 * rr); else { ctx.moveTo(px + rr, py); ctx.arc(px, py, rr, 0, 6.2832); }
+      for (const c of list) for (let h = 0; h < 2; h++) {
+        const v = val[2 * c + h]; if (v < 0.02) continue;
+        const px = X(c) + cw * (h ? 0.75 : 0.25), py = Y(c) + hh * (h + 0.5);
+        if (sq) { const s = Math.sqrt(v) * Q; ctx.rect(px - s, py - s, 2 * s, 2 * s); } else { const rr = Math.sqrt(v) * R; ctx.moveTo(px + rr, py); ctx.arc(px, py, rr, 0, 6.2832); }
       }
       ctx.fill();
     }
@@ -244,7 +246,7 @@ function svgBody(res, S, parts) {
   const f = v => Math.round(v * 100) / 100;
   if (shapes) {
     const r = Math.max(0.35, Math.min(cw / 4, ch / 8) * S.dotSize), sq = S.dotShape === 'square';
-    const skip = m === 'halftone' ? c => res.val[c] < 0.02 : c => !res.bits[c];
+    const skip = m === 'halftone' ? c => res.val[2 * c] < 0.02 && res.val[2 * c + 1] < 0.02 : c => !res.bits[c];
     for (const [k, list] of groupsOf(res, skip)) {
       let d = '';
       const dot = (px, py, rr) => sq ? `M${f(px - rr)} ${f(py - rr)}h${f(2 * rr)}v${f(2 * rr)}h${f(-2 * rr)}z` : `M${f(px - rr)} ${f(py)}a${f(rr)} ${f(rr)} 0 1 0 ${f(2 * rr)} 0a${f(rr)} ${f(rr)} 0 1 0 ${f(-2 * rr)} 0z`;
@@ -254,7 +256,14 @@ function svgBody(res, S, parts) {
         if (m === 'braille') { for (let j = 0; j < 8; j++) if (bt & (1 << j)) { const p = BRAILLE_POS[j]; d += dot(x0 + cw * (0.25 + 0.5 * p[0]), y0 + ch * (0.125 + 0.25 * p[1]), r); } }
         else if (m === 'quad') { if (bt & 1) d += rect(x0, y0, cw / 2, ch / 2); if (bt & 2) d += rect(x0 + cw / 2, y0, cw / 2, ch / 2); if (bt & 4) d += rect(x0, y0 + ch / 2, cw / 2, ch / 2); if (bt & 8) d += rect(x0 + cw / 2, y0 + ch / 2, cw / 2, ch / 2); }
         else if (m === 'half') { if (bt & 1) d += rect(x0, y0, cw, ch / 2); if (bt & 2) d += rect(x0, y0 + ch / 2, cw, ch / 2); }
-        else if (m === 'halftone') { const sqS = S.dotShape === 'square'; const rr = Math.sqrt(res.val[c]) * Math.min(cw, ch) * 0.5 * S.dotSize * 1.2; d += sqS ? rect(x0 + cw / 2 - rr, y0 + ch / 2 - rr, 2 * rr, 2 * rr) : dot(x0 + cw / 2, y0 + ch / 2, rr); }
+        else if (m === 'halftone') {
+          const sqS = S.dotShape === 'square', hh = ch / 2;
+          for (let h = 0; h < 2; h++) {
+            const v = res.val[2 * c + h]; if (v < 0.02) continue;
+            const px = x0 + cw * (h ? 0.75 : 0.25), py = y0 + hh * (h + 0.5);
+            if (sqS) { const s = Math.sqrt(v * cw * hh) / 2 * S.dotSize; d += rect(px - s, py - s, 2 * s, 2 * s); } else d += dot(px, py, Math.sqrt(v * cw * hh / Math.PI) * S.dotSize);
+          }
+        }
       }
       parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
     }

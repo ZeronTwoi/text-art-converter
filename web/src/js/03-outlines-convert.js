@@ -360,7 +360,10 @@ function convertCore(src, sw, sh, S, sk, pre) {
     let lo = 0, hi = 255, acc = 0;
     for (; lo < 255; lo++) { acc += hist[lo]; if (acc > cnt * 0.01) break; }
     acc = 0; for (; hi > 0; hi--) { acc += hist[hi]; if (acc > cnt * 0.01) break; }
-    if (hi - lo > 4) { const a = lo / 255, s = 255 / (hi - lo); for (let i = 0; i < N; i++) L[i] = clamp((L[i] - a) * s, 0, 1); }
+    if (hi - lo > 4) {
+      const a = lo / 255, s = 255 / (hi - lo); for (let i = 0; i < N; i++) L[i] = clamp((L[i] - a) * s, 0, 1);
+      for (let k = 0; k < N * 3; k++) C[k] = (C[k] - lo) * s;   // the colours the same way (hues stay)
+    }
   }
   if (S.sharpen > 0 && W > 2 && H > 2) {
     const B = new Float32Array(N), k = S.sharpen;
@@ -373,10 +376,11 @@ function convertCore(src, sw, sh, S, sk, pre) {
     }
     for (let i = 0; i < N; i++) L[i] = clamp(L[i] + k * (L[i] - B[i]), 0, 1);
   }
-  // local contrast ("depth"): compare each pixel with its neighbourhood so forms separate even in flat light
+  // local contrast ("depth"): each pixel's difference from its neighbourhood is enlarged, the more where the
+  // neighbourhood is flat-lit, so forms separate. Plain areas (no difference) stay as they are: no lifted backgrounds.
   if (S.localContrast > 0 && W > 4 && H > 4) {
     const { mean, sd } = localStats(L, W, H, Math.max(2, Math.round(Math.min(W, H) / 10))), k = S.localContrast;
-    for (let i = 0; i < N; i++) { const v = clamp(0.5 + (L[i] - mean[i]) / (2.2 * sd[i] + 0.06) * 0.5, 0, 1); L[i] += (v - L[i]) * k; }
+    for (let i = 0; i < N; i++) { const d = L[i] - mean[i]; L[i] = clamp(L[i] + d * 4 * k * 0.12 / (sd[i] + 0.12), 0, 1); }
   }
   const FG = hexToRgb(S.fg), BG = hexToRgb(S.bg), GA = hexToRgb(S.gradA), GB = hexToRgb(S.gradB);
   const CM = S.colorMode, PAL = paletteKey(S);
@@ -444,7 +448,38 @@ function convertCore(src, sw, sh, S, sk, pre) {
   }
   const needColor = CM !== 'mono';
 
-  if (mode === 'braille' || mode === 'quad') {
+  if (mode === 'quad' && needColor) {
+    // colour quadrants: each cell's 4 pixels split into the two colours that fit them best (blocks + cell background)
+    if (OL) for (let i = 0; i < N; i++) {   // outlines darken the colour pixels, like ink lines
+      const e = Math.min(1, OL.E[i] * 1.5) * 0.75; if (e <= 0) continue;
+      for (let k = 0; k < 3; k++) C[i * 3 + k] *= 1 - e;
+    }
+    if (MK) for (let i = 0; i < N; i++) { const h = hideAt(i); if (h) for (let k = 0; k < 3; k++) C[i * 3 + k] += (BG[k] - C[i * 3 + k]) * h; }
+    const bits = res.bits = new Uint8Array(n), bgc = res.bgc = new Uint8ClampedArray(n * 3), px = new Float64Array(12), m1 = [0, 0, 0], m0 = [0, 0, 0];
+    for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+      const c = cy * cols + cx, i0 = cy * 2 * W + cx * 2, idx = [i0, i0 + 1, i0 + W, i0 + W + 1];
+      for (let k = 0; k < 4; k++) for (let j = 0; j < 3; j++) px[k * 3 + j] = C[idx[k] * 3 + j];
+      let best = 0, bestErr = Infinity;
+      for (let m = 0; m < 8; m++) {   // the bottom right pixel is always in the second group: 8 different splits
+        let err = 0;
+        for (const set of [m, 15 & ~m]) {
+          let n1 = 0; m1[0] = m1[1] = m1[2] = 0;
+          for (let k = 0; k < 4; k++) if (set >> k & 1) { n1++; for (let j = 0; j < 3; j++) m1[j] += px[k * 3 + j]; }
+          if (!n1) continue;
+          for (let k = 0; k < 4; k++) if (set >> k & 1) for (let j = 0; j < 3; j++) { const d = px[k * 3 + j] - m1[j] / n1; err += d * d; }
+        }
+        if (err < bestErr - 1e-9) { bestErr = err; best = m; }
+      }
+      // the blocks are the larger group (copies without background colours still show the picture)
+      let bt = best, pc = 0; for (let k = bt; k; k &= k - 1) pc++;
+      if (pc < 2) bt = 15 & ~bt;
+      let n1 = 0, n0 = 0; m1[0] = m1[1] = m1[2] = m0[0] = m0[1] = m0[2] = 0;
+      for (let k = 0; k < 4; k++) { const t = bt >> k & 1 ? m1 : m0; if (bt >> k & 1) n1++; else n0++; for (let j = 0; j < 3; j++) t[j] += px[k * 3 + j]; }
+      bits[c] = bt; cp[c] = QUAD_CHARS[bt].codePointAt(0);
+      paint(fg, c, m1[0] / n1, m1[1] / n1, m1[2] / n1);
+      if (n0) paint(bgc, c, m0[0] / n0, m0[1] / n0, m0[2] / n0); else { const o = c * 3; bgc[o] = fg[o]; bgc[o + 1] = fg[o + 1]; bgc[o + 2] = fg[o + 2]; }
+    }
+  } else if (mode === 'braille' || mode === 'quad') {
     const q = addEdges(quantizeGrid(ink, W, H, 2, S.dither, S.threshold));
     const bits = res.bits = new Uint8Array(n);
     const blank = S.brailleBlank === 'space' ? 32 : 0x2800;
@@ -484,18 +519,27 @@ function convertCore(src, sw, sh, S, sk, pre) {
         bits[c] = bt; cp[c] = HALF_CHARS[bt].codePointAt(0); paint(fg, c, 0, 0, 0);
       }
     }
-  } else if (mode === 'ascii' || mode === 'halftone') {
-    let ramp = mode === 'ascii' ? getRamp(S) : HALFTONE_RAMP;
+  } else if (mode === 'halftone') {
+    // two dots per cell (cells are about twice as tall as wide); the renderer shifts the lower one by half a cell,
+    // like a printed screen. val: how much each dot covers (0..1); the text shows one character for both.
+    const val = res.val = new Float32Array(n * 2), rcp = HALFTONE_RAMP.map(ch => ch.codePointAt(0)), nl = rcp.length - 1;
+    const dv = i => Math.max(clamp(ink[i] + 0.5 - S.threshold, 0, 1), OL && OL.E[i] > EDGE_ON ? Math.min(1, 0.45 + OL.E[i]) : 0);
+    for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+      const c = cy * cols + cx, it = cy * 2 * W + cx, a = dv(it), b = dv(it + W);
+      val[2 * c] = a; val[2 * c + 1] = b;
+      cp[c] = rcp[Math.round((a + b) / 2 * nl)];
+      if (needColor) { const a3 = cellAvg(cx, cy, null); paint(fg, c, a3[0], a3[1], a3[2]); } else paint(fg, c, 0, 0, 0);
+    }
+  } else if (mode === 'ascii') {
+    let ramp = getRamp(S);
     // with direction outlines, keep line characters for real edges only so shading never looks like a stray line
     if (mode === 'ascii' && OL && S.outlineDir) { const r2 = ramp.filter(ch => !'-|/\_'.includes(ch)); if (r2.length >= 2) ramp = r2; }
     const rcp = ramp.map(ch => ch.codePointAt(0));
     const q = quantizeGrid(ink, W, H, ramp.length, S.dither, S.threshold);
-    if (mode === 'halftone') res.val = new Float32Array(n);
     for (let c = 0; c < n; c++) {
       const edge = OL && OL.E[c] > EDGE_ON;
       if (edge && mode === 'ascii') cp[c] = S.outlineDir ? dirCharCp(OL.Jxx[c], OL.Jyy[c], OL.Jxy[c], S.charAspect * sx / sy, S.charAspect) : rcp[rcp.length - 1];
       else cp[c] = edge ? rcp[rcp.length - 1] : rcp[q[c]];
-      if (res.val) res.val[c] = Math.max(clamp(ink[c] + 0.5 - S.threshold, 0, 1), edge ? Math.min(1, 0.45 + OL.E[c]) : 0);
       if (needColor) { const o = c * 3; paint(fg, c, C[o], C[o + 1], C[o + 2]); } else paint(fg, c, 0, 0, 0);
     }
   } else if (mode === 'glyph') {
