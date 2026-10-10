@@ -29,4 +29,5 @@ node test.mjs           # self-test, bit-exact regression check, feature checks,
 ```
 
 `node test.mjs` needs Node 22+ and Chrome or Edge (or `CHROME=<path>`). It exits with code 1 if
-anything fails. Single suites: `node test.mjs selftest`, `equiv`, `uitest`, `pwa`.
+anything fails. Single suites: `node test.mjs selftest`, `equiv`, `uitest`, `pwa`, `video`.
+To check video in your own browser: open `web/index.html#videotest` and press Start.

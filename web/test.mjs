@@ -3,8 +3,10 @@
 //   #equiv     bit-exact regression hashes of the engine, text formats and encoders (plus the worker copies)
 //   #uitest    the interactive features: gallery, crop, wipe, projects, batch ZIP, editing, effects, palettes, ANSI import
 //   pwa        served over http://localhost: the app installs its offline cache and still opens with the network off
+//   video      #videotest with real video decoding (a second browser with software rendering: headless GPU
+//              rendering shows no video frames): playback, every view, look preview, looping, seeking, export
 //
-//   node test.mjs                 run all three (exit code 1 if any fails)
+//   node test.mjs                 run all of them (exit code 1 if any fails)
 //   node test.mjs selftest equiv  run only these
 //   CHROME=path node test.mjs     use this browser
 //
@@ -17,10 +19,11 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const wanted = process.argv.slice(2).filter(a => !a.startsWith('-'));
-const suites = wanted.length ? wanted : ['selftest', 'equiv', 'uitest', 'pwa'];
+const wanted = process.argv.slice(2).filter(a => !a.startsWith('-')), videoBrowser = process.argv.includes('--video-browser');
+const suites = (wanted.length ? wanted : ['selftest', 'equiv', 'uitest', 'pwa', 'video']).filter(s => s !== 'video' || videoBrowser);
+const runVideo = !videoBrowser && (wanted.length ? wanted.includes('video') : true);
 
-try { execFileSync(process.execPath, [join(here, 'build.mjs'), '--check'], { stdio: 'inherit' }); }
+if (!videoBrowser) try { execFileSync(process.execPath, [join(here, 'build.mjs'), '--check'], { stdio: 'inherit' }); }
 catch { console.error('index.html is stale: run  node build.mjs  first'); process.exit(1); }
 { // the installable app's files: a valid manifest whose icons exist, and the offline cache lists only files that exist
   const m = JSON.parse(readFileSync(join(here, 'manifest.webmanifest'), 'utf8')), sw = readFileSync(join(here, 'sw.js'), 'utf8');
@@ -43,7 +46,7 @@ const profile = mkdtempSync(join(tmpdir(), 'textart-test-'));
 const port = 9300 + Math.floor(Math.random() * 600);
 const proc = spawn(browser, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run',
   '--disable-extensions', '--allow-file-access-from-files', '--window-size=1400,900', '--disable-background-timer-throttling',
-  '--disable-renderer-backgrounding', 'about:blank'], { stdio: 'ignore' });
+  '--disable-renderer-backgrounding', ...(videoBrowser ? ['--disable-gpu', '--autoplay-policy=no-user-gesture-required'] : []), 'about:blank'], { stdio: 'ignore' });
 
 let ws, id = 0, failed = false;
 const pending = new Map();
@@ -69,8 +72,13 @@ try {
     const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
     errors.set(sessionId, []);
     await send('Runtime.enable', {}, sessionId);
-    await send('Page.navigate', { url: page + '#' + suite }, sessionId);
+    const hash = suite === 'video' ? 'videotest' : suite;
+    await send('Page.navigate', { url: page + '#' + hash }, sessionId);
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true }, sessionId)).result.value;
+    if (suite === 'video') {   // the check waits for its Start button
+      for (let i = 0; i < 50 && !(await ev("!![...document.querySelectorAll('button')].find(b => b.textContent.includes('Start the video check'))")); i++) await sleep(200);
+      await ev("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Start the video check')).click()");
+    }
     let title = '';
     // stop waiting early when the page threw before it could report (e.g. a syntax error)
     while (Date.now() - t0 < 600000 && !/PASS|FAIL/.test(title) && !(errors.get(sessionId).length && Date.now() - t0 > 15000)) { await sleep(300); title = await ev('document.title') || ''; }
@@ -132,6 +140,13 @@ finally {
   proc.kill();
   await sleep(300);
   try { rmSync(profile, { recursive: true, force: true }); } catch {}
+}
+if (runVideo) {   // real video decoding needs software rendering: a second browser
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'video', '--video-browser'], { stdio: ['ignore', 'pipe', 'inherit'] });
+  let text = ''; child.stdout.on('data', d => { text += d; });
+  const code = await new Promise(r => child.on('close', r));
+  process.stdout.write(text.replace(/\n(ALL CHECKS PASSED|SOME CHECKS FAILED)\s*$/, '\n'));
+  if (code !== 0) failed = true;
 }
 console.log(failed ? '\nSOME CHECKS FAILED' : '\nALL CHECKS PASSED');
 process.exit(failed ? 1 : 0);

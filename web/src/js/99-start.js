@@ -43,6 +43,7 @@ if (location.hash.startsWith('#gifcheck=')) (async () => {   // diagnostics: #gi
 })();
 else if (location.hash.startsWith('#equiv')) equivTest();
 else if (location.hash.startsWith('#uitest')) uiTest();
+else if (location.hash.startsWith('#videotest')) videoTest();
 else if (location.hash.startsWith('#selftest')) selfTest();
 else if (location.hash.startsWith('#exp')) (async () => {
   const out = $('#selftest'); out.hidden = false; const log = [], NL = String.fromCharCode(10);
