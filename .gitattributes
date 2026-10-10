@@ -6,3 +6,4 @@ web/** text eol=lf
 web/**/*.png binary
 web/**/*.gif binary
 web/**/*.wasm binary
+web/**/*.ico binary
