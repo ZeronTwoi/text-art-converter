@@ -736,6 +736,29 @@ UI_TESTS.push(async function firstRunTour(ok, { wait }) {
   ok('Tour: Esc closes it', $('#tour').hidden);
 });
 
+UI_TESTS.push(async function revealVideo(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', colorMode: 'color', cols: 60 }); renderNow();
+  let got = await uiCaptureDownloads(() => exportReveal('gif', 2, 'wipe'));
+  const g = got[0] && decodeGIF(await got[0].blob.arrayBuffer());
+  ok('Before → after: a GIF of the right length', !!g && g.frames.length === 30, g && g.frames.length + ' frames');
+  if (g) {   // the first frame is the original picture, the last one the text art
+    const W = g.width, H = g.height, px = (f, x, y) => { const d = f.data || f.rgba || f.px; return d ? Array.from(d.slice((y * W + x) * 4, (y * W + x) * 4 + 3)) : null; };
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const cg = c.getContext('2d', { willReadFrequently: true });
+    const frameRGBA = f => { cg.putImageData(f.data instanceof ImageData ? f.data : new ImageData(new Uint8ClampedArray(f.data || f.rgba), W, H), 0, 0); return cg.getImageData(0, 0, W, H).data; };
+    let diff = 0; try { const a = frameRGBA(g.frames[0]), b = frameRGBA(g.frames[g.frames.length - 1]); for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 40) diff++; } catch (e) { diff = -1; }
+    ok('Before → after: starts as the picture, ends as the art', diff > W * H * 0.05, diff + ' pixels differ');
+  }
+  if (FAST_VIDEO_OK) {
+    got = await uiCaptureDownloads(() => exportReveal('webm', 2, 'fade'));
+    let dur = 0; if (got[0]) { const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(got[0].blob); await new Promise(r => { v.onloadedmetadata = r; v.onerror = r; setTimeout(r, 4000); }); dur = v.duration; }
+    ok('Before → after: a WEBM video', !!got[0] && Math.abs(dur - 2) < 0.2, dur.toFixed(2) + ' s');
+  }
+  await demoAnim(); await wait(30);
+  got = await uiCaptureDownloads(() => exportReveal('gif', 4, 'wipe'));
+  const ga = got[0] && decodeGIF(await got[0].blob.arrayBuffer());
+  ok('Before → after: an animation plays during the wipe', !!ga && ga.frames.length > 20);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

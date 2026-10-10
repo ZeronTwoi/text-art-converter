@@ -277,6 +277,7 @@ function initUI() {
   initCustomize();
   initPresent();
   initTour();
+  initReveal();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

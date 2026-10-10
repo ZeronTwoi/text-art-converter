@@ -531,6 +531,16 @@
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
 </dialog>
+<dialog id="revealDialog">
+  <h3>Before → after video</h3>
+  <p class="muted small" id="revealNote" style="margin:0 0 8px"></p>
+  <div class="pair">
+    <div class="row"><label for="revealFmt">Save as</label><select id="revealFmt"><option value="mp4">MP4 video</option><option value="webm">WEBM video</option><option value="gif">GIF</option></select></div>
+    <div class="row"><label for="revealStyle">How it changes</label><select id="revealStyle"><option value="wipe">Wipe across</option><option value="fade">Fade</option></select></div>
+  </div>
+  <div class="row" id="revealSecsRow"><label for="revealSecs">Length <output id="revealSecsOut">4 s</output></label><input type="range" id="revealSecs" min="2" max="10" step="0.5" value="4"></div>
+  <div class="acts"><button class="btn" id="revealCancel">Cancel</button><button class="btn primary" id="revealGo">Make it</button></div>
+</dialog>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>
   <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>
