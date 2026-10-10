@@ -98,6 +98,14 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
+  if (shapes && res.ov) {   // captions and edited cells of a dot / block picture: drawn as characters
+    const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
+    ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
+      ctx.fillStyle = hex6(k);
+      for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
+    }
+  }
   return canvas;
 }
 
@@ -238,14 +246,16 @@ function svgBody(res, S, parts) {
       }
       parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
     }
-  } else {
+  }
+  if (!shapes || res.ov) {
+    const ov = shapes ? res.ov : null;
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     parts.push(`<g font-family="${fontCss(S).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
     for (let y = 0; y < rows; y++) {
       let xs = [], txt = '', k0 = -1;
       const flush = () => { if (txt) parts.push(`<text x="${xs.join(' ')}" y="${f(y * ch + ch / 2)}" fill="${hex6(k0)}">${escHTML(txt)}</text>`); xs = []; txt = ''; };
       for (let x = 0; x < cols; x++) {
-        const c = y * cols + x; if (isBlankCp(cp[c])) continue;
+        const c = y * cols + x; if (isBlankCp(cp[c]) || (ov && !ov[c])) continue;
         const o = c * 3, k = (fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2];
         if (k !== k0) { flush(); k0 = k; }
         xs.push(f(x * cw + cw / 2)); txt += chr(cp[c]);

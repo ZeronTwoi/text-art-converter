@@ -168,7 +168,11 @@ async function openFile(file, how) {
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
-  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { setTextSource(await file.text(), name); return; }
+  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {
+    const { text, ansi } = await readTextArt(file);
+    openTextArt(ansi ? null : text, name, ansi, text);
+    return;
+  }
   showProgress('Opening ' + name, true);
   try {
     let src;
@@ -204,10 +208,10 @@ function imageUrlFrom(dt) {
   const cands = [m && m[1], (dt.getData('text/uri-list') || '').split('\n').find(l => l && !l.startsWith('#')), dt.getData('text/plain')];
   return cands.map(u => (u || '').trim()).find(u => /^https?:\/\/\S+$/i.test(u)) || null;
 }
-function setTextSource(text, name) {
+function setTextSource(text, name, ansi) {
   if (!text || !text.trim()) return toast('No text to render');
-  const r = textResult(text, S);
-  setSource({ kind: 'text', text, name: name || 'text-art.txt', w: r.cols, h: r.rows });
+  const r = textResultRaw(text, S, ansi);
+  setSource({ kind: 'text', text, ansi: ansi || null, name: name || 'text-art.txt', w: r.cols, h: r.rows });
 }
 function disposeSource(s) {
   clearEngineCaches();
@@ -356,12 +360,14 @@ function tick(now) {
   if (s.kind === 'anim' && App.playing) Prefetch.run();
   updatePlayerUI();
 }
+/* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
+const viewS = () => App.peek || S;
 function computeCurrent() {
-  const s = App.src;
-  if (s.kind === 'text') return textResult(s.text, S);
+  const s = App.src, St = viewS();
+  if (s.kind === 'text') return textResult(s.text, St, s.ansi);
   const d = currentDrawable(); if (!d) return null;
   if (s.kind === 'anim' && Prefetch.pending(d[0], d[1], d[2])) return null;   // a worker is converting this frame: keep the last one
-  return convert(d[0], d[1], d[2], S);
+  return convert(d[0], d[1], d[2], St);
 }
 /* Playing video / webcam: this thread resamples the newest frame and a worker does the rest while the next frame
    is drawn (two in flight); results are shown in order, older ones are dropped. Paused frames convert directly. */
@@ -370,7 +376,7 @@ const Live = {
   active() { const s = App.src; return !!s && (s.kind === 'video' || s.kind === 'webcam') && App.playing && !App.exporting && this.fails < 3 && Pool.size() > 0; },
   start() {
     const s = App.src, d = currentDrawable(); if (!d) return;
-    const St = Object.assign({}, S), id = ++this.seq, t0 = performance.now();
+    const St = Object.assign({}, viewS()), id = ++this.seq, t0 = performance.now();
     let pre;
     try { pre = convertInputs(d[0], d[1], d[2], St); } catch (e) { console.error(e); return; }
     this.inflight++;
@@ -378,7 +384,7 @@ const Live = {
       if (App.src !== s || App.exporting) return;
       if (!this.active()) { App.dirty = true; return; }   // paused meanwhile: show the exact paused frame instead
       if (id < this.shown) return;
-      this.shown = id; showResult(res, t0);
+      this.shown = id; showResult(withOverlay(res, St), t0);
     }, () => { this.fails++; App.dirty = true; }).finally(() => { this.inflight--; });
   },
 };
@@ -416,8 +422,13 @@ function renderNow() {
   if (res) showResult(res, t0);
 }
 function showResult(res, t0) {
-  App.res = res;
   const out = $('#outCanvas');
+  if (App.peek) {   // previewing a look: only the picture changes, your result (exports, sharing) stays
+    drawPreview(res, App.peek, out);
+    setText('stats', `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`);
+    applyZoom(); return;
+  }
+  App.res = res;
   drawPreview(res, S, out);
   if (App.view === 'src' || App.view === 'split') drawSourceView();
   if (App.view === 'text') updateRawText();

@@ -246,7 +246,8 @@ function engineSource() {
   const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
-    getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertCore,
+    getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
+    applyOverlay, wrapCaption, captionRaster,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -262,6 +263,8 @@ function engineSource() {
     'let LZW_TABLE = null, LZW_USED = null, edgesWasm;',
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
+    'function withOverlay(r) { return r; }',
+    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r;',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------
@@ -275,7 +278,7 @@ const Pool = (() => {
   const source = () => `'use strict';
 ${engineSource()}
 const canvasFor = bm => { const c = new OffscreenCanvas(bm.width, bm.height); c.getContext('2d').drawImage(bm, 0, 0); bm.close(); return c; };
-const resTransfer = r => [r.cp.buffer, r.fg.buffer, r.bgc && r.bgc.buffer, r.bits && r.bits.buffer, r.val && r.val.buffer].filter(Boolean);
+const resTransfer = r => [r.cp.buffer, r.fg.buffer, r.bgc && r.bgc.buffer, r.bits && r.bits.buffer, r.val && r.val.buffer, r.ov && r.ov.buffer].filter(Boolean);
 const frameCanvas = new OffscreenCanvas(1, 1), frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
 onmessage = async e => {
   const { id, op, a } = e.data;
@@ -285,7 +288,7 @@ onmessage = async e => {
     else if (op === 'apng') { r = await apngJobBytes(a); tr = [r.data.buffer]; }
     else if (op === 'webp') { r = await webpJobBytes(a); tr = [r.bits.buffer].concat(r.alph ? [r.alph.buffer] : []); }
     else if (op === 'renderFrame') {   // (convert +) draw one animation frame → RGBA
-      const res = a.res || convertCore(null, a.sw, a.sh, a.St, null, a.pre);
+      const res = a.res || ovApply(convertCore(null, a.sw, a.sh, a.St, null, a.pre), a.ov);
       renderResult(res, a.St, frameCanvas, a.scale, a.ropts || {});
       if (frameCanvas.width !== a.w || frameCanvas.height !== a.h) throw new Error('frame size changed');
       r = frameCtx.getImageData(0, 0, a.w, a.h).data; tr = [r.buffer];
@@ -293,7 +296,7 @@ onmessage = async e => {
     else if (op === 'sizes') { const c = canvasFor(a.img); r = []; for (const t of a.types) { const b = await c.convertToBlob({ type: t, quality: a.quality }); r.push(b.type === t ? b.size : -1); } }
     else if (op === 'convertPre') { r = convertCore(null, a.sw, a.sh, a.St, null, a.pre); tr = resTransfer(r); }
     else if (op === 'pngFrame') {   // (convert +) draw + PNG of one animation frame, plus its text
-      const res = a.res || convertCore(null, a.sw, a.sh, a.St, null, a.pre);
+      const res = a.res || ovApply(convertCore(null, a.sw, a.sh, a.St, null, a.pre), a.ov);
       const c = new OffscreenCanvas(1, 1); renderResult(res, a.St, c, a.scale);
       const png = new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
       r = { png, text: resultText(res) }; tr = [png.buffer];
@@ -351,11 +354,11 @@ function convertOnWorker(src, sw, sh, St) {
   return Pool.run('convertPre', { pre, sw, sh, St });
 }
 /* Arguments for a worker job that draws (and converts) one export frame: the memoised result if there is one,
-   otherwise the pre-drawn pixels. local() does the same on this thread. */
+   otherwise the pre-drawn pixels (and the overlay to put on the conversion). local() does the same on this thread. */
 function frameJobArgs(f, St) {
-  if (f.text != null) return { res: textResult(f.text, St) };
+  if (f.text != null) return { res: textResult(f.text, St, f.ansi) };
   const res = peekResult(f.d, f.w, f.h, St);
-  return res ? { res } : { pre: convertInputs(f.d, f.w, f.h, St), sw: f.w, sh: f.h };
+  return res ? { res: withOverlay(res, St) } : { pre: convertInputs(f.d, f.w, f.h, St), sw: f.w, sh: f.h, ov: overlaySpec(St) };
 }
-const frameJobResult = (a, St) => a.res || convertCore(null, a.sw, a.sh, St, null, a.pre);
+const frameJobResult = (a, St) => a.res || withOverlay(convertCore(null, a.sw, a.sh, St, null, a.pre), St);
 

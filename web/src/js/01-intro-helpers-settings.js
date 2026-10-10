@@ -99,6 +99,7 @@ const DEFAULTS = {
   rotate: 0, flipH: false, flipV: false, cropL: 0, cropR: 0, cropT: 0, cropB: 0,
   platform: 'discord', shareOptimize: false, shareTarget: 'phone', shareSplit: false, shareColor: false, shareTheme: 'auto', calib: {},
   appPalette: 'discord', exportGoal: 'chat',
+  captionTop: '', captionBottom: '', captionStyle: 'plain', captionBox: true, captionColor: '#ffffff',
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1,
 };
 const TONE_KEYS = ['brightness', 'contrast', 'gamma', 'saturation', 'threshold', 'edge', 'sharpen', 'invert', 'autoLevels'];

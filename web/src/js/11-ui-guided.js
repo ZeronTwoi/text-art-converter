@@ -4,7 +4,7 @@
 const PRESET_BASE = { invert: false, edge: 0, sharpen: 0, outline: DEFAULTS.outline, outlineWidth: 1, fill: 1, localContrast: 0, bgFade: 0, bgMode: 'solid', sortRamp: false, saturation: 1, threshold: 0.5, brightness: 0, contrast: 0, gamma: 1 };
 /* Your own looks: everything except settings that belong to one picture (width, crop, turn) or to sharing/exporting. */
 const LOOK_STORE = 'textArtStudio.looks.v1';
-const LOOK_SKIP = new Set(['cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'fontSize']);
+const LOOK_SKIP = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'fontSize']);
 let userLooks = [];
 function loadUserLooks() {
   try {
@@ -81,7 +81,7 @@ async function renderLooks() {
     const draw = res => { if (live()) try { renderResult(res, St, canvas, 1); } catch (e) { console.warn(e); } };
     try {
       const memo = peekResult(d[0], d[1], d[2], St);
-      if (memo || !Pool.size()) draw(memo || convert(d[0], d[1], d[2], St));
+      if (memo || !Pool.size()) draw(memo || convertRaw(d[0], d[1], d[2], St));
       else {   // the thumbnails convert on the workers, all at once; only the small pictures are drawn here
         const key = memoKey(d[0], d[1], d[2], St);
         convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e));

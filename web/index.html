@@ -314,7 +314,7 @@ dialog h4{margin:14px 0 6px}
   </nav>
   <div class="topacts">
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
-    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt">
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
@@ -642,7 +642,7 @@ dialog h4{margin:14px 0 6px}
 <div class="toast" id="toast"></div>
 <dialog id="textDialog">
   <h3>Text → Image</h3>
-  <p class="muted small" style="margin:0 0 8px">Paste ASCII, braille or block text art. It is drawn with the current font, colour and size settings and can be exported as PNG, JPG, WEBP, SVG or HTML.</p>
+  <p class="muted small" style="margin:0 0 8px">Paste ASCII, braille or block text art, or coloured ANSI art (terminal escape codes, .ans files). It is drawn with the current font, colour and size settings and can be exported as PNG, JPG, WEBP, SVG or HTML.</p>
   <textarea id="textIn" spellcheck="false" placeholder="Paste text art here…"></textarea>
   <div class="textopts">
     <div class="row"><label>Font</label><select data-key="fontFamily">
@@ -657,7 +657,7 @@ dialog h4{margin:14px 0 6px}
   </div>
   <div class="acts">
     <label class="btn left" for="txtFile">Load .txt…</label>
-    <input type="file" id="txtFile" accept=".txt,.ans,.asc,.nfo,text/plain" hidden>
+    <input type="file" id="txtFile" accept=".txt,.ans,.asc,.nfo,.diz,text/plain" hidden>
     <button class="btn" id="textCancel">Cancel</button>
     <button class="btn primary" id="textOk">Render</button>
   </div>
@@ -686,7 +686,7 @@ dialog h4{margin:14px 0 6px}
   <h3>Batch convert files</h3>
   <p class="muted small" style="margin:0 0 10px">Converts every file with the current look and settings and saves one ZIP. Animations and videos can also become GIFs (whole clip, with the GIF options of the export panel).</p>
   <div class="row"><label class="btn" for="batchFiles" style="width:auto">Choose files…</label> <span class="muted small" id="batchCount">No files chosen</span>
-    <input type="file" id="batchFiles" multiple hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.bmp,.svg,.mp4,.webm,.mov,.mkv,.txt"></div>
+    <input type="file" id="batchFiles" multiple hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.bmp,.svg,.mp4,.webm,.mov,.mkv,.txt,.ans"></div>
   <h4>Save for every file</h4>
   <div class="inline" id="batchFormats" style="flex-wrap:wrap;gap:12px"></div>
   <div class="inline" style="flex-wrap:wrap;gap:12px;margin-top:8px">
@@ -807,6 +807,7 @@ const DEFAULTS = {
   rotate: 0, flipH: false, flipV: false, cropL: 0, cropR: 0, cropT: 0, cropB: 0,
   platform: 'discord', shareOptimize: false, shareTarget: 'phone', shareSplit: false, shareColor: false, shareTheme: 'auto', calib: {},
   appPalette: 'discord', exportGoal: 'chat',
+  captionTop: '', captionBottom: '', captionStyle: 'plain', captionBox: true, captionColor: '#ffffff',
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1,
 };
 const TONE_KEYS = ['brightness', 'contrast', 'gamma', 'saturation', 'threshold', 'edge', 'sharpen', 'invert', 'autoLevels'];
@@ -1343,9 +1344,9 @@ function backgroundMask(C, A, W, H) {
 }
 
 /* Settings that only change how a result is drawn or exported, not the result itself. */
-const RENDER_ONLY_KEYS = new Set(['fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat']);
+const RENDER_ONLY_KEYS = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat']);
 const CONVERT_KEYS = Object.keys(DEFAULTS).filter(k => !RENDER_ONLY_KEYS.has(k));
-const resultBytes = r => r.cp.byteLength + r.fg.byteLength + (r.bgc ? r.bgc.byteLength : 0) + (r.bits ? r.bits.byteLength : 0) + (r.val ? r.val.byteLength : 0) + 200;
+const resultBytes = r => r.cp.byteLength + r.fg.byteLength + (r.bgc ? r.bgc.byteLength : 0) + (r.bits ? r.bits.byteLength : 0) + (r.val ? r.val.byteLength : 0) + (r.ov ? r.ov.byteLength : 0) + 200;
 /* Main conversion: drawable → result grid. Results of immutable sources are memoised (callers never modify a result),
    so replaying an animation, redrawing at another size or switching views costs no conversion at all. */
 const convertSig = S => JSON.stringify(CONVERT_KEYS.map(k => S[k]));
@@ -1383,14 +1384,16 @@ function maskPixels(src, S, W, H) {
   }
   return px;
 }
-function convert(src, sw, sh, S) {
+/* the result as shown and saved: the conversion plus captions and hand edits (see overlay) */
+function convert(src, sw, sh, S) { return withOverlay(convertRaw(src, sw, sh, S), S); }
+function convertRaw(src, sw, sh, S) {
   const key = memoKey(src, sw, sh, S);
   if (!key) return convertCore(src, sw, sh, S, null);
   let r = resultCache.get(key);
   if (!r) { r = convertCore(src, sw, sh, S, srcKey(src)); resultCache.set(key, r, resultBytes(r)); }
   return r;
 }
-/* an already computed result, or undefined (never converts) */
+/* an already computed conversion (without overlay), or undefined (never converts) */
 function peekResult(src, sw, sh, S) { const key = memoKey(src, sw, sh, S); return key ? resultCache.get(key) : undefined; }
 /* The source resampled to the character grid (cached for immutable sources). */
 function samplePixels(src, sw, sh, S, W, H, sk) {
@@ -1662,8 +1665,10 @@ function convertCore(src, sw, sh, S, sk, pre) {
   return res;
 }
 
-/* Text art typed/pasted by the user → result grid */
-function textResult(text, S) {
+/* Text art typed/pasted by the user → result grid (ansi: colours of an imported ANSI file, see ansiParse) */
+function textResult(text, S, ansi) { return withOverlay(textResultRaw(text, S, ansi), S); }
+function textResultRaw(text, S, ansi) {
+  if (ansi) return ansiResult(ansi, S);
   const lines = String(text).replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');
   while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   const arr = lines.map(l => Array.from(l));
@@ -1779,6 +1784,14 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const cp = res.cp, groups = groupsOf(res, c => isBlankCp(cp[c]));
     for (const [k, list] of groups) {
+      ctx.fillStyle = hex6(k);
+      for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
+    }
+  }
+  if (shapes && res.ov) {   // captions and edited cells of a dot / block picture: drawn as characters
+    const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
+    ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
       ctx.fillStyle = hex6(k);
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
@@ -1923,14 +1936,16 @@ function svgBody(res, S, parts) {
       }
       parts.push(`<path fill="${hex6(k)}" d="${d}"/>`);
     }
-  } else {
+  }
+  if (!shapes || res.ov) {
+    const ov = shapes ? res.ov : null;
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     parts.push(`<g font-family="${fontCss(S).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
     for (let y = 0; y < rows; y++) {
       let xs = [], txt = '', k0 = -1;
       const flush = () => { if (txt) parts.push(`<text x="${xs.join(' ')}" y="${f(y * ch + ch / 2)}" fill="${hex6(k0)}">${escHTML(txt)}</text>`); xs = []; txt = ''; };
       for (let x = 0; x < cols; x++) {
-        const c = y * cols + x; if (isBlankCp(cp[c])) continue;
+        const c = y * cols + x; if (isBlankCp(cp[c]) || (ov && !ov[c])) continue;
         const o = c * 3, k = (fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2];
         if (k !== k0) { flush(); k0 = k; }
         xs.push(f(x * cw + cw / 2)); txt += chr(cp[c]);
@@ -2455,7 +2470,8 @@ function engineSource() {
   const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
-    getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertCore,
+    getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
+    applyOverlay, wrapCaption, captionRaster,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -2471,6 +2487,8 @@ function engineSource() {
     'let LZW_TABLE = null, LZW_USED = null, edgesWasm;',
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
+    'function withOverlay(r) { return r; }',
+    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r;',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------
@@ -2484,7 +2502,7 @@ const Pool = (() => {
   const source = () => `'use strict';
 ${engineSource()}
 const canvasFor = bm => { const c = new OffscreenCanvas(bm.width, bm.height); c.getContext('2d').drawImage(bm, 0, 0); bm.close(); return c; };
-const resTransfer = r => [r.cp.buffer, r.fg.buffer, r.bgc && r.bgc.buffer, r.bits && r.bits.buffer, r.val && r.val.buffer].filter(Boolean);
+const resTransfer = r => [r.cp.buffer, r.fg.buffer, r.bgc && r.bgc.buffer, r.bits && r.bits.buffer, r.val && r.val.buffer, r.ov && r.ov.buffer].filter(Boolean);
 const frameCanvas = new OffscreenCanvas(1, 1), frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
 onmessage = async e => {
   const { id, op, a } = e.data;
@@ -2494,7 +2512,7 @@ onmessage = async e => {
     else if (op === 'apng') { r = await apngJobBytes(a); tr = [r.data.buffer]; }
     else if (op === 'webp') { r = await webpJobBytes(a); tr = [r.bits.buffer].concat(r.alph ? [r.alph.buffer] : []); }
     else if (op === 'renderFrame') {   // (convert +) draw one animation frame → RGBA
-      const res = a.res || convertCore(null, a.sw, a.sh, a.St, null, a.pre);
+      const res = a.res || ovApply(convertCore(null, a.sw, a.sh, a.St, null, a.pre), a.ov);
       renderResult(res, a.St, frameCanvas, a.scale, a.ropts || {});
       if (frameCanvas.width !== a.w || frameCanvas.height !== a.h) throw new Error('frame size changed');
       r = frameCtx.getImageData(0, 0, a.w, a.h).data; tr = [r.buffer];
@@ -2502,7 +2520,7 @@ onmessage = async e => {
     else if (op === 'sizes') { const c = canvasFor(a.img); r = []; for (const t of a.types) { const b = await c.convertToBlob({ type: t, quality: a.quality }); r.push(b.type === t ? b.size : -1); } }
     else if (op === 'convertPre') { r = convertCore(null, a.sw, a.sh, a.St, null, a.pre); tr = resTransfer(r); }
     else if (op === 'pngFrame') {   // (convert +) draw + PNG of one animation frame, plus its text
-      const res = a.res || convertCore(null, a.sw, a.sh, a.St, null, a.pre);
+      const res = a.res || ovApply(convertCore(null, a.sw, a.sh, a.St, null, a.pre), a.ov);
       const c = new OffscreenCanvas(1, 1); renderResult(res, a.St, c, a.scale);
       const png = new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
       r = { png, text: resultText(res) }; tr = [png.buffer];
@@ -2560,13 +2578,13 @@ function convertOnWorker(src, sw, sh, St) {
   return Pool.run('convertPre', { pre, sw, sh, St });
 }
 /* Arguments for a worker job that draws (and converts) one export frame: the memoised result if there is one,
-   otherwise the pre-drawn pixels. local() does the same on this thread. */
+   otherwise the pre-drawn pixels (and the overlay to put on the conversion). local() does the same on this thread. */
 function frameJobArgs(f, St) {
-  if (f.text != null) return { res: textResult(f.text, St) };
+  if (f.text != null) return { res: textResult(f.text, St, f.ansi) };
   const res = peekResult(f.d, f.w, f.h, St);
-  return res ? { res } : { pre: convertInputs(f.d, f.w, f.h, St), sw: f.w, sh: f.h };
+  return res ? { res: withOverlay(res, St) } : { pre: convertInputs(f.d, f.w, f.h, St), sw: f.w, sh: f.h, ov: overlaySpec(St) };
 }
-const frameJobResult = (a, St) => a.res || convertCore(null, a.sw, a.sh, St, null, a.pre);
+const frameJobResult = (a, St) => a.res || withOverlay(convertCore(null, a.sw, a.sh, St, null, a.pre), St);
 
 /* =====================================================================
    Sources & playback
@@ -2738,7 +2756,11 @@ async function openFile(file, how) {
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
-  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { setTextSource(await file.text(), name); return; }
+  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {
+    const { text, ansi } = await readTextArt(file);
+    openTextArt(ansi ? null : text, name, ansi, text);
+    return;
+  }
   showProgress('Opening ' + name, true);
   try {
     let src;
@@ -2774,10 +2796,10 @@ function imageUrlFrom(dt) {
   const cands = [m && m[1], (dt.getData('text/uri-list') || '').split('\n').find(l => l && !l.startsWith('#')), dt.getData('text/plain')];
   return cands.map(u => (u || '').trim()).find(u => /^https?:\/\/\S+$/i.test(u)) || null;
 }
-function setTextSource(text, name) {
+function setTextSource(text, name, ansi) {
   if (!text || !text.trim()) return toast('No text to render');
-  const r = textResult(text, S);
-  setSource({ kind: 'text', text, name: name || 'text-art.txt', w: r.cols, h: r.rows });
+  const r = textResultRaw(text, S, ansi);
+  setSource({ kind: 'text', text, ansi: ansi || null, name: name || 'text-art.txt', w: r.cols, h: r.rows });
 }
 function disposeSource(s) {
   clearEngineCaches();
@@ -2926,12 +2948,14 @@ function tick(now) {
   if (s.kind === 'anim' && App.playing) Prefetch.run();
   updatePlayerUI();
 }
+/* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
+const viewS = () => App.peek || S;
 function computeCurrent() {
-  const s = App.src;
-  if (s.kind === 'text') return textResult(s.text, S);
+  const s = App.src, St = viewS();
+  if (s.kind === 'text') return textResult(s.text, St, s.ansi);
   const d = currentDrawable(); if (!d) return null;
   if (s.kind === 'anim' && Prefetch.pending(d[0], d[1], d[2])) return null;   // a worker is converting this frame: keep the last one
-  return convert(d[0], d[1], d[2], S);
+  return convert(d[0], d[1], d[2], St);
 }
 /* Playing video / webcam: this thread resamples the newest frame and a worker does the rest while the next frame
    is drawn (two in flight); results are shown in order, older ones are dropped. Paused frames convert directly. */
@@ -2940,7 +2964,7 @@ const Live = {
   active() { const s = App.src; return !!s && (s.kind === 'video' || s.kind === 'webcam') && App.playing && !App.exporting && this.fails < 3 && Pool.size() > 0; },
   start() {
     const s = App.src, d = currentDrawable(); if (!d) return;
-    const St = Object.assign({}, S), id = ++this.seq, t0 = performance.now();
+    const St = Object.assign({}, viewS()), id = ++this.seq, t0 = performance.now();
     let pre;
     try { pre = convertInputs(d[0], d[1], d[2], St); } catch (e) { console.error(e); return; }
     this.inflight++;
@@ -2948,7 +2972,7 @@ const Live = {
       if (App.src !== s || App.exporting) return;
       if (!this.active()) { App.dirty = true; return; }   // paused meanwhile: show the exact paused frame instead
       if (id < this.shown) return;
-      this.shown = id; showResult(res, t0);
+      this.shown = id; showResult(withOverlay(res, St), t0);
     }, () => { this.fails++; App.dirty = true; }).finally(() => { this.inflight--; });
   },
 };
@@ -2986,8 +3010,13 @@ function renderNow() {
   if (res) showResult(res, t0);
 }
 function showResult(res, t0) {
-  App.res = res;
   const out = $('#outCanvas');
+  if (App.peek) {   // previewing a look: only the picture changes, your result (exports, sharing) stays
+    drawPreview(res, App.peek, out);
+    setText('stats', `Preview of a look: ${res.cols}×${res.rows} characters · click the card to apply it`);
+    applyZoom(); return;
+  }
+  App.res = res;
   drawPreview(res, S, out);
   if (App.view === 'src' || App.view === 'split') drawSourceView();
   if (App.view === 'text') updateRawText();
@@ -3670,7 +3699,7 @@ async function loadFileSource(file) {
   const name = file.name || 'file', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const fmt = sniffFormat(new Uint8Array(await file.slice(0, 64).arrayBuffer())), type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   let src;
-  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { const text = await file.text(), r = textResult(text, S); src = { kind: 'text', text, w: r.cols, h: r.rows }; }
+  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { const { text, ansi } = await readTextArt(file), r = textResultRaw(text, S, ansi); src = { kind: 'text', text, ansi, w: r.cols, h: r.rows }; }
   else if (fmt === 'video' || (!fmt && (type.startsWith('video/') || VIDEO_EXT.has(ext)))) { src = await loadVideoFile(file); src.video.muted = true; }
   else src = await loadImageFile(file, fmt, ext);
   src.name = name;
@@ -3704,7 +3733,7 @@ async function runBatch(files, opts) {
         const moving = src.kind === 'anim' || src.kind === 'video';
         if (moving && opts.gif) out.push({ name: base + '.gif', data: await gifBytes(p => step(clamp(p, 0, 1) * 0.9), src) });
         let res;
-        if (src.kind === 'text') res = textResult(src.text, S);
+        if (src.kind === 'text') res = textResult(src.text, S, src.ansi);
         else if (src.kind === 'video') { await seekVideo(src.video, 0); res = convert(src.video, src.video.videoWidth, src.video.videoHeight, S); }
         else res = convert(src.kind === 'anim' ? src.frames[0].bmp : src.bmp, src.w, src.h, S);
         const still = moving ? '_frame1' : '';
@@ -3796,10 +3825,10 @@ async function* exportFrames(s = App.src, fps0 = S.gifFps) {
     }
   } else {
     const d = s.kind === 'text' ? null : s === App.src ? currentDrawable() : [s.bmp, s.w, s.h];
-    yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, delay: 100, index: 0, total: 1 };
+    yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, ansi: s.ansi || null, delay: 100, index: 0, total: 1 };
   }
 }
-const frameResult = f => f.text != null ? textResult(f.text, S) : convert(f.d, f.w, f.h, S);
+const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, S);
 function confirmLarge(total) {
   if (total > 900) return confirm(`This will export ${total} frames, which can take a while and use a lot of memory. Continue? (Tip: set a trim range or lower the FPS.)`);
   return true;
@@ -3850,7 +3879,7 @@ async function gifSharedPalette(scale, colors, withTransparency, s = App.src) {
   } else if (s.kind === 'video') {
     const v = s.video;
     for (let k = 0; k < 12; k++) { await seekVideo(v, a + (b - a) * k / 12); add(convert(v, v.videoWidth, v.videoHeight, S)); }
-  } else if (s.kind === 'text') add(textResult(s.text, S));
+  } else if (s.kind === 'text') add(textResult(s.text, S, s.ansi));
   else { const d = s === App.src ? currentDrawable() : [s.bmp, s.w, s.h]; if (d) add(convert(d[0], d[1], d[2], S)); }
   const P = paletteFromHistogram(H.cnt, H.sr, H.sg, H.sb, colors, withTransparency);
   P.near = nearestLut(P.pal, P.off, P.n);
@@ -4244,11 +4273,11 @@ async function collectResults(progress) {
   for await (const f of exportFrames()) {   // frames not converted yet are converted on workers, several at once
     if (App.cancel) throw cancelled();
     delays.push(Math.round(f.delay));
-    const memo = f.text != null ? textResult(f.text, S) : peekResult(f.d, f.w, f.h, S);
-    if (memo) await jobs.add(null, () => memo);
+    const memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, S);
+    if (memo) await jobs.add(null, () => withOverlay(memo, S));
     else {
       const key = memoKey(f.d, f.w, f.h, S), a = Pool.size() ? frameJobArgs(f, S) : null;
-      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return r; })), () => a ? frameJobResult(a, S) : frameResult(f));
+      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, S); })), () => a ? frameJobResult(a, S) : frameResult(f));
     }
     progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
     await nextTick();
@@ -4650,8 +4679,12 @@ function initUI() {
   // text dialog
   const dlg = $('#textDialog');
   $('#textCancel').addEventListener('click', () => dlg.close());
-  $('#textOk').addEventListener('click', () => { const t = $('#textIn').value; dlg.close(); setTextSource(t, 'text-art.txt'); });
-  $('#txtFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (f) $('#textIn').value = await f.text(); });
+  $('#textOk').addEventListener('click', () => { const t = $('#textIn').value; dlg.close(); openTextArt(t, 'text-art.txt'); });
+  $('#txtFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const { text, ansi } = await readTextArt(f);
+    if (ansi) { dlg.close(); openTextArt(null, f.name, ansi, text); } else $('#textIn').value = text;
+  });
 
   // drag & drop
   let depth = 0;
@@ -4684,6 +4717,7 @@ function initUI() {
       return;
     }
     const txt = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (txt && hasAnsiCodes(txt)) { e.preventDefault(); openTextArt(txt, 'pasted.ans'); return; }
     if (url && /\.(gif|webp|png|apng|jpe?g|avif|mp4|webm)(\?|#|$)/i.test(url)) { e.preventDefault(); toast('Downloading the pasted link…'); openFromUrl(url).then(ok => { if (!ok) toast("Couldn't download that link. Save the file and open it instead", 'error'); }); return; }
     if (txt) { e.preventDefault(); openTextDialog(txt); }
   });
@@ -4725,7 +4759,7 @@ function setView(v) {
 const PRESET_BASE = { invert: false, edge: 0, sharpen: 0, outline: DEFAULTS.outline, outlineWidth: 1, fill: 1, localContrast: 0, bgFade: 0, bgMode: 'solid', sortRamp: false, saturation: 1, threshold: 0.5, brightness: 0, contrast: 0, gamma: 1 };
 /* Your own looks: everything except settings that belong to one picture (width, crop, turn) or to sharing/exporting. */
 const LOOK_STORE = 'textArtStudio.looks.v1';
-const LOOK_SKIP = new Set(['cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'fontSize']);
+const LOOK_SKIP = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'fontSize']);
 let userLooks = [];
 function loadUserLooks() {
   try {
@@ -4802,7 +4836,7 @@ async function renderLooks() {
     const draw = res => { if (live()) try { renderResult(res, St, canvas, 1); } catch (e) { console.warn(e); } };
     try {
       const memo = peekResult(d[0], d[1], d[2], St);
-      if (memo || !Pool.size()) draw(memo || convert(d[0], d[1], d[2], St));
+      if (memo || !Pool.size()) draw(memo || convertRaw(d[0], d[1], d[2], St));
       else {   // the thumbnails convert on the workers, all at once; only the small pictures are drawn here
         const key = memoKey(d[0], d[1], d[2], St);
         convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e));
@@ -5456,7 +5490,374 @@ async function equivTest() {
   if (fails) say('\nNew baseline (paste into EQUIV_BASELINE if the change was intended):\n' + JSON.stringify(now));
   document.title = fails || /differ/.test(workerNote) ? 'EQUIV FAIL' : 'EQUIV PASS';
 }
+/* =====================================================================
+   Overlay: captions and hand-edited characters on top of a converted result
+   The conversion results stay as they are (cached, shared with workers); an overlay makes a changed copy.
+   Cells it writes are flagged in res.ov, so the dot / block styles draw them as characters (or as the
+   style's own dots for big captions). Everything that shows or saves a result goes through convert() /
+   textResult() or a worker job with the overlay spec, so the preview, every export and the shared text match.
+   ===================================================================== */
+/* hand edits of single cells, for one grid size (cols × rows): index → { cp, rgb (null = keep the colour) } */
+const Edits = { cols: 0, rows: 0, cells: new Map(), ver: 0, undo: [], redo: [] };
+function editsClear() { Edits.cells.clear(); Edits.cols = Edits.rows = 0; Edits.ver++; Edits.undo = []; Edits.redo = []; }
+const CAPTION_KEYS = ['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor'];
+let ovSpecMemo = null;
+/* what to draw over results made with settings S (null: nothing) */
+function overlaySpec(S) {
+  const top = String(S.captionTop || '').trim(), bottom = String(S.captionBottom || '').trim();
+  if (!top && !bottom && !Edits.cells.size) return null;
+  const ramp = (S.mode === 'ascii' || S.mode === 'edge') ? getRamp(S) : null;
+  const dense = S.mode === 'halftone' ? HALFTONE_RAMP[HALFTONE_RAMP.length - 1] : ramp && ramp.length ? ramp[ramp.length - 1] : '█';
+  const sig = [top, bottom, S.captionStyle, S.captionBox, S.captionColor, S.bg, S.mode, S.charAspect, S.brailleBlank, dense, Edits.ver].join('\u0001');
+  if (ovSpecMemo && ovSpecMemo.sig === sig) return ovSpecMemo;
+  let edits = null;
+  if (Edits.cells.size) {
+    const n = Edits.cells.size, idx = new Int32Array(n), cps = new Uint32Array(n), rgb = new Int32Array(n);
+    let k = 0; for (const [i, e] of Edits.cells) { idx[k] = i; cps[k] = e.cp; rgb[k] = e.rgb == null ? -1 : e.rgb; k++; }
+    edits = { cols: Edits.cols, rows: Edits.rows, idx, cps, rgb };
+  }
+  const cap = top || bottom ? { top, bottom, big: S.captionStyle === 'big', box: !!S.captionBox, rgb: hexToRgb(S.captionColor), bg: hexToRgb(S.bg),
+    aspect: S.charAspect, dense: dense.codePointAt(0), blank: S.mode === 'braille' && S.brailleBlank !== 'space' ? 0x2800 : 32 } : null;
+  return (ovSpecMemo = { sig, cap, edits });
+}
+/* a result with the overlay applied (cached per result; results that already have one are returned as they are) */
+const ovMemo = new WeakMap();
+function withOverlay(res, S) {
+  if (!res || res.ov) return res;
+  const spec = overlaySpec(S); if (!spec) return res;
+  const e = ovMemo.get(res); if (e && e.sig === spec.sig) return e.res;
+  const r = applyOverlay(res, spec); ovMemo.set(res, { sig: spec.sig, res: r });
+  return r;
+}
+/* pure (runs on workers too): a copy of res with the captions and edits of spec */
+function applyOverlay(res, spec) {
+  const { cols, rows, mode } = res, n = cols * rows;
+  const out = Object.assign({}, res, { cp: res.cp.slice(), fg: res.fg.slice(), bgc: res.bgc && res.bgc.slice(), bits: res.bits && res.bits.slice(), val: res.val && res.val.slice(), ov: new Uint8Array(n) });
+  const { cp, fg, bgc, bits, val, ov } = out;
+  let u0 = res.uniform ? (fg[0] << 16) | (fg[1] << 8) | fg[2] : -1;
+  const colour = (c, k) => { const o = c * 3; fg[o] = k >> 16; fg[o + 1] = (k >> 8) & 255; fg[o + 2] = k & 255; if (out.uniform && k !== u0) out.uniform = false; };
+  const text = (c, ch, k) => { cp[c] = ch; ov[c] = 1; if (bits) bits[c] = 0; if (val) val[c] = 0; if (k >= 0) colour(c, k); };
+  const cap = spec.cap;
+  if (cap) {
+    const ck = (cap.rgb[0] << 16) | (cap.rgb[1] << 8) | cap.rgb[2], bk = (cap.bg[0] << 16) | (cap.bg[1] << 8) | cap.bg[2];
+    const clear = (c) => { text(c, cap.blank, -1); if (bgc) { const o = c * 3; bgc[o] = cap.bg[0]; bgc[o + 1] = cap.bg[1]; bgc[o + 2] = cap.bg[2]; } };
+    for (const [str, atTop] of [[cap.top, true], [cap.bottom, false]]) {
+      if (!str) continue;
+      if (cap.big) {
+        const m = MODES[mode] || MODES.ascii, sx = mode === 'braille' || mode === 'quad' ? 2 : 1, sy = mode === 'braille' ? 4 : mode === 'quad' || mode === 'half' ? 2 : 1;
+        const hRows = clamp(Math.round(rows * 0.2), 2, 24), r0 = atTop ? Math.min(1, rows - hRows) : Math.max(0, rows - hRows - 1);
+        const R = captionRaster(str, cols * sx, hRows * sy, cap.aspect * sx / sy);
+        const bx0 = R.x0 < 0 ? cols : Math.max(0, Math.floor(R.x0 / sx) - 1), bx1 = Math.min(cols - 1, Math.floor(R.x1 / sx) + 1);
+        for (let y = 0; y < hRows && r0 + y < rows; y++) for (let x = 0; x < cols; x++) {
+          const c = (r0 + y) * cols + x;
+          let bt = 0, any = 0;
+          for (let dy = 0; dy < sy; dy++) for (let dx = 0; dx < sx; dx++) if (R[(y * sy + dy) * cols * sx + x * sx + dx]) { any = 1; bt |= mode === 'braille' ? BRAILLE_BIT[dy][dx] : mode === 'quad' ? 1 << (dy * 2 + dx) : 1 << dy; }
+          if (cap.box && x >= bx0 && x <= bx1) clear(c);
+          if (!any) continue;
+          ov[c] = 0;   // drawn in the style itself (dots, blocks), not as a font character
+          if (mode === 'braille') { cp[c] = 0x2800 + bt; bits[c] = bt; colour(c, ck); }
+          else if (mode === 'quad') { cp[c] = QUAD_CHARS[bt].codePointAt(0); bits[c] = bt; colour(c, ck); }
+          else if (mode === 'half' && bgc) {   // colour pixels: top half = text colour, bottom = background colour
+            cp[c] = 0x2580; bits[c] = 1;
+            const top = bt & 1 ? ck : (cap.box ? bk : (fg[c * 3] << 16) | (fg[c * 3 + 1] << 8) | fg[c * 3 + 2]);
+            colour(c, top); if (bt & 2) { const o = c * 3; bgc[o] = cap.rgb[0]; bgc[o + 1] = cap.rgb[1]; bgc[o + 2] = cap.rgb[2]; }
+          }
+          else if (mode === 'half') { cp[c] = HALF_CHARS[bt].codePointAt(0); bits[c] = bt; colour(c, ck); }
+          else if (mode === 'halftone') { cp[c] = cap.dense; val[c] = 1; colour(c, ck); }
+          else { text(c, cap.dense, ck); ov[c] = bits ? 1 : 0; }
+        }
+      } else {
+        const lines = wrapCaption(str, Math.max(1, cols - 2)).slice(0, Math.max(1, Math.floor(rows / 3)));
+        const r0 = atTop ? Math.min(rows - 1, rows > 6 ? 1 : 0) : Math.max(0, rows - lines.length - (rows > 6 ? 1 : 0));
+        lines.forEach((ln, j) => {
+          const y = r0 + j; if (y < 0 || y >= rows) return;
+          const chars = Array.from(ln), x0 = Math.max(0, Math.floor((cols - chars.length) / 2));
+          if (cap.box) for (let x = Math.max(0, x0 - 1); x < Math.min(cols, x0 + chars.length + 1); x++) clear(y * cols + x);
+          chars.forEach((ch, i) => { if (x0 + i < cols) text(y * cols + x0 + i, ch === ' ' ? cap.blank : ch.codePointAt(0), ck); });
+        });
+      }
+    }
+  }
+  const ed = spec.edits;
+  if (ed && ed.cols === cols && ed.rows === rows) {
+    for (let k = 0; k < ed.idx.length; k++) { const c = ed.idx[k]; if (c < n) text(c, ed.cps[k], ed.rgb[k]); }
+  }
+  return out;
+}
+/* a caption split into lines of at most w characters, at spaces where possible */
+function wrapCaption(str, w) {
+  const out = [];
+  for (const para of String(str).split(/\n/)) {
+    let line = '';
+    for (const word of para.split(/\s+/).filter(Boolean)) {
+      let wd = word;
+      while (Array.from(wd).length > w) { if (line) { out.push(line); line = ''; } const a = Array.from(wd); out.push(a.slice(0, w).join('')); wd = a.slice(w).join(''); }
+      const cand = line ? line + ' ' + wd : wd;
+      if (Array.from(cand).length > w) { out.push(line); line = wd; } else line = cand;
+    }
+    if (line) out.push(line);
+  }
+  return out;
+}
+/* big caption: the text drawn in bold letters at W×H sub-pixels (aspect = sub-pixel height ÷ width) → 0/1 per sub-pixel;
+   R.x0 … R.x1 = the sub-pixel columns the text covers (x0 = -1: none) */
+const capCache = new Map();
+function captionRaster(str, W, H, aspect) {
+  const key = str + '|' + W + 'x' + H + '|' + aspect.toFixed(3);
+  let R = capCache.get(key); if (R) return R;
+  // draw with square pixels at H rows, then squash the width so letters look right in tall cells
+  const hpx = Math.max(8, H), wpx = Math.max(8, Math.round(W * aspect)), c = newCanvas(wpx, hpx), g = c.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = '#000'; g.fillRect(0, 0, wpx, hpx);
+  let size = hpx * 0.86; g.font = `bold ${size}px Arial, Helvetica, sans-serif`;
+  const tw = g.measureText(str).width; if (tw > wpx * 0.96) { size *= wpx * 0.96 / tw; g.font = `bold ${size}px Arial, Helvetica, sans-serif`; }
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(str, wpx / 2, hpx / 2 + size * 0.04);
+  const d = g.getImageData(0, 0, wpx, hpx).data;
+  R = new Uint8Array(W * H);
+  let x0 = W, x1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = Math.min(wpx - 1, Math.floor((x + 0.5) * wpx / W)), py = Math.min(hpx - 1, Math.floor((y + 0.5) * hpx / H));
+    if (d[(py * wpx + px) * 4] > 110) { R[y * W + x] = 1; if (x < x0) x0 = x; if (x > x1) x1 = x; }
+  }
+  R.x0 = x1 < 0 ? -1 : x0; R.x1 = x1;
+  if (capCache.size > 24) capCache.clear();
+  capCache.set(key, R);
+  return R;
+}
+/* =====================================================================
+   Coloured ANSI text import: terminal art (.ans, .txt with escape codes, pasted ANSI) → a coloured text source
+   Classic .ans files are CP437 bytes that wrap at 80 columns and may end with a SAUCE record; newer ones are UTF-8.
+   The colours can then be kept ("Original colours"), mapped to app / retro palettes, greyscale, one colour or a gradient.
+   ===================================================================== */
+const CP437_HIGH = 'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
+/* the 16 colours ANSI art was drawn with (VGA text mode) */
+const VGA16 = [[0, 0, 0], [170, 0, 0], [0, 170, 0], [170, 85, 0], [0, 0, 170], [170, 0, 170], [0, 170, 170], [170, 170, 170],
+  [85, 85, 85], [255, 85, 85], [85, 255, 85], [255, 255, 85], [85, 85, 255], [255, 85, 255], [85, 255, 255], [255, 255, 255]];
+const hasAnsiCodes = t => /\x1b\[[0-9;?]*[A-Za-z]/.test(t);
+/* bytes of a text file → { text, ansi } (ansi = null for plain text) */
+async function readTextArt(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer()), ext = (String(file.name || '').split('.').pop() || '').toLowerCase();
+  return decodeTextArt(bytes, ext);
+}
+function decodeTextArt(bytes, ext) {
+  let end = bytes.length;
+  const sub = bytes.lastIndexOf(0x1a); if (sub >= 0 && end - sub <= 256 + 128 * 5) end = sub;   // SAUCE record and comments after ^Z
+  const body = bytes.subarray(0, end);
+  // UTF-8 unless it is not valid UTF-8, or the old DOS reading (CP437) gives more block / line characters
+  let text = null, cp437 = false;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(body); } catch (e) {}
+  if (text == null || body.some(b => b >= 0x80)) {
+    let dos = ''; for (const b of body) dos += b < 128 ? String.fromCharCode(b) : CP437_HIGH[b - 128];
+    const art = s => (s.match(/[\u2500-\u259f]/g) || []).length;
+    if (text == null || art(dos) > art(text)) { text = dos; cp437 = true; }
+  }
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  if (!hasAnsiCodes(text)) return { text, ansi: null };
+  const ansi = ansiParse(text, cp437 || ext === 'ans' ? 80 : 0);
+  return { text: ansiPlain(ansi), ansi };
+}
+/* Escape-coded text → a grid: cp per cell, fg / bg as 0xRRGGBB or -1 (= the default colour). wrap: columns after which
+   the cursor wraps (classic ANSI art: 80; 0 = no wrapping). */
+function ansiParse(text, wrap) {
+  const rowsCp = [], rowsFg = [], rowsBg = [];
+  let x = 0, y = 0, fg = -1, bg = -1, fgIdx = -1, bold = false, inv = false, sx = 0, sy = 0, maxX = 0;
+  const pal = i => { const c = i < 16 ? VGA16[i] : ANSI256[i]; return (c[0] << 16) | (c[1] << 8) | c[2]; };
+  const curFg = () => fgIdx >= 0 && fgIdx < 8 && bold ? pal(fgIdx + 8) : fg;
+  const row = r => { while (rowsCp.length <= r) { rowsCp.push([]); rowsFg.push([]); rowsBg.push([]); } };
+  const put = ch => {
+    if (wrap && x >= wrap) { x = 0; y++; }
+    row(y);
+    let f = curFg(), b = bg; if (inv) { const t = f; f = b < 0 ? 0 : b; b = t < 0 ? 0xaaaaaa : t; }
+    rowsCp[y][x] = ch.codePointAt(0); rowsFg[y][x] = f; rowsBg[y][x] = b;
+    x++; if (x > maxX) maxX = x;
+  };
+  const chars = Array.from(text);
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch === '\x1b') {
+      if (chars[i + 1] !== '[') { i++; continue; }   // other escapes: skip the next character
+      let j = i + 2, params = '';
+      while (j < chars.length && /[0-9;?]/.test(chars[j])) params += chars[j++];
+      const cmd = chars[j]; i = j;
+      const ps = params.replace(/\?/g, '').split(';').map(v => v === '' ? NaN : +v), n = isNaN(ps[0]) ? 1 : ps[0];
+      if (cmd === 'm') {
+        for (let k = 0; k < ps.length; k++) {
+          const v = isNaN(ps[k]) ? 0 : ps[k];
+          if (v === 0) { fg = bg = fgIdx = -1; bold = inv = false; }
+          else if (v === 1) bold = true;
+          else if (v === 22) bold = false;
+          else if (v === 7) inv = true;
+          else if (v === 27) inv = false;
+          else if (v >= 30 && v <= 37) { fgIdx = v - 30; fg = pal(fgIdx); }
+          else if (v >= 90 && v <= 97) { fgIdx = -1; fg = pal(v - 90 + 8); }
+          else if (v === 39) { fg = fgIdx = -1; }
+          else if (v >= 40 && v <= 47) bg = pal(v - 40);
+          else if (v >= 100 && v <= 107) bg = pal(v - 100 + 8);
+          else if (v === 49) bg = -1;
+          else if ((v === 38 || v === 48) && ps[k + 1] === 5) { const c = pal(clamp(ps[k + 2] | 0, 0, 255)); if (v === 38) { fg = c; fgIdx = -1; } else bg = c; k += 2; }
+          else if ((v === 38 || v === 48) && ps[k + 1] === 2) { const c = (clamp(ps[k + 2] | 0, 0, 255) << 16) | (clamp(ps[k + 3] | 0, 0, 255) << 8) | clamp(ps[k + 4] | 0, 0, 255); if (v === 38) { fg = c; fgIdx = -1; } else bg = c; k += 4; }
+        }
+      }
+      else if (cmd === 'C') x += n;
+      else if (cmd === 'D') x = Math.max(0, x - n);
+      else if (cmd === 'A') y = Math.max(0, y - n);
+      else if (cmd === 'B') y += n;
+      else if (cmd === 'H' || cmd === 'f') { y = Math.max(0, (isNaN(ps[0]) ? 1 : ps[0]) - 1); x = Math.max(0, (isNaN(ps[1]) ? 1 : ps[1]) - 1); }
+      else if (cmd === 's') { sx = x; sy = y; }
+      else if (cmd === 'u') { x = sx; y = sy; }
+      if (wrap && x > wrap) x = wrap;
+      continue;
+    }
+    if (ch === '\r') { x = 0; continue; }
+    if (ch === '\n') { x = 0; y++; row(y); continue; }
+    if (ch === '\t') { const t = (Math.floor(x / 8) + 1) * 8; while (x < t) put(' '); continue; }
+    if (ch < ' ' || ch === '\x7f') continue;
+    put(ch);
+  }
+  while (rowsCp.length > 1 && !rowsCp[rowsCp.length - 1].length) { rowsCp.pop(); rowsFg.pop(); rowsBg.pop(); }
+  const cols = Math.max(1, maxX), rows = Math.max(1, rowsCp.length), n = cols * rows;
+  const cp = new Uint32Array(n).fill(32), fgA = new Int32Array(n).fill(-1), bgA = new Int32Array(n).fill(-1);
+  for (let r = 0; r < rowsCp.length; r++) for (let c = 0; c < rowsCp[r].length; c++) {
+    const i = r * cols + c;
+    if (rowsCp[r][c] != null) { cp[i] = rowsCp[r][c]; fgA[i] = rowsFg[r][c]; bgA[i] = rowsBg[r][c]; }
+  }
+  return { cols, rows, cp, fg: fgA, bg: bgA };
+}
+/* open typed / pasted text art; escape codes in it make a coloured source */
+function openTextArt(text, name, ansi, plain) {
+  if (!ansi && text && hasAnsiCodes(text)) { ansi = ansiParse(text, 0); plain = ansiPlain(ansi); }
+  if (!ansi) return setTextSource(text, name);
+  setTextSource(plain, name.replace(/\.txt$/, '.ans'), ansi);
+  if (S.colorMode === 'mono' || S.colorMode === 'gradient') applySettings({ colorMode: 'color' });
+  toast(`Coloured ANSI art: ${ansi.cols}×${ansi.rows} characters. Change its colours in the Colour tab`);
+}
+const ansiPlain = a => { const lines = []; for (let y = 0; y < a.rows; y++) { let s = ''; for (let x = 0; x < a.cols; x++) s += chr(a.cp[y * a.cols + x] || 32); lines.push(s.replace(/\s+$/, '')); } return lines.join('\n'); };
+/* the result of an imported ANSI grid with the colour settings */
+function ansiResult(a, S) {
+  const { cols, rows } = a, n = cols * rows, FG = hexToRgb(S.fg), BG = hexToRgb(S.bg), GA = hexToRgb(S.gradA), GB = hexToRgb(S.gradB);
+  const res = { cols, rows, mode: 'text', cp: a.cp.slice(), fg: new Uint8ClampedArray(n * 3), bgc: null, bits: null, val: null, uniform: false };
+  const CM = S.colorMode, dir = S.textGradient === 'horizontal' ? 1 : S.textGradient === 'diagonal' ? 2 : 0;
+  const hasBg = CM !== 'mono' && CM !== 'gradient' && a.bg.some(v => v >= 0);
+  if (hasBg) res.bgc = new Uint8ClampedArray(n * 3);
+  const put = (arr, o, r, g, b) => {
+    if (CM === 'gray') { const l = 0.299 * r + 0.587 * g + 0.114 * b; arr[o] = arr[o + 1] = arr[o + 2] = l; }
+    else if (CM === 'app') { const c = appColour(S.appPalette, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
+    else { arr[o] = r; arr[o + 1] = g; arr[o + 2] = b; }
+  };
+  for (let i = 0; i < n; i++) {
+    const o = i * 3;
+    if (CM === 'mono') { res.fg[o] = FG[0]; res.fg[o + 1] = FG[1]; res.fg[o + 2] = FG[2]; }
+    else if (CM === 'gradient') {
+      const x = i % cols, y = (i / cols) | 0, tx = cols > 1 ? x / (cols - 1) : 0, ty = rows > 1 ? y / (rows - 1) : 0, t = dir === 0 ? ty : dir === 1 ? tx : (tx + ty) / 2;
+      for (let k = 0; k < 3; k++) res.fg[o + k] = GB[k] + (GA[k] - GB[k]) * t;
+    } else {
+      const f = a.fg[i]; if (f < 0) put(res.fg, o, FG[0], FG[1], FG[2]); else put(res.fg, o, f >> 16, (f >> 8) & 255, f & 255);
+      if (hasBg) { const b = a.bg[i]; if (b < 0) put(res.bgc, o, BG[0], BG[1], BG[2]); else put(res.bgc, o, b >> 16, (b >> 8) & 255, b & 255); }
+    }
+  }
+  res.uniform = CM === 'mono';
+  return res;
+}
+/* =====================================================================
+   Feature test (open index.html#uitest): the interactive features on a demo picture and synthetic files
+   (overlay: captions + edits, ANSI import, gallery, crop, wipe, projects, ZIP, mask undo, palettes, emoji, effects…)
+   ===================================================================== */
+async function uiTest() {
+  const out = $('#selftest'); out.hidden = false;
+  const log = [], say = l => { log.push(l); out.textContent = log.join('\n'); };
+  const ok = (name, cond, detail) => { say(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' (' + detail + ')' : ''}`); return cond; };
+  const saved = Object.assign({}, S);
+  const reset = () => { Object.assign(S, DEFAULTS); editsClear(); syncControls(); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  try {
+    reset();
+    await demoImage(); await wait(50); renderNow();
+    for (const t of UI_TESTS) {
+      try { await t(ok, { reset, wait, say }); }
+      catch (e) { console.error(e); ok(t.name + ' threw', false, e && e.message || e); }
+      reset();
+    }
+  } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
+  Object.assign(S, saved); syncControls();
+  const fails = log.filter(l => l.startsWith('FAIL')).length;
+  say(`${fails ? 'FAIL' : 'PASS'} ${log.length - fails} of ${log.length} feature checks`);
+  document.title = fails ? 'UITEST FAIL' : 'UITEST PASS';
+}
+const UI_TESTS = [];
+/* a still source result of the demo picture with settings St */
+const uiDemoRes = St => { const c = demoCanvas(); return convert(c, c.width, c.height, St); };
+const uiRow = (res, y) => { let s = ''; for (let x = 0; x < res.cols; x++) s += chr(res.cp[y * res.cols + x] || 32); return s; };
 
+UI_TESTS.push(async function captions(ok) {
+  const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
+  const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
+  const r = convert(bmp, W, H, St), raw = convertRaw(bmp, W, H, St);
+  ok('Caption: top line written in characters', uiRow(r, 1).includes('HELLO THERE'), uiRow(r, 1).trim());
+  ok('Caption: bottom line written in characters', uiRow(r, r.rows - 2).includes('bottom line'));
+  ok('Caption: the cached conversion is left unchanged', !raw.ov && raw !== r && !uiRow(raw, 1).includes('HELLO'));
+  ok('Caption: overlaid result is reused (no recompute)', convert(bmp, W, H, St) === r);
+  const Sb = Object.assign({}, St, { mode: 'braille', captionStyle: 'big', captionBottom: '' }), rb = convert(bmp, W, H, Sb);
+  let lit = 0; for (let y = 1; y < 1 + Math.round(rb.rows * 0.2); y++) for (let x = 0; x < rb.cols; x++) if (rb.bits[y * rb.cols + x] === 0xff) lit++;
+  ok('Big caption: drawn with the style\'s own dots', lit > 20, lit + ' full cells');
+  // the same frame drawn on a worker (converted there, overlay sent along) equals the frame drawn here
+  if (Pool.size()) {
+    clearEngineCaches();
+    const Sw = Object.assign({}, St, { mode: 'braille', renderStyle: 'shapes' });
+    const a = frameJobArgs({ d: bmp, w: W, h: H }, Sw);
+    const local = withOverlay(convertCore(null, W, H, Sw, null, a.pre), Sw);
+    const c = document.createElement('canvas'); c.getContext('2d', { willReadFrequently: true }); renderResult(local, Sw, c, 1);   // drawn like exports (CPU canvas)
+    Object.assign(a, { St: Sw, scale: 1, w: c.width, h: c.height });
+    const px = await Pool.run('renderFrame', a), mine = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let diff = 0; for (let i = 0; i < px.length; i++) if (px[i] !== mine[i]) diff++;
+    ok('Caption on a worker-converted frame matches this thread', !!a.ov && diff === 0, diff + ' bytes differ');
+  }
+  const t = textResult('line one\nline two', Object.assign({}, St, { captionTop: '', captionBottom: 'X' }));
+  ok('Caption on text art', resultText(t).includes('X'));
+  bmp.close();
+});
+
+UI_TESTS.push(async function edits(ok) {
+  const St = Object.assign({}, DEFAULTS, { mode: 'braille', cols: 40 }), base = uiDemoRes(St);
+  Edits.cols = base.cols; Edits.rows = base.rows; Edits.cells.set(5, { cp: 0x41, rgb: 0xff0000 }); Edits.ver++;
+  const r = uiDemoRes(St);
+  ok('Edit: the cell shows the new character', r.cp[5] === 0x41 && r.ov[5] === 1 && r.bits[5] === 0);
+  ok('Edit: the cell has the new colour', r.fg[15] === 255 && r.fg[16] === 0 && !r.uniform);
+  const other = uiDemoRes(Object.assign({}, St, { cols: 41 }));
+  ok('Edit: not applied at another width', !other.ov || other.cp[5] !== 0x41);
+  const svg = resultSVG(r, St);
+  ok('Edit: present in SVG', svg.includes('>A<'));
+  editsClear();
+});
+
+UI_TESTS.push(async function ansiImport(ok) {
+  const esc = '\x1b[';
+  const src = `${esc}31mR${esc}0m ${esc}1;32mG${esc}0m\n${esc}38;2;10;20;30;48;5;196mT${esc}0m${esc}2Cx`;
+  const a = ansiParse(src, 0);
+  ok('ANSI: grid size', a.cols === 4 && a.rows === 2, a.cols + 'x' + a.rows);
+  ok('ANSI: 16 colours', a.fg[0] === 0xaa0000 && a.fg[2] === 0x55ff55, a.fg[0].toString(16) + ' ' + a.fg[2].toString(16));
+  ok('ANSI: 24-bit foreground, 256-colour background', a.fg[4] === 0x0a141e && a.bg[4] === 0xff0000, a.bg[4].toString(16));
+  ok('ANSI: cursor forward keeps spaces', a.cp[7] === 0x78 && a.cp[5] === 32 && a.cp[6] === 32);
+  const u = decodeTextArt(new TextEncoder().encode(`${esc}35m█▓ test${esc}0m`), 'ans');
+  ok('ANSI: UTF-8 file stays UTF-8', u.ansi && u.ansi.cp[0] === 0x2588 && u.text === '█▓ test', JSON.stringify(u.text));
+  // CP437 bytes with a SAUCE record
+  const bytes = new Uint8Array([0x1b, 0x5b, 0x33, 0x34, 0x6d, 0xdb, 0xb0, 0x0d, 0x0a, 0x41, 0x1a, 0x53, 0x41, 0x55, 0x43, 0x45]);
+  const d = decodeTextArt(bytes, 'ans');
+  ok('ANSI: CP437 blocks decoded, SAUCE cut', d.ansi && d.ansi.cp[0] === 0x2588 && d.ansi.cp[1] === 0x2591 && d.text === '█░\nA', JSON.stringify(d.text));
+  ok('CP437 table has 128 characters', Array.from(CP437_HIGH).length === 128);
+  // round trip: our own ANSI export opens with the same characters and colours
+  const St = Object.assign({}, DEFAULTS, { mode: 'ascii', colorMode: 'color', cols: 50, bgMode: 'cell' }), r = convertRaw(demoCanvas(), 960, 640, St);
+  const back = decodeTextArt(new TextEncoder().encode(resultANSI(r)), 'txt'), rr = ansiResult(back.ansi, St);
+  let same = rr.cols === r.cols && rr.rows === r.rows;
+  for (let i = 0; same && i < r.cp.length; i++) if (rr.cp[i] !== (r.cp[i] || 32)) same = false;
+  for (let i = 0; same && i < r.fg.length; i++) if (rr.fg[i] !== r.fg[i] || rr.bgc[i] !== r.bgc[i]) same = false;
+  ok('ANSI: own true-colour export opens identical (characters, text and cell colours)', same);
+  const g = ansiResult(back.ansi, Object.assign({}, St, { colorMode: 'gray' }));
+  ok('ANSI: re-coloured to greyscale', g.fg[0] === g.fg[1] && g.fg[1] === g.fg[2]);
+  openTextArt(src, 'test.txt');
+  ok('ANSI: pasted escape codes open as a coloured source', App.src && App.src.kind === 'text' && !!App.src.ansi && S.colorMode === 'color');
+});
+/* =====================================================================
+   Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)
+   ===================================================================== */
 initUI();
 if (location.hash.startsWith('#gifcheck=')) (async () => {   // diagnostics: #gifcheck=<file urls, comma separated>
   const out = $('#selftest'); out.hidden = false; const log = [];
@@ -5498,6 +5899,7 @@ if (location.hash.startsWith('#gifcheck=')) (async () => {   // diagnostics: #gi
   document.title = 'GIFCHECK DONE';
 })();
 else if (location.hash.startsWith('#equiv')) equivTest();
+else if (location.hash.startsWith('#uitest')) uiTest();
 else if (location.hash.startsWith('#selftest')) selfTest();
 else if (location.hash.startsWith('#exp')) (async () => {
   const out = $('#selftest'); out.hidden = false; const log = [], NL = String.fromCharCode(10);

@@ -246,9 +246,9 @@ function backgroundMask(C, A, W, H) {
 }
 
 /* Settings that only change how a result is drawn or exported, not the result itself. */
-const RENDER_ONLY_KEYS = new Set(['fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat']);
+const RENDER_ONLY_KEYS = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'fontSize', 'margin', 'renderStyle', 'dotShape', 'dotSize', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat']);
 const CONVERT_KEYS = Object.keys(DEFAULTS).filter(k => !RENDER_ONLY_KEYS.has(k));
-const resultBytes = r => r.cp.byteLength + r.fg.byteLength + (r.bgc ? r.bgc.byteLength : 0) + (r.bits ? r.bits.byteLength : 0) + (r.val ? r.val.byteLength : 0) + 200;
+const resultBytes = r => r.cp.byteLength + r.fg.byteLength + (r.bgc ? r.bgc.byteLength : 0) + (r.bits ? r.bits.byteLength : 0) + (r.val ? r.val.byteLength : 0) + (r.ov ? r.ov.byteLength : 0) + 200;
 /* Main conversion: drawable → result grid. Results of immutable sources are memoised (callers never modify a result),
    so replaying an animation, redrawing at another size or switching views costs no conversion at all. */
 const convertSig = S => JSON.stringify(CONVERT_KEYS.map(k => S[k]));
@@ -286,14 +286,16 @@ function maskPixels(src, S, W, H) {
   }
   return px;
 }
-function convert(src, sw, sh, S) {
+/* the result as shown and saved: the conversion plus captions and hand edits (see overlay) */
+function convert(src, sw, sh, S) { return withOverlay(convertRaw(src, sw, sh, S), S); }
+function convertRaw(src, sw, sh, S) {
   const key = memoKey(src, sw, sh, S);
   if (!key) return convertCore(src, sw, sh, S, null);
   let r = resultCache.get(key);
   if (!r) { r = convertCore(src, sw, sh, S, srcKey(src)); resultCache.set(key, r, resultBytes(r)); }
   return r;
 }
-/* an already computed result, or undefined (never converts) */
+/* an already computed conversion (without overlay), or undefined (never converts) */
 function peekResult(src, sw, sh, S) { const key = memoKey(src, sw, sh, S); return key ? resultCache.get(key) : undefined; }
 /* The source resampled to the character grid (cached for immutable sources). */
 function samplePixels(src, sw, sh, S, W, H, sk) {
@@ -565,8 +567,10 @@ function convertCore(src, sw, sh, S, sk, pre) {
   return res;
 }
 
-/* Text art typed/pasted by the user → result grid */
-function textResult(text, S) {
+/* Text art typed/pasted by the user → result grid (ansi: colours of an imported ANSI file, see ansiParse) */
+function textResult(text, S, ansi) { return withOverlay(textResultRaw(text, S, ansi), S); }
+function textResultRaw(text, S, ansi) {
+  if (ansi) return ansiResult(ansi, S);
   const lines = String(text).replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');
   while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   const arr = lines.map(l => Array.from(l));

@@ -525,7 +525,7 @@ async function loadFileSource(file) {
   const name = file.name || 'file', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const fmt = sniffFormat(new Uint8Array(await file.slice(0, 64).arrayBuffer())), type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   let src;
-  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { const text = await file.text(), r = textResult(text, S); src = { kind: 'text', text, w: r.cols, h: r.rows }; }
+  if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc'].includes(ext))) { const { text, ansi } = await readTextArt(file), r = textResultRaw(text, S, ansi); src = { kind: 'text', text, ansi, w: r.cols, h: r.rows }; }
   else if (fmt === 'video' || (!fmt && (type.startsWith('video/') || VIDEO_EXT.has(ext)))) { src = await loadVideoFile(file); src.video.muted = true; }
   else src = await loadImageFile(file, fmt, ext);
   src.name = name;
@@ -559,7 +559,7 @@ async function runBatch(files, opts) {
         const moving = src.kind === 'anim' || src.kind === 'video';
         if (moving && opts.gif) out.push({ name: base + '.gif', data: await gifBytes(p => step(clamp(p, 0, 1) * 0.9), src) });
         let res;
-        if (src.kind === 'text') res = textResult(src.text, S);
+        if (src.kind === 'text') res = textResult(src.text, S, src.ansi);
         else if (src.kind === 'video') { await seekVideo(src.video, 0); res = convert(src.video, src.video.videoWidth, src.video.videoHeight, S); }
         else res = convert(src.kind === 'anim' ? src.frames[0].bmp : src.bmp, src.w, src.h, S);
         const still = moving ? '_frame1' : '';
@@ -651,10 +651,10 @@ async function* exportFrames(s = App.src, fps0 = S.gifFps) {
     }
   } else {
     const d = s.kind === 'text' ? null : s === App.src ? currentDrawable() : [s.bmp, s.w, s.h];
-    yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, delay: 100, index: 0, total: 1 };
+    yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, ansi: s.ansi || null, delay: 100, index: 0, total: 1 };
   }
 }
-const frameResult = f => f.text != null ? textResult(f.text, S) : convert(f.d, f.w, f.h, S);
+const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, S);
 function confirmLarge(total) {
   if (total > 900) return confirm(`This will export ${total} frames, which can take a while and use a lot of memory. Continue? (Tip: set a trim range or lower the FPS.)`);
   return true;
@@ -705,7 +705,7 @@ async function gifSharedPalette(scale, colors, withTransparency, s = App.src) {
   } else if (s.kind === 'video') {
     const v = s.video;
     for (let k = 0; k < 12; k++) { await seekVideo(v, a + (b - a) * k / 12); add(convert(v, v.videoWidth, v.videoHeight, S)); }
-  } else if (s.kind === 'text') add(textResult(s.text, S));
+  } else if (s.kind === 'text') add(textResult(s.text, S, s.ansi));
   else { const d = s === App.src ? currentDrawable() : [s.bmp, s.w, s.h]; if (d) add(convert(d[0], d[1], d[2], S)); }
   const P = paletteFromHistogram(H.cnt, H.sr, H.sg, H.sb, colors, withTransparency);
   P.near = nearestLut(P.pal, P.off, P.n);
@@ -1099,11 +1099,11 @@ async function collectResults(progress) {
   for await (const f of exportFrames()) {   // frames not converted yet are converted on workers, several at once
     if (App.cancel) throw cancelled();
     delays.push(Math.round(f.delay));
-    const memo = f.text != null ? textResult(f.text, S) : peekResult(f.d, f.w, f.h, S);
-    if (memo) await jobs.add(null, () => memo);
+    const memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, S);
+    if (memo) await jobs.add(null, () => withOverlay(memo, S));
     else {
       const key = memoKey(f.d, f.w, f.h, S), a = Pool.size() ? frameJobArgs(f, S) : null;
-      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return r; })), () => a ? frameJobResult(a, S) : frameResult(f));
+      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, S); })), () => a ? frameJobResult(a, S) : frameResult(f));
     }
     progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
     await nextTick();

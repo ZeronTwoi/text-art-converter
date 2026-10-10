@@ -183,8 +183,12 @@ function initUI() {
   // text dialog
   const dlg = $('#textDialog');
   $('#textCancel').addEventListener('click', () => dlg.close());
-  $('#textOk').addEventListener('click', () => { const t = $('#textIn').value; dlg.close(); setTextSource(t, 'text-art.txt'); });
-  $('#txtFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (f) $('#textIn').value = await f.text(); });
+  $('#textOk').addEventListener('click', () => { const t = $('#textIn').value; dlg.close(); openTextArt(t, 'text-art.txt'); });
+  $('#txtFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const { text, ansi } = await readTextArt(f);
+    if (ansi) { dlg.close(); openTextArt(null, f.name, ansi, text); } else $('#textIn').value = text;
+  });
 
   // drag & drop
   let depth = 0;
@@ -217,6 +221,7 @@ function initUI() {
       return;
     }
     const txt = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (txt && hasAnsiCodes(txt)) { e.preventDefault(); openTextArt(txt, 'pasted.ans'); return; }
     if (url && /\.(gif|webp|png|apng|jpe?g|avif|mp4|webm)(\?|#|$)/i.test(url)) { e.preventDefault(); toast('Downloading the pasted link…'); openFromUrl(url).then(ok => { if (!ok) toast("Couldn't download that link. Save the file and open it instead", 'error'); }); return; }
     if (txt) { e.preventDefault(); openTextDialog(txt); }
   });
