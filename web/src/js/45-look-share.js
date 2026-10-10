@@ -5,7 +5,7 @@
 function lookOnly(o) { const st = {}; for (const k in o || {}) if (k in DEFAULTS && !LOOK_SKIP.has(k) && typeof o[k] === typeof DEFAULTS[k]) st[k] = o[k]; return st; }
 const currentLook = () => lookOnly(S);
 /* what is shared: only the settings that differ from the defaults (shorter links) */
-function lookPayload(name, st) { const d = {}; for (const k in st) if (st[k] !== DEFAULTS[k]) d[k] = st[k]; return { generator: 'Text Art Studio', type: 'look', v: 1, name, settings: d }; }
+function lookPayload(name, st) { const d = {}; for (const k in st) if (st[k] !== DEFAULTS[k]) d[k] = st[k]; return { generator: 'Image to Text Converter', type: 'look', v: 1, name, settings: d }; }
 async function lookLink(name, st) {
   const z = await deflateRaw(new TextEncoder().encode(JSON.stringify(lookPayload(name, st))));
   return location.href.replace(/#.*$/, '') + '#look=' + b64url(z);
@@ -15,7 +15,7 @@ function saveLookFile(name, st) {
 }
 /* adds a shared look to yours (once: the same settings are not added twice) and uses it */
 function addSharedLook(p) {
-  if (!p || p.type !== 'look' || typeof p.name !== 'string' || !p.settings || typeof p.settings !== 'object') throw new Error('not a Text Art Studio look');
+  if (!p || p.type !== 'look' || typeof p.name !== 'string' || !p.settings || typeof p.settings !== 'object') throw new Error('not a Image to Text Converter look');
   const settings = Object.assign(lookOnly(DEFAULTS), lookOnly(p.settings)), base = p.name.trim().slice(0, 34) || 'Shared look';
   const same = userLooks.find(l => Object.keys(settings).every(k => l.settings[k] === settings[k]));
   let name = same && same.name;
@@ -39,7 +39,7 @@ function initLookShare() {
     const link = await lookLink(name(), currentLook()); $('#lookDialog').close();
     copyOrShow(link, 'Look link copied. Whoever opens it gets this look (not your picture)' + (servedOnWeb() ? '' : '. While the page is only on this computer, the link opens here only'));
   });
-  $('#lookFile').addEventListener('click', () => { saveLookFile(name(), currentLook()); $('#lookDialog').close(); toast('Look saved as a file. Open it (or drop it) in Text Art Studio to add it'); });
+  $('#lookFile').addEventListener('click', () => { saveLookFile(name(), currentLook()); $('#lookDialog').close(); toast('Look saved as a file. Open it (or drop it) in Image to Text Converter to add it'); });
   window.addEventListener('hashchange', () => { if (location.hash.startsWith('#look=')) openLookLink(location.hash); });
   if (location.hash.startsWith('#look=')) openLookLink(location.hash);
 }

@@ -59,7 +59,7 @@ async function projectParts(withSource = true) {
   maskFlush();
   const files = [], settings = {};
   for (const k in DEFAULTS) if (!PROJECT_SKIP.has(k)) settings[k] = S[k];
-  const meta = { format: 'textart', version: 1, app: 'Text Art Studio', saved: new Date().toISOString(), settings, look: App.look || null, view: App.view,
+  const meta = { format: 'textart', version: 1, app: 'Image to Text Converter', saved: new Date().toISOString(), settings, look: App.look || null, view: App.view,
     trim: { in: App.tin, out: App.tout }, time: curTime() };
   const src = meta.source = { kind: s.kind, name: s.name || 'picture' };
   const pngOf = async c => new Uint8Array(await (await canvasToBlob(c, 'image/png')).arrayBuffer());
@@ -114,9 +114,9 @@ async function openProject(file) {
   let z, meta;
   try {
     z = await readZip(new Uint8Array(await file.arrayBuffer()));
-    const pj = z.get('project.json'); if (!pj) throw new Error('this ZIP is not a Text Art Studio project');
+    const pj = z.get('project.json'); if (!pj) throw new Error('this ZIP is not a Image to Text Converter project');
     meta = JSON.parse(new TextDecoder().decode(pj));
-    if (meta.format !== 'textart' || !meta.source) throw new Error('this is not a Text Art Studio project');
+    if (meta.format !== 'textart' || !meta.source) throw new Error('this is not a Image to Text Converter project');
   } catch (e) { toast('Could not open the project: ' + e.message, 'error'); return false; }
   const ok = await openProjectParts(meta, name => z.get(name));
   if (ok) toast('Project opened: ' + (file.name || meta.source.name));

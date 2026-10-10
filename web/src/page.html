@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0d0f14">
 <meta name="description" content="Turn pictures, GIFs and videos into text art. Works offline; nothing is uploaded.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230d0f14'/%3E%3Cg fill='%236ee7b7'%3E%3Ccircle cx='196' cy='118' r='38'/%3E%3Ccircle cx='316' cy='118' r='38'/%3E%3Ccircle cx='196' cy='210' r='38'/%3E%3Ccircle cx='316' cy='210' r='38'/%3E%3Ccircle cx='196' cy='302' r='38'/%3E%3Ccircle cx='316' cy='302' r='38'/%3E%3Ccircle cx='196' cy='394' r='38'/%3E%3Ccircle cx='316' cy='394' r='38'/%3E%3C/g%3E%3C/svg%3E">
-<title>Text Art Studio</title>
+<title>Image to Text Converter</title>
 <style>
 @@STYLES@@
 </style>
@@ -14,7 +14,7 @@
 <body data-kind="none" class="simple">
 
 <header class="topbar">
-  <div class="brand"><span class="logo">⣿</span>Text Art Studio <span class="tag">offline</span></div>
+  <div class="brand"><span class="logo">⣿</span>Image to Text Converter <span class="tag">offline</span></div>
   <nav class="steps" id="steps" aria-label="Steps">
     <button class="step" data-step="1" title="Open an image, GIF or video"><b>1</b><span>Open</span></button>
     <button class="step" data-step="2" title="Choose how the picture is drawn"><b>2</b><span>Pick a look</span></button>
@@ -44,7 +44,7 @@
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnBackup" title="Saves your settings, looks and palettes as one small file (not the open picture)">🧳 Back up my settings…</button>
         <button id="btnRestore" title="Brings back the settings, looks and palettes of a backup file">📥 Restore a backup…</button>
-        <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
+        <button id="btnInstall" title="Install Image to Text Converter as an app that also works offline" hidden>⬇ Install as an app</button>
         <div class="menulabel">Help</div>
         <button id="btnNews">✨ What's new</button>
       </div>
@@ -456,7 +456,7 @@
   </aside>
 </div>
 <dialog id="helpDialog">
-  <h3>How Text Art Studio works</h3>
+  <h3>How Image to Text Converter works</h3>
   <ol class="howto big">
     <li><b>Open</b> a picture, GIF or video: <i>Open file…</i>, drag it onto the page, or paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
     <li><b>Pick a look</b> in the <i>Look</i> tab. Every thumbnail is your own image in that style.</li>
@@ -618,7 +618,7 @@
   <p class="muted small findfoot">↑ ↓ to choose · Enter to open · <kbd>Ctrl</kbd>+<kbd>K</kbd> or <kbd>/</kbd> opens this any time</p>
 </dialog>
 <dialog id="newsDialog">
-  <h3>✨ What's new in Text Art Studio</h3>
+  <h3>✨ What's new in Image to Text Converter</h3>
   <p class="muted small" style="margin:0 0 8px">Everything you used before is where it was. These are new:</p>
   <ul class="news" id="newsList"></ul>
   <div class="acts"><button class="btn" id="newsFind">🔍 Find a tool…</button><button class="btn primary" id="newsClose" autofocus>Got it</button></div>

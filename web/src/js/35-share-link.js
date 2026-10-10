@@ -25,7 +25,7 @@ async function openArtLink(hash) {
   const m = /^#art=([A-Za-z0-9_-]+)$/.exec(hash || ''); if (!m) return false;
   try {
     const p = JSON.parse(new TextDecoder().decode(await inflateRaw(unb64url(m[1]))));
-    if (!p || p.v !== 1 || typeof p.a !== 'string') throw new Error('not a Text Art Studio link');
+    if (!p || p.v !== 1 || typeof p.a !== 'string') throw new Error('not a Image to Text Converter link');
     const st = {}; for (const k in p.s || {}) if (k in DEFAULTS && typeof p.s[k] === typeof DEFAULTS[k]) st[k] = p.s[k];
     if (p.c) { const a = ansiParse(p.a, 0); st.colorMode = 'color'; applySettings(st); setTextSource(ansiPlain(a), 'shared-art.txt', a); }
     else { st.colorMode = 'mono'; applySettings(st); setTextSource(p.a, 'shared-art.txt'); }

@@ -61,7 +61,7 @@ appScript = appScript.replace('@@BUILD@@', createHash('sha256').update(appScript
 const testScript = appScript + testParts.map(f => read(src, 'tests', f)).join('');
 const page = read(src, 'page.html'), styles = read(src, 'styles.css');
 const pageWith = script => page.replace('@@STYLES@@\n', () => styles).replace('@@SCRIPTS@@\n', () => script);
-const html = pageWith(appScript), testHtml = pageWith(testScript).replace('<title>Text Art Studio</title>', '<title>Text Art Studio · tests</title>');
+const html = pageWith(appScript), testHtml = pageWith(testScript).replace('<title>Image to Text Converter</title>', '<title>Image to Text Converter · tests</title>');
 
 // the offline cache of the installed app: its version follows the page, so a new build replaces the cached copy
 const swOut = join(here, 'sw.js'), sw = read(src, 'sw.js').replace('@@VERSION@@', createHash('sha256').update(html).digest('hex').slice(0, 12));

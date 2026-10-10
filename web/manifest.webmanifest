@@ -1,6 +1,6 @@
 {
-  "name": "Text Art Studio",
-  "short_name": "Text Art",
+  "name": "Image to Text Converter",
+  "short_name": "Image to Text",
   "description": "Turn pictures, GIFs and videos into text art. Works offline; nothing is uploaded.",
   "start_url": "./index.html",
   "scope": "./",

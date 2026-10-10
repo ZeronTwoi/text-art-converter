@@ -1,4 +1,4 @@
-# How Text Art Studio is built
+# How Image to Text Converter is built
 
 A guide for changing the code. The app is one offline page. `node build.mjs` joins these sources into:
 

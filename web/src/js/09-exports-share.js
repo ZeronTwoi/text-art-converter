@@ -1033,7 +1033,7 @@ function webmFile(W, H, codecId, chunks, durationMs, audio) {
   const u = (id, n) => el(id, [new Uint8Array(uint(n))]), str = (id, t) => el(id, [new TextEncoder().encode(t)]);
   const f64 = (id, x) => { const b = new Uint8Array(8); new DataView(b.buffer).setFloat64(0, x); return el(id, [b]); };
   const head = el(0x1A45DFA3, [u(0x4286, 1).blob, u(0x42F7, 1).blob, u(0x42F2, 4).blob, u(0x42F3, 8).blob, str(0x4282, 'webm').blob, u(0x4287, 4).blob, u(0x4285, 2).blob]);
-  const info = el(0x1549A966, [u(0x2AD7B1, 1000000).blob, str(0x4D80, 'Text Art Studio').blob, str(0x5741, 'Text Art Studio').blob, f64(0x4489, durationMs).blob]);
+  const info = el(0x1549A966, [u(0x2AD7B1, 1000000).blob, str(0x4D80, 'Image to Text Converter').blob, str(0x5741, 'Image to Text Converter').blob, f64(0x4489, durationMs).blob]);
   const trackVideo = el(0xAE, [u(0xD7, 1).blob, u(0x73C5, 1).blob, u(0x83, 1).blob, u(0x9C, 0).blob, str(0x86, codecId).blob, el(0xE0, [u(0xB0, W).blob, u(0xBA, H).blob]).blob]);
   const trackAudio = audio ? el(0xAE, [u(0xD7, 2).blob, u(0x73C5, 2).blob, u(0x83, 2).blob, u(0x9C, 0).blob, str(0x86, 'A_OPUS').blob, el(0x63A2, [audio.desc]).blob, el(0xE1, [f64(0xB5, audio.sr).blob, u(0x9F, audio.ch).blob]).blob]) : null;
   const tracks = el(0x1654AE6B, [trackVideo.blob, ...(trackAudio ? [trackAudio.blob] : [])]);
@@ -1283,7 +1283,7 @@ async function exportFramesText(kind) {
   await runExport('Converting frames to text', async progress => {
     const frames = await collectFrames(false, progress);
     if (kind === 'json') {
-      const body = JSON.stringify({ generator: 'Text Art Studio', mode: S.mode, frameCount: frames.length, frames: frames.map(f => ({ delayMs: f.d, text: f.t })) });
+      const body = JSON.stringify({ generator: 'Image to Text Converter', mode: S.mode, frameCount: frames.length, frames: frames.map(f => ({ delayMs: f.d, text: f.t })) });
       download(new Blob([body], { type: 'application/json' }), baseName() + '_frames.json');
     } else {
       const body = frames.map((f, i) => `=== frame ${i + 1}/${frames.length} · ${f.d} ms ===\n${f.t}`).join('\n\n') + '\n';
@@ -1435,7 +1435,7 @@ function buildExportPanel() {
   moreOf(t, 'text').parentNode.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
-  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded', more: 'text' });
+  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Image to Text Converter. The art is inside the link: nothing is uploaded', more: 'text' });
   if (!animated) for (const k of ['sh', 'ps1', 'py']) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = '.' + k; b.title = ({ sh: 'Shell script (macOS, Linux, Git Bash)', ps1: 'PowerShell script (Windows)', py: 'Python script (any computer)' })[k]; b.addEventListener('click', () => exportTerminalScript(k)); t.querySelector('#scriptBtns').appendChild(b); }
 
   if (s.kind !== 'text' || true) {

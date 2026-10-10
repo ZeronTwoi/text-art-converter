@@ -93,19 +93,19 @@ async function exportTerminalScript(kind) {
     const anim = frames.length > 1, enc = new TextEncoder();
     let text, type = 'text/plain;charset=utf-8';
     if (kind === 'sh') {
-      text = `#!/bin/sh\n# ${name}: text art made with Text Art Studio.\n# Run it in a terminal:  sh ${name}.sh${anim ? '   (Ctrl+C stops)' : ''}\nprintf '\\033[2J\\033[?25l'\ntrap 'printf "\\033[0m\\033[?25h\\n"; exit 0' INT TERM\n` +
+      text = `#!/bin/sh\n# ${name}: text art made with Image to Text Converter.\n# Run it in a terminal:  sh ${name}.sh${anim ? '   (Ctrl+C stops)' : ''}\nprintf '\\033[2J\\033[?25l'\ntrap 'printf "\\033[0m\\033[?25h\\n"; exit 0' INT TERM\n` +
         (anim ? 'while :; do\n' : '') +
         frames.map((f, i) => `printf '\\033[H'\ncat <<'TAS_FRAME'\n${f.replace(/\n$/, '')}\nTAS_FRAME\n${anim ? `sleep ${(delays[i] / 1000).toFixed(3)}\n` : ''}`).join('') +
         (anim ? 'done\n' : 'printf "\\033[0m\\033[?25h"\n');
     } else if (kind === 'ps1') {
-      text = '\ufeff' + [`# ${name}: text art made with Text Art Studio.`, `# Run it:  powershell -ExecutionPolicy Bypass -File ${name}.ps1${anim ? '   (Ctrl+C stops)' : ''}`,
+      text = '\ufeff' + [`# ${name}: text art made with Image to Text Converter.`, `# Run it:  powershell -ExecutionPolicy Bypass -File ${name}.ps1${anim ? '   (Ctrl+C stops)' : ''}`,
         '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8', '$E = [char]27', '$frames = @(',
         frames.map(f => "@'\n" + f.replace(/\n$/, '') + "\n'@").join(',\n'), ')', `$delays = @(${delays.join(', ')})`,
         '[Console]::Write("$E[2J$E[?25l")',
         'try {', '  do {', '    for ($i = 0; $i -lt $frames.Count; $i++) { [Console]::Write("$E[H" + $frames[$i]); if ($frames.Count -gt 1) { Start-Sleep -Milliseconds $delays[$i] } }', '  } while ($frames.Count -gt 1)',
         '} finally { [Console]::Write("$E[0m$E[?25h`n") }', ''].join('\r\n');
     } else {
-      text = `#!/usr/bin/env python3\n# ${name}: text art made with Text Art Studio.\n# Run it:  python ${name}.py${anim ? '   (Ctrl+C stops)' : ''}\nimport os, sys, time\n` +
+      text = `#!/usr/bin/env python3\n# ${name}: text art made with Image to Text Converter.\n# Run it:  python ${name}.py${anim ? '   (Ctrl+C stops)' : ''}\nimport os, sys, time\n` +
         `FRAMES = [\n${frames.map(f => '    ' + JSON.stringify(f)).join(',\n')},\n]\nDELAYS = [${delays.join(', ')}]\n` +
         `if os.name == 'nt':\n    os.system('')  # lets Windows consoles show colours\ntry:\n    sys.stdout.reconfigure(encoding='utf-8')\nexcept Exception:\n    pass\nw = sys.stdout.write\nw('\\x1b[2J\\x1b[?25l')\n` +
         `try:\n    while True:\n        for f, d in zip(FRAMES, DELAYS):\n            w('\\x1b[H' + f)\n            sys.stdout.flush()\n            if len(FRAMES) > 1:\n                time.sleep(d / 1000)\n        if len(FRAMES) == 1:\n            break\nexcept KeyboardInterrupt:\n    pass\nfinally:\n    w('\\x1b[0m\\x1b[?25h\\n')\n`;

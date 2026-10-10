@@ -1,9 +1,9 @@
 {
-  "name": "text-art-studio",
-  "version": "1.0.1",
+  "name": "image-to-text-converter",
+  "version": "1.0.2",
   "private": true,
   "description": "Turns pictures, GIFs and videos into text art, offline. The desktop shell around web/index.html.",
-  "author": "LighterVoids <afra.kamil.05@gmail.com>",
+  "author": "Zeronoid <afra.kamil.05@gmail.com>",
   "homepage": "https://github.com/ZeronTwoi/text-art-converter",
   "license": "MIT",
   "main": "main.js",

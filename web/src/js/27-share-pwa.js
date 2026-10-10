@@ -52,7 +52,7 @@ function initPWA() {
   const apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = 'icon-192.png'; document.head.appendChild(apple);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('offline cache unavailable:', e && e.message));
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); App.installPrompt = e; $('#btnInstall').hidden = false; });
-  window.addEventListener('appinstalled', () => { App.installPrompt = null; $('#btnInstall').hidden = true; toast('Installed. Text Art Studio now opens like an app, also offline'); });
+  window.addEventListener('appinstalled', () => { App.installPrompt = null; $('#btnInstall').hidden = true; toast('Installed. Image to Text Converter now opens like an app, also offline'); });
   $('#btnInstall').addEventListener('click', async () => { const p = App.installPrompt; if (!p) return; p.prompt(); try { await p.userChoice; } catch (e) {} App.installPrompt = null; $('#btnInstall').hidden = true; });
   // files opened with the installed app ("Open with…")
   if ('launchQueue' in window) window.launchQueue.setConsumer(async params => { if (params.files && params.files.length) openFile(await params.files[0].getFile()); });

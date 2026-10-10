@@ -1,6 +1,6 @@
 'use strict';
 /* =====================================================================
-   Text Art Studio: offline image / GIF / video → text-art converter
+   Image to Text Converter: offline image / GIF / video → text-art converter
    Single file, no network. Includes a GIF decoder + encoder, a ZIP
    writer and a BMP writer so it works without any libraries.
    ===================================================================== */
@@ -97,7 +97,7 @@ const DEFAULTS = {
   mode: 'braille', cols: 120, charAspect: 2, fontSize: 10,
   charset: 'standard', customChars: ' .:-=+*#%@', sortRamp: false, brailleBlank: 'braille',
   glyphSet: 'ascii', glyphCustom: ' .,:;/\\|-_=+*#', edgeThreshold: 0.22, edgeFill: true, emojiSet: 'blocks',
-  wordText: 'TEXT ART STUDIO ', wordFillAll: false,
+  wordText: 'IMAGE TO TEXT ', wordFillAll: false,
   brightness: 0, contrast: 0, gamma: 1, saturation: 1, threshold: 0.5, edge: 0, sharpen: 0, outline: 0.45, outlineWidth: 1, outlineDir: true, fill: 1, localContrast: 0, bgFade: 0, dither: 'floyd', invert: false, autoLevels: false,
   colorMode: 'mono', fg: '#e8e6e3', bg: '#0b0d12', gradA: '#14123a', gradB: '#7cf7c4', bgMode: 'solid',
   renderStyle: 'shapes', dotShape: 'circle', dotSize: 0.85, fontFamily: 'mono', customFont: '', margin: 0, textGradient: 'vertical',

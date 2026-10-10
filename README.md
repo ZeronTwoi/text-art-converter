@@ -1,11 +1,11 @@
-# Text Art Studio
+# Image to Text Converter
 
 Turns pictures, GIFs and videos into text art (braille, ASCII, blocks, emoji …) and back into
 pictures, animations or chat-ready text. Everything runs on your own computer — nothing is uploaded.
 
 ## Just want to try it?
 
-**Windows** — download **`text-art-studio-…-setup.exe`** from the
+**Windows** — download **`image-to-text-converter-…-setup.exe`** from the
 [latest release](https://github.com/ZeronTwoi/text-art-converter/releases/latest) and
 **double-click it**. That's all: it installs and opens like any other program.
 Prefer no installation? Take **`…-portable.exe`** instead — one file, double-click, it runs.
@@ -142,7 +142,7 @@ The full-quality files are on the release:
 ## Free — also for commercial use
 
 [MIT license](LICENSE): use it, change it, sell things made with it — no strings attached.
-If you mention Text Art Studio when you use it somewhere, that is appreciated, never required.
+If you mention Image to Text Converter when you use it somewhere, that is appreciated, never required.
 
 This project was built with the help of an AI coding assistant (Anthropic's Claude).
 

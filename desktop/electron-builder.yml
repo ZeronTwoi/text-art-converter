@@ -1,8 +1,8 @@
 # Packaging: Windows installer + portable .exe, Linux AppImage + .deb (built by CI; see
 # .github/workflows/desktop.yml — Linux packages do not build reliably from Windows).
 appId: io.github.lightervoids.text-art-studio
-productName: Text Art Studio
-artifactName: text-art-studio-${version}-${os}-${arch}.${ext}
+productName: Image to Text Converter
+artifactName: image-to-text-converter-${version}-${os}-${arch}.${ext}
 npmRebuild: false
 
 directories:
@@ -48,9 +48,9 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: text-art-studio-${version}-setup.${ext}
+  artifactName: image-to-text-converter-${version}-setup.${ext}
 portable:
-  artifactName: text-art-studio-${version}-portable.${ext}
+  artifactName: image-to-text-converter-${version}-portable.${ext}
 
 linux:
   target: [AppImage, deb]
