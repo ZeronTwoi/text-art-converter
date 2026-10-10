@@ -53,10 +53,16 @@ UI_TESTS.push(async function gallery(ok, { wait }) {
   openGallery();
   const cards = $$('#galleryGrid .look');
   ok('Bigger gallery: a card for every look', cards.length === Object.keys(PRESETS).length + userLooks.length, cards.length + ' cards');
-  await renderGallery();
+  await renderGallery(); await wait(400);
   ok('Bigger gallery: every card is drawn', cards.every(c => c.querySelector('canvas').width > 100), cards[0].querySelector('canvas').width + 'px wide');
   cards[2].click();
   ok('Bigger gallery: click applies the look and closes', App.look === cards[2].dataset.look && !$('#galleryDialog').open);
+  // the bigger previews show exactly what applying gives: your width, crop, captions
+  applySettings({ cols: 64, cropL: 20, captionBottom: 'MY TEXT' }); openGallery(); await renderGallery(); await wait(500);
+  const card = $$('#galleryGrid .look').find(c => c.dataset.look === 'Matrix'), shown = card._res;
+  card.click(); renderNow();
+  ok('Bigger gallery: a preview is exactly the result you get', !!shown && resultText(shown) === resultText(App.res) && resultText(shown).includes('MY TEXT'), shown && `${shown.cols}×${shown.rows}`);
+  applySettings({ cols: DEFAULTS.cols, cropL: 0, captionBottom: '' });
 });
 
 /* pointer events on an element at fractions (fx, fy) of its box */

@@ -5297,7 +5297,9 @@ function buildLooks() {
 let looksTimer = 0, looksSig = '';
 function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
 const renderLooks = () => renderLookCards($$('#looks .look[data-look]').filter(c => c.offsetParent), { cols: 56, fontSize: 4 }, renderLooks);
-/* draws each look card's picture: the current picture (or the demo) in that look */
+/* draws each look card's picture: the current picture (or the demo) in that look.
+   size: small thumbnails at a fixed width; null: exactly what applying the look gives (your width, crop, captions,
+   edits, the current frame and its changes over time), drawn smaller to fit the card */
 async function renderLookCards(cards, size, owner) {
   const token = owner.token = {};
   const s = App.src;
@@ -5307,12 +5309,18 @@ async function renderLookCards(cards, size, owner) {
   for (const card of cards) {
     if (!live()) return;
     const ls = lookSettings(card.dataset.look); if (!ls) continue;
-    const St = Object.assign({}, S, ls, size, { bgFade: 0, margin: 0 }), canvas = card.querySelector('canvas');
-    const draw = res => { if (live()) try { renderResult(res, St, canvas, 1); } catch (e) { console.warn(e); } };
+    const exact = !size, St = exact ? Object.assign({}, settingsAt(curTime()), ls) : Object.assign({}, S, ls, size, { bgFade: 0, margin: 0 }), canvas = card.querySelector('canvas');
+    const draw = raw => {
+      if (!live()) return;
+      try {
+        const res = exact ? withOverlay(raw, St) : raw, scale = exact ? Math.min(1, 560 / pictureSize(res.cols, res.rows, St, 1)[0]) : 1;
+        renderResult(res, St, canvas, scale); card._res = res;
+      } catch (e) { console.warn(e); }
+    };
     try {
       const memo = peekResult(d[0], d[1], d[2], St);
       if (memo || !Pool.size()) draw(memo || convertRaw(d[0], d[1], d[2], St));
-      else {   // the thumbnails convert on the workers, all at once; only the small pictures are drawn here
+      else {   // the cards convert on the workers, all at once; only the pictures are drawn here
         const key = memoKey(d[0], d[1], d[2], St);
         convertOnWorker(d[0], d[1], d[2], St).then(res => { if (key) resultCache.set(key, res, resultBytes(res)); draw(res); }, e => console.warn(e));
       }
@@ -5333,7 +5341,7 @@ function openGallery() {
   }
   d.showModal(); renderGallery();
 }
-const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
+const renderGallery = () => renderLookCards($$('#galleryGrid .look'), null, renderGallery);
 /* folds (details) remember whether you left them open */
 function initFold(d) {
   if (!d || d._fold) return; d._fold = true;
@@ -8205,10 +8213,16 @@ UI_TESTS.push(async function gallery(ok, { wait }) {
   openGallery();
   const cards = $$('#galleryGrid .look');
   ok('Bigger gallery: a card for every look', cards.length === Object.keys(PRESETS).length + userLooks.length, cards.length + ' cards');
-  await renderGallery();
+  await renderGallery(); await wait(400);
   ok('Bigger gallery: every card is drawn', cards.every(c => c.querySelector('canvas').width > 100), cards[0].querySelector('canvas').width + 'px wide');
   cards[2].click();
   ok('Bigger gallery: click applies the look and closes', App.look === cards[2].dataset.look && !$('#galleryDialog').open);
+  // the bigger previews show exactly what applying gives: your width, crop, captions
+  applySettings({ cols: 64, cropL: 20, captionBottom: 'MY TEXT' }); openGallery(); await renderGallery(); await wait(500);
+  const card = $$('#galleryGrid .look').find(c => c.dataset.look === 'Matrix'), shown = card._res;
+  card.click(); renderNow();
+  ok('Bigger gallery: a preview is exactly the result you get', !!shown && resultText(shown) === resultText(App.res) && resultText(shown).includes('MY TEXT'), shown && `${shown.cols}×${shown.rows}`);
+  applySettings({ cols: DEFAULTS.cols, cropL: 0, captionBottom: '' });
 });
 
 /* pointer events on an element at fractions (fx, fy) of its box */
