@@ -170,13 +170,11 @@ UI_TESTS.push(async function projects(ok, { wait, reset }) {
   ok('Project: every setting is back', S.mode === 'ascii' && S.cols === 77 && S.cropL === 10 && S.rotate === 90 && S.gamma === 1.4 && S.captionTop === 'MY TITLE');
   ok('Project: the mask is back', !!Mask.canvas && Math.abs(maskInk() - ink0) / ink0 < 0.02, maskInk() + ' vs ' + ink0);
   ok('Project: the hand edit is back', Edits.cells.get(3) && Edits.cells.get(3).cp === 0x263a);
-  // the browser's GPU downscaling of the picture can round slightly differently from one moment to the next,
-  // so the saved picture is compared pixel by pixel and the result only needs to match closely
   { const px = b => { const c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(b, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
     const a = px(App.src.bmp), b = px(await createImageBitmap(demoCanvas())); let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
     ok('Project: the picture is the same, pixel for pixel', d === 0, d + ' bytes differ');
     const t1 = resultText(App.res); let n = 0; for (let i = 0; i < Math.max(t1.length, text0.length); i++) if (t1[i] !== text0[i]) n++;
-    ok('Project: the result matches', n / text0.length < 0.2, n ? `${n} of ${text0.length} characters differ (GPU resampling)` : 'identical'); }
+    ok('Project: the result is exactly the same', n === 0, n + ' characters differ'); }
   // an animation keeps its trim
   reset(); await demoAnim(); await wait(30); App.tin = 0.5; App.tout = 1.5;
   const g2 = await uiCaptureDownloads(saveProject);
@@ -417,6 +415,25 @@ UI_TESTS.push(async function shareSheet(ok, { wait }) {
     if (realCan) Object.defineProperty(navigator, 'canShare', { configurable: true, value: realCan }); else delete navigator.canShare;
     S.exportGoal = 'chat'; buildExportPanel();
   }
+});
+
+UI_TESTS.push(async function sameResultEverywhere(ok) {
+  // one picture must convert the same however it arrived: opened file, demo canvas, GIF frame, pasted bitmap
+  const W = 800, H = 500, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'); g.drawImage(demoCanvas(), 0, 0, W, H);
+  const id = g.getImageData(0, 0, W, H); for (let i = 0; i < id.data.length; i += 4) { const n = (hashNoise(i >> 2, 9) - 0.5) * 50; id.data[i] += n; id.data[i + 1] += n; id.data[i + 2] -= n; } g.putImageData(id, 0, 0);
+  const png = await canvasToBlob(c, 'image/png'), hash = x => { let h = 2166136261; for (let i = 0; i < x.length; i++) h = Math.imul(h ^ x[i], 16777619); return h >>> 0; };
+  const opened = (await loadImageFile(new File([png], 'p.png', { type: 'image/png' }), 'png', 'png')).bmp;
+  const sources = { 'opened file': opened, 'canvas': c, 'canvas bitmap': await createImageBitmap(c) };
+  const results = {};
+  for (const [name, s] of Object.entries(sources)) {
+    const r = [];
+    for (const St of [Object.assign({}, DEFAULTS, { cols: 100 }), Object.assign({}, DEFAULTS, { cols: 47, rotate: 270, cropT: 12, mode: 'quad', colorMode: 'color' })]) { clearEngineCaches(); const p = convertInputs(s, W, H, St); r.push(hash(p.sample), p.hi ? hash(p.hi) : 0); }
+    results[name] = r.join();
+  }
+  const distinct = new Set(Object.values(results)).size;
+  ok('Same result however a picture is opened (file, canvas, bitmap)', distinct === 1, distinct + ' different results');
+  opened.close();
 });
 
 UI_TESTS.push(async function captions(ok) {

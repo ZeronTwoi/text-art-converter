@@ -63,6 +63,7 @@ async function progressiveAnim(delays, w, h, decode) {
         if (s.disposed) return;
         const fr = await decode(i);
         if (!fr) break;
+        fr.bmp = await rasterBitmap(fr.bmp);   // every frame the same kind of bitmap, however it was decoded
         if (s.disposed) { try { fr.bmp.close(); } catch (e) {} return; }
         s.frames[i].bmp = fr.bmp; srcOwner.set(fr.bmp, s);
         if (fr.delay && fr.delay !== s.frames[i].delay) { s.frames[i].delay = fr.delay; retime(s); }
@@ -88,6 +89,17 @@ function onAnimFrame(s, i) {
   const it = film.items.find(x => x.idx === i);
   if (it && it.c) it.c.getContext('2d').drawImage(s.frames[i].bmp, 0, 0, it.c.width, it.c.height);
   if (i % 25 === 0) updateSrcInfo();
+}
+/* A decoded picture as a plain canvas-made bitmap. The browser resamples a bitmap decoded straight from a file
+   differently from the same pixels drawn on a canvas, so without this one picture could convert differently
+   depending on how it was opened (file, paste, demo, project). One copy at load time, nothing per frame. */
+async function rasterBitmap(src, w = src.displayWidth || src.width, h = src.displayHeight || src.height) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(src, 0, 0, w, h);
+  const b = await createImageBitmap(c);
+  if (src.close) src.close();
+  c.width = c.height = 0;
+  return b;
 }
 /* the newest decoded frame at or before frame i */
 function animBitmap(s, i) { for (let k = Math.min(i, s.frames.length - 1); k >= 0; k--) if (s.frames[k].bmp) return s.frames[k].bmp; return null; }
@@ -117,7 +129,7 @@ async function loadImageFile(file, fmt, ext) {
   if (fmt === 'gif') {
     try {
       const delays = gifDelays(buf), g = gifDecoder(buf);
-      if (delays.length < 2) { const f = g.next(); if (!f) throw new Error('GIF has no frames'); return { kind: 'image', bmp: await createImageBitmap(f.data), w: g.width, h: g.height, stillGif: true }; }
+      if (delays.length < 2) { const f = g.next(); if (!f) throw new Error('GIF has no frames'); return { kind: 'image', bmp: await rasterBitmap(await createImageBitmap(f.data)), w: g.width, h: g.height, stillGif: true }; }
       const wd = gifWorkerDecoder(buf, g.width, g.height);   // decoding on a background thread; here as a fallback
       const anim = await progressiveAnim(delays, g.width, g.height, wd ? i => wd.decode(i) : async () => { const f = g.next(); return f && { bmp: await createImageBitmap(f.data), delay: f.delay }; });
       if (wd) anim.ready.then(() => wd.stop());
@@ -134,7 +146,7 @@ async function loadImageFile(file, fmt, ext) {
   }
   const blob = new Blob([buf], { type: SNIFF_MIME[fmt] || file.type || '' });
   if (fmt !== 'svg') {
-    try { const bmp = await createImageBitmap(blob); return { kind: 'image', bmp, w: bmp.width, h: bmp.height }; } catch (e) { /* try <img> */ }
+    try { const bmp = await rasterBitmap(await createImageBitmap(blob)); return { kind: 'image', bmp, w: bmp.width, h: bmp.height }; } catch (e) { /* try <img> */ }
   }
   const url = URL.createObjectURL(blob);
   try {
