@@ -20,7 +20,7 @@
   </nav>
   <div class="topacts">
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
-    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz">
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
@@ -29,6 +29,9 @@
         <button id="btnDemoImg">🖼 Demo picture</button>
         <button id="btnDemoAnim">🎞 Demo animation</button>
         <button id="btnBatch">📚 Batch convert files…</button>
+        <hr>
+        <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
+        <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
       </div>
     </div>
     <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
@@ -343,6 +346,8 @@
     <li><b>Advanced</b> (top right) shows every expert setting.</li>
     <li>GIFs and videos get a player with a filmstrip; set <i>Start here / End here</i> to export only part.</li>
   </ul>
+  <h4>Projects</h4>
+  <p class="muted small" style="margin:0">More → <i>Save project</i> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) keeps the picture with every setting, the crop, mask, hand edits and captions in one <b>.textart</b> file. Open it with <i>Open file…</i> (or drop it here) to continue later, or send it to someone.</p>
   <h4>Keyboard</h4>
   <p class="muted small"><kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> previous/next frame · <kbd>Home</kbd> back to start · <kbd>I</kbd>/<kbd>O</kbd> trim start/end · <kbd>+</kbd>/<kbd>−</kbd>/<kbd>F</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</p>
   <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>

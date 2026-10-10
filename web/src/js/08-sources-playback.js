@@ -167,6 +167,7 @@ async function openFile(file, how) {
   if (App.exporting) return toast('Wait for the export to finish first');
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
+  if (ext === 'textart' || isZipHead(head)) { await openProject(file); return; }
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {
     const { text, ansi } = await readTextArt(file);
@@ -178,7 +179,7 @@ async function openFile(file, how) {
     let src;
     if (fmt === 'video' || (!fmt && (type.startsWith('video/') || VIDEO_EXT.has(ext)))) src = await loadVideoFile(file);
     else src = await loadImageFile(file, fmt, ext);
-    src.name = name; src.mime = type; src.bytes = file.size;
+    src.name = name; src.mime = type; src.bytes = file.size; src.file = file;
     setSource(src);
     // explain anything surprising about what was loaded
     const realExt = { gif: 'GIF', png: 'PNG', webp: 'WEBP', avif: 'AVIF', jpeg: 'JPG', video: 'video' }[fmt];
@@ -355,7 +356,7 @@ function tick(now) {
   } else if (s.kind === 'webcam') {
     if (App.playing) App.dirty = true;
   }
-  if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; }
+  maskFlush();
   if (Live.active()) { if (App.dirty && Live.inflight < Live.max) { App.dirty = false; Live.start(); } }
   else if (App.dirty) { App.dirty = false; renderNow(); }
   if (s.kind === 'anim' && App.playing) Prefetch.run();

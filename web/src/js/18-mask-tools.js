@@ -10,6 +10,8 @@ function maskStrokeStart() {
   MaskHist.redo = []; updateMaskUI();
 }
 function maskStrokeEnd() { updateMaskUI(); }
+/* new paint takes effect: once per display frame (and before anything that must see it) */
+function maskFlush() { if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; } }
 function maskHistReset() { MaskHist.undo = []; MaskHist.redo = []; }
 function maskStep(back) {
   const from = back ? MaskHist.undo : MaskHist.redo, to = back ? MaskHist.redo : MaskHist.undo;

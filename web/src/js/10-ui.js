@@ -261,6 +261,7 @@ function initUI() {
 
   initUI2();
   initCropWipe();
+  initProjects();
   buildExportPanel();
   requestAnimationFrame(tick);
 }

@@ -577,7 +577,8 @@ async function runBatch(files, opts) {
       } finally { if (src) releaseSource(src); }
       await nextTick();
     }
-    const zip = makeZip(out);
+    setProgress(1, 'Compressing the ZIP…');
+    const zip = await makeZipAsync(out);
     download(zip, `text-art-batch_${files.length}-files.zip`);
     const failed = out.filter(f => f.name.endsWith('_FAILED.txt')).length;
     toast(`Batch ZIP saved (${fmtBytes(zip.size)})${failed ? `, ${failed} file${failed > 1 ? 's' : ''} could not be converted (see the ZIP)` : ''}`, failed ? 'error' : undefined);
@@ -1203,7 +1204,7 @@ async function exportZip() {
     }
     const outs = await jobs.all(k => progress(k / jobs.count, `Compressing ${k} / ${jobs.count}`));
     outs.forEach((o, i) => { const n = String(i + 1).padStart(5, '0'); files.push({ name: `png/frame_${n}.png`, data: o.png }, { name: `text/frame_${n}.txt`, data: enc.encode(o.text) }); });
-    const blob = makeZip(files);
+    const blob = await makeZipAsync(files, p => progress(p, 'Compressing the text frames…'));
     download(blob, baseName() + '_frames.zip');
     toast(`ZIP saved (${fmtBytes(blob.size)})`);
   });

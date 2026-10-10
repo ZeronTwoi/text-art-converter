@@ -199,7 +199,8 @@ function paletteFromHistogram(cnt, sr, sg, sb, maxColors, transparent) {
   return { pal, size, n: nColors, off, lut };
 }
 
-/* ---------------- ZIP (store) + BMP writers ---------------- */
+/* ---------------- ZIP + BMP writers ----------------
+   makeZip stores files as they are; entries may come already compressed ({ data, method: 8, crc, size } from makeZipAsync). */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
 function makeZip(files) {
@@ -209,15 +210,15 @@ function makeZip(files) {
   const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   let offset = 0, cdSize = 0;
   for (const f of files) {
-    const name = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const name = enc.encode(f.name), data = f.data, crc = f.crc != null ? f.crc : crc32(data), method = f.method || 0, size = f.size != null ? f.size : data.length;
     const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, method, true);
     h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
-    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
     parts.push(h, name, data);
     const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
-    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, method, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, size, true);
     c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
     central.push(c, name);
     offset += 30 + name.length + data.length; cdSize += 46 + name.length;

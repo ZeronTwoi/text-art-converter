@@ -118,6 +118,66 @@ UI_TESTS.push(async function maskTools(ok, { wait }) {
   setMaskMode(false); Mask.size = 6;
 });
 
+/* runs fn while download() hands its files to the test instead of saving them */
+async function uiCaptureDownloads(fn) {
+  const got = [], real = window.download;
+  window.download = (blob, name) => got.push({ blob, name });
+  try { await fn(); } finally { window.download = real; }
+  return got;
+}
+UI_TESTS.push(async function zipFiles(ok) {
+  const enc = new TextEncoder(), text = enc.encode('hello text art '.repeat(400)), bin = synthPixels(40, 30, 5);
+  const files = [{ name: 'a.txt', data: text }, { name: 'pics/b.png', data: bin.slice(0, 900) }, { name: 'c.bin', data: new Uint8Array(bin.buffer) }, { name: 'empty.txt', data: new Uint8Array(0) }];
+  const z = await makeZipAsync(files), u = new Uint8Array(await z.arrayBuffer()), back = await readZip(u);
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  ok('ZIP: compressed files read back identical', files.every(f => back.has(f.name) && same(back.get(f.name), f.data)));
+  ok('ZIP: text is compressed', u.length < text.length / 4 + bin.length + 2000, fmtBytes(u.length) + ' for ' + fmtBytes(text.length + bin.length * 2));
+  const plain = await readZip(new Uint8Array(await makeZip(files).arrayBuffer()));
+  ok('ZIP: uncompressed ZIPs read too', files.every(f => same(plain.get(f.name), f.data)));
+  let bad = false; try { const d = u.slice(); d[40] ^= 0xff; await readZip(d); } catch (e) { bad = true; }
+  ok('ZIP: damage is detected', bad);
+});
+
+UI_TESTS.push(async function projects(ok, { wait, reset }) {
+  // a picture opened from a file (as users do): the project keeps the file, so it decodes exactly the same way
+  await openFile(new File([await canvasToBlob(demoCanvas(), 'image/png')], 'sunset.png', { type: 'image/png' })); await wait(30);
+  applySettings({ mode: 'ascii', cols: 77, cropL: 10, rotate: 90, colorMode: 'color', captionTop: 'MY TITLE', gamma: 1.4 });
+  renderNow();
+  setMaskMode(true); renderNow(); uiDrag($('#srcCanvas'), [0.2, 0.5], [0.8, 0.5]); setMaskMode(false);
+  maskFlush(); renderNow();
+  const r0 = App.res; Edits.cols = r0.cols; Edits.rows = r0.rows; Edits.cells.set(3, { cp: 0x263a, rgb: 0x00ff00 }); Edits.ver++;
+  App.dirty = true; renderNow();
+  const text0 = resultText(App.res), maskInk = () => { const m = Mask.canvas, d = m.getContext('2d').getImageData(0, 0, m.width, m.height).data; let s = 0; for (let i = 3; i < d.length; i += 4) s += d[i]; return s; }, ink0 = maskInk();
+  const got = await uiCaptureDownloads(saveProject);
+  ok('Project: saved as one .textart file', got.length === 1 && /\.textart$/.test(got[0].name), got[0] && got[0].name);
+  reset(); await demoAnim(); await wait(30);
+  ok('Project: (something else is open now)', App.src.kind === 'anim');
+  await openProject(new File([got[0].blob], got[0].name));
+  maskFlush(); App.dirty = true; renderNow();
+  ok('Project: the picture is back', App.src.kind === 'image' && App.src.w === 960 && App.src.h === 640);
+  ok('Project: every setting is back', S.mode === 'ascii' && S.cols === 77 && S.cropL === 10 && S.rotate === 90 && S.gamma === 1.4 && S.captionTop === 'MY TITLE');
+  ok('Project: the mask is back', !!Mask.canvas && Math.abs(maskInk() - ink0) / ink0 < 0.02, maskInk() + ' vs ' + ink0);
+  ok('Project: the hand edit is back', Edits.cells.get(3) && Edits.cells.get(3).cp === 0x263a);
+  ok('Project: the result is exactly the same', resultText(App.res) === text0);
+  // an animation keeps its trim
+  reset(); await demoAnim(); await wait(30); App.tin = 0.5; App.tout = 1.5;
+  const g2 = await uiCaptureDownloads(saveProject);
+  reset(); await demoImage();
+  await openProject(new File([g2[0].blob], g2[0].name));
+  ok('Project: an animation opens with its trim', App.src.kind === 'anim' && App.src.frames.length === 48 && App.tin === 0.5 && App.tout === 1.5);
+  // coloured ANSI text
+  reset(); openTextArt('\x1b[31mRED\x1b[0m \x1b[44mblue bg\x1b[0m', 'c.ans');
+  const t0 = resultANSI(App.res = textResult(App.src.text, S, App.src.ansi));
+  const g3 = await uiCaptureDownloads(saveProject);
+  reset(); await demoImage();
+  await openProject(new File([g3[0].blob], g3[0].name));
+  ok('Project: coloured ANSI text opens with its colours', App.src.kind === 'text' && !!App.src.ansi && resultANSI(textResult(App.src.text, S, App.src.ansi)) === t0);
+  const before = App.src;
+  await openFile(new File([await makeZip([{ name: 'x.txt', data: new Uint8Array(5) }]).arrayBuffer()], 'other.zip'));
+  ok('Project: an ordinary ZIP is refused, nothing changes', App.src === before);
+  editsClear(); maskClear();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

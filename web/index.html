@@ -214,6 +214,7 @@ body.simple .adv{display:none!important}
 .menupop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;min-width:200px;z-index:45}
 .menupop button{border:0;background:none;text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer}
 .menupop button:hover{background:var(--accent-soft)}
+.menupop hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 .switch{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--muted);font-weight:600;user-select:none}
 .switch input{display:none}
 .switch span{width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;transition:.15s;flex:none}
@@ -337,7 +338,7 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
   </nav>
   <div class="topacts">
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
-    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz">
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
@@ -346,6 +347,9 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
         <button id="btnDemoImg">🖼 Demo picture</button>
         <button id="btnDemoAnim">🎞 Demo animation</button>
         <button id="btnBatch">📚 Batch convert files…</button>
+        <hr>
+        <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
+        <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
       </div>
     </div>
     <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
@@ -660,6 +664,8 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
     <li><b>Advanced</b> (top right) shows every expert setting.</li>
     <li>GIFs and videos get a player with a filmstrip; set <i>Start here / End here</i> to export only part.</li>
   </ul>
+  <h4>Projects</h4>
+  <p class="muted small" style="margin:0">More → <i>Save project</i> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) keeps the picture with every setting, the crop, mask, hand edits and captions in one <b>.textart</b> file. Open it with <i>Open file…</i> (or drop it here) to continue later, or send it to someone.</p>
   <h4>Keyboard</h4>
   <p class="muted small"><kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> previous/next frame · <kbd>Home</kbd> back to start · <kbd>I</kbd>/<kbd>O</kbd> trim start/end · <kbd>+</kbd>/<kbd>−</kbd>/<kbd>F</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</p>
   <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>
@@ -2462,7 +2468,8 @@ function paletteFromHistogram(cnt, sr, sg, sb, maxColors, transparent) {
   return { pal, size, n: nColors, off, lut };
 }
 
-/* ---------------- ZIP (store) + BMP writers ---------------- */
+/* ---------------- ZIP + BMP writers ----------------
+   makeZip stores files as they are; entries may come already compressed ({ data, method: 8, crc, size } from makeZipAsync). */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
 function makeZip(files) {
@@ -2472,15 +2479,15 @@ function makeZip(files) {
   const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   let offset = 0, cdSize = 0;
   for (const f of files) {
-    const name = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const name = enc.encode(f.name), data = f.data, crc = f.crc != null ? f.crc : crc32(data), method = f.method || 0, size = f.size != null ? f.size : data.length;
     const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, method, true);
     h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
-    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
     parts.push(h, name, data);
     const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
-    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, method, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, size, true);
     c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
     central.push(c, name);
     offset += 30 + name.length + data.length; cdSize += 46 + name.length;
@@ -2794,6 +2801,7 @@ async function openFile(file, how) {
   if (App.exporting) return toast('Wait for the export to finish first');
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
+  if (ext === 'textart' || isZipHead(head)) { await openProject(file); return; }
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {
     const { text, ansi } = await readTextArt(file);
@@ -2805,7 +2813,7 @@ async function openFile(file, how) {
     let src;
     if (fmt === 'video' || (!fmt && (type.startsWith('video/') || VIDEO_EXT.has(ext)))) src = await loadVideoFile(file);
     else src = await loadImageFile(file, fmt, ext);
-    src.name = name; src.mime = type; src.bytes = file.size;
+    src.name = name; src.mime = type; src.bytes = file.size; src.file = file;
     setSource(src);
     // explain anything surprising about what was loaded
     const realExt = { gif: 'GIF', png: 'PNG', webp: 'WEBP', avif: 'AVIF', jpeg: 'JPG', video: 'video' }[fmt];
@@ -2982,7 +2990,7 @@ function tick(now) {
   } else if (s.kind === 'webcam') {
     if (App.playing) App.dirty = true;
   }
-  if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; }
+  maskFlush();
   if (Live.active()) { if (App.dirty && Live.inflight < Live.max) { App.dirty = false; Live.start(); } }
   else if (App.dirty) { App.dirty = false; renderNow(); }
   if (s.kind === 'anim' && App.playing) Prefetch.run();
@@ -3797,7 +3805,8 @@ async function runBatch(files, opts) {
       } finally { if (src) releaseSource(src); }
       await nextTick();
     }
-    const zip = makeZip(out);
+    setProgress(1, 'Compressing the ZIP…');
+    const zip = await makeZipAsync(out);
     download(zip, `text-art-batch_${files.length}-files.zip`);
     const failed = out.filter(f => f.name.endsWith('_FAILED.txt')).length;
     toast(`Batch ZIP saved (${fmtBytes(zip.size)})${failed ? `, ${failed} file${failed > 1 ? 's' : ''} could not be converted (see the ZIP)` : ''}`, failed ? 'error' : undefined);
@@ -4423,7 +4432,7 @@ async function exportZip() {
     }
     const outs = await jobs.all(k => progress(k / jobs.count, `Compressing ${k} / ${jobs.count}`));
     outs.forEach((o, i) => { const n = String(i + 1).padStart(5, '0'); files.push({ name: `png/frame_${n}.png`, data: o.png }, { name: `text/frame_${n}.txt`, data: enc.encode(o.text) }); });
-    const blob = makeZip(files);
+    const blob = await makeZipAsync(files, p => progress(p, 'Compressing the text frames…'));
     download(blob, baseName() + '_frames.zip');
     toast(`ZIP saved (${fmtBytes(blob.size)})`);
   });
@@ -4803,6 +4812,7 @@ function initUI() {
 
   initUI2();
   initCropWipe();
+  initProjects();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
@@ -6020,6 +6030,8 @@ function maskStrokeStart() {
   MaskHist.redo = []; updateMaskUI();
 }
 function maskStrokeEnd() { updateMaskUI(); }
+/* new paint takes effect: once per display frame (and before anything that must see it) */
+function maskFlush() { if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; } }
 function maskHistReset() { MaskHist.undo = []; MaskHist.redo = []; }
 function maskStep(back) {
   const from = back ? MaskHist.undo : MaskHist.redo, to = back ? MaskHist.redo : MaskHist.undo;
@@ -6042,6 +6054,164 @@ function initMaskTools() {
     if (e.target.closest && e.target.closest('input[type=text],input[type=number],textarea,[contenteditable]')) return;
     e.preventDefault(); e.stopImmediatePropagation(); maskStep(k === 'z' && !e.shiftKey);
   }, true);
+}
+/* =====================================================================
+   Compressed ZIP (write + read) and project files (.textart)
+   ===================================================================== */
+/* deflate / inflate with the browser's own streams (no library) */
+const canDeflate = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+const streamBytes = async (u8, ts) => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer());
+const deflateRaw = u8 => streamBytes(u8, new CompressionStream('deflate-raw'));
+const inflateRaw = u8 => streamBytes(u8, new DecompressionStream('deflate-raw'));
+const ALREADY_COMPRESSED = /\.(png|jpe?g|gif|webp|avif|mp4|m4v|webm|mov|mkv|ogv|ogg|zip|textart|gz)$/i;
+/* A ZIP whose entries are compressed where that makes them smaller (text, HTML, BMP…); pictures and videos are stored. */
+async function makeZipAsync(files, progress) {
+  const out = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i], crc = crc32(f.data);
+    let e = { name: f.name, data: f.data, crc, size: f.data.length, method: 0 };
+    if (canDeflate() && f.data.length > 96 && !ALREADY_COMPRESSED.test(f.name)) {
+      const z = await deflateRaw(f.data);
+      if (z.length + 8 < f.data.length) e = Object.assign(e, { data: z, method: 8 });
+    }
+    out.push(e);
+    if (progress && i % 8 === 7) { progress((i + 1) / files.length); await nextTick(); }
+  }
+  return makeZip(out);
+}
+/* the files of a ZIP → Map(name → bytes); stored and deflated entries, CRC checked */
+async function readZip(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not a ZIP file');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder(), files = new Map();
+  for (let k = 0; k < count; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('damaged ZIP directory');
+    const method = dv.getUint16(p + 10, true), crc = dv.getUint32(p + 16, true), csize = dv.getUint32(p + 20, true), size = dv.getUint32(p + 24, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + xl + cl;
+    const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    let data = u8.subarray(start, start + csize);
+    if (method === 8) data = await inflateRaw(data);
+    else if (method !== 0) throw new Error(`"${name}" uses an unsupported compression`);
+    if (data.length !== size || crc32(data) !== crc) throw new Error(`"${name}" is damaged`);
+    files.set(name, data);
+  }
+  return files;
+}
+function bytesToBase64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function base64ToBytes(b) { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+const typedToB64 = a => bytesToBase64(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
+const b64ToTyped = (b, Type) => { const u = base64ToBytes(b); return new Type(u.buffer, 0, u.byteLength / Type.BYTES_PER_ELEMENT); };
+
+/* ---- project: the source, every setting, crop / turn, trim, mask, hand edits and captions in one .textart (ZIP) ---- */
+const PROJECT_SKIP = new Set(['calib']);   // device-specific
+async function projectBlob() {
+  const s = App.src; if (!s) throw new Error('nothing is open');
+  maskFlush();
+  const enc = new TextEncoder(), files = [], settings = {};
+  for (const k in DEFAULTS) if (!PROJECT_SKIP.has(k)) settings[k] = S[k];
+  const meta = { format: 'textart', version: 1, app: 'Text Art Studio', saved: new Date().toISOString(), settings, look: App.look || null, view: App.view,
+    trim: { in: App.tin, out: App.tout }, time: curTime() };
+  const src = meta.source = { kind: s.kind, name: s.name || 'picture' };
+  const pngOf = async c => new Uint8Array(await (await canvasToBlob(c, 'image/png')).arrayBuffer());
+  if (s.kind === 'text') {
+    src.text = s.text;
+    if (s.ansi) src.ansi = { cols: s.ansi.cols, rows: s.ansi.rows, cp: typedToB64(s.ansi.cp), fg: typedToB64(s.ansi.fg), bg: typedToB64(s.ansi.bg) };
+  } else if (s.effect) {   // an animation made from a still picture: the picture and the effect
+    src.effect = { kind: s.effect.kind, opts: s.effect.opts, file: 'source' + (s.effect.ext || '.png') };
+    src.mime = s.effect.mime || 'image/png';
+    files.push({ name: src.effect.file, data: s.effect.bytes });
+  } else if (s.file) {
+    const ext = ((s.file.name || s.name || '').match(/\.[A-Za-z0-9]{1,5}$/) || [''])[0].toLowerCase();
+    src.file = 'source' + ext; src.mime = s.mime || s.file.type || '';
+    files.push({ name: src.file, data: new Uint8Array(await s.file.arrayBuffer()) });
+  } else if (s.kind === 'anim' && s.name === 'demo-loop.gif') src.demo = 'anim';
+  else {   // no file behind it (demo picture, webcam, generated): the current frame as a PNG
+    const d = currentDrawable(); if (!d) throw new Error('the picture is not ready yet');
+    const c = document.createElement('canvas'); c.width = d[1]; c.height = d[2]; c.getContext('2d').drawImage(d[0], 0, 0, d[1], d[2]);
+    Object.assign(src, { kind: 'image', file: 'source.png', mime: 'image/png' });
+    if (s.kind === 'webcam') src.name = 'webcam.png';
+    files.push({ name: 'source.png', data: await pngOf(c) });
+  }
+  if (Mask.canvas && Mask.src === s && Mask.ver) {   // raw pixels (exact; the ZIP compresses them), not a PNG (alpha would round)
+    const m = Mask.canvas, px = m.getContext('2d').getImageData(0, 0, m.width, m.height).data;
+    meta.mask = { file: 'mask.rgba', w: m.width, h: m.height };
+    files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
+  }
+  if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
+  files.unshift({ name: 'project.json', data: enc.encode(JSON.stringify(meta, null, 1)) });
+  return makeZipAsync(files);
+}
+async function saveProject() {
+  if (!App.src) return toast('Open a picture first');
+  if (App.exporting) return toast('Wait for the export to finish first');
+  showProgress('Saving the project', true);
+  try {
+    const blob = await projectBlob();
+    download(new Blob([blob], { type: 'application/x-textart+zip' }), baseName() + '.textart');
+    toast(`Project saved (${fmtBytes(blob.size)}). Open it here any time to continue`);
+  } catch (e) { console.error(e); toast('Could not save the project: ' + (e && e.message || e), 'error'); }
+  finally { hideProgress(); }
+}
+const isZipHead = h => h[0] === 0x50 && h[1] === 0x4b && h[2] === 3 && h[3] === 4;
+async function openProject(file) {
+  let z, meta;
+  try {
+    z = await readZip(new Uint8Array(await file.arrayBuffer()));
+    const pj = z.get('project.json'); if (!pj) throw new Error('this ZIP is not a Text Art Studio project');
+    meta = JSON.parse(new TextDecoder().decode(pj));
+    if (meta.format !== 'textart' || !meta.source) throw new Error('this is not a Text Art Studio project');
+  } catch (e) { toast('Could not open the project: ' + e.message, 'error'); return false; }
+  const src = meta.source, before = App.src;
+  // the settings first, so the source opens with its own look
+  const st = {}; for (const k in meta.settings || {}) if (k in DEFAULTS && !PROJECT_SKIP.has(k) && typeof meta.settings[k] === typeof DEFAULTS[k]) st[k] = meta.settings[k];
+  try {
+    if (src.kind === 'text') {
+      const a = src.ansi && { cols: src.ansi.cols, rows: src.ansi.rows, cp: b64ToTyped(src.ansi.cp, Uint32Array), fg: b64ToTyped(src.ansi.fg, Int32Array), bg: b64ToTyped(src.ansi.bg, Int32Array) };
+      setTextSource(src.text, src.name, a || null);
+    } else if (src.effect && z.get(src.effect.file)) {
+      await makeEffectAnim(src.effect.kind, src.effect.opts, new File([z.get(src.effect.file)], src.name, { type: src.mime || 'image/png' }), true);
+    } else if (src.demo === 'anim') await demoAnim();
+    else if (src.file && z.get(src.file)) await openFile(new File([z.get(src.file)], src.name, { type: src.mime || '' }));
+    else throw new Error('the picture is missing from the project');
+  } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
+  if (!App.src || App.src === before) return false;
+  applySettings(st);
+  History.reset();
+  App.look = meta.look && lookSettings(meta.look) ? meta.look : null; markLooks();
+  editsClear();
+  if (meta.edits && Array.isArray(meta.edits.cells)) {
+    Edits.cols = meta.edits.cols | 0; Edits.rows = meta.edits.rows | 0;
+    for (const [i, cp, rgb] of meta.edits.cells) Edits.cells.set(i | 0, { cp: cp >>> 0, rgb: rgb < 0 ? null : rgb | 0 });
+    Edits.ver++;
+  }
+  if (meta.mask && z.get(meta.mask.file) && App.src.kind !== 'text') {
+    try {
+      const m = maskEnsure(), g = m.canvas.getContext('2d'), raw = z.get(meta.mask.file), w = meta.mask.w | 0, h = meta.mask.h | 0;
+      if (raw.length !== w * h * 4) throw new Error('mask size');
+      const img = new ImageData(new Uint8ClampedArray(raw.buffer, raw.byteOffset, raw.length), w, h);
+      if (w === m.canvas.width && h === m.canvas.height) g.putImageData(img, 0, 0);
+      else { const t = document.createElement('canvas'); t.width = w; t.height = h; t.getContext('2d').putImageData(img, 0, 0); g.clearRect(0, 0, m.canvas.width, m.canvas.height); g.drawImage(t, 0, 0, m.canvas.width, m.canvas.height); }
+      Mask.pending = true;
+    } catch (e) { console.warn('mask', e); }
+  }
+  if (meta.trim) { App.tin = typeof meta.trim.in === 'number' ? meta.trim.in : null; App.tout = typeof meta.trim.out === 'number' ? meta.trim.out : null; updateTrimBar(); }
+  if (meta.time > 0 && duration()) seekTo(meta.time);
+  if (meta.view && ['out', 'split', 'wipe', 'src', 'text', 'platform'].includes(meta.view)) setView(meta.view);
+  App.dirty = true;
+  toast('Project opened: ' + (file.name || src.name));
+  return true;
+}
+function initProjects() {
+  $('#btnSaveProject').addEventListener('click', saveProject);
+  $('#btnOpenProject').addEventListener('click', () => $('#fileInput').click());
+  window.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key || '').toLowerCase() === 's') { e.preventDefault(); if (!document.querySelector('dialog[open]')) saveProject(); }
+  });
 }
 /* =====================================================================
    Feature test (open index.html#uitest): the interactive features on a demo picture and synthetic files
@@ -6161,6 +6331,66 @@ UI_TESTS.push(async function maskTools(ok, { wait }) {
   $('#maskClearBtn').click(); maskStep(true);
   ok('Mask: clearing can be undone', ink() > 0);
   setMaskMode(false); Mask.size = 6;
+});
+
+/* runs fn while download() hands its files to the test instead of saving them */
+async function uiCaptureDownloads(fn) {
+  const got = [], real = window.download;
+  window.download = (blob, name) => got.push({ blob, name });
+  try { await fn(); } finally { window.download = real; }
+  return got;
+}
+UI_TESTS.push(async function zipFiles(ok) {
+  const enc = new TextEncoder(), text = enc.encode('hello text art '.repeat(400)), bin = synthPixels(40, 30, 5);
+  const files = [{ name: 'a.txt', data: text }, { name: 'pics/b.png', data: bin.slice(0, 900) }, { name: 'c.bin', data: new Uint8Array(bin.buffer) }, { name: 'empty.txt', data: new Uint8Array(0) }];
+  const z = await makeZipAsync(files), u = new Uint8Array(await z.arrayBuffer()), back = await readZip(u);
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  ok('ZIP: compressed files read back identical', files.every(f => back.has(f.name) && same(back.get(f.name), f.data)));
+  ok('ZIP: text is compressed', u.length < text.length / 4 + bin.length + 2000, fmtBytes(u.length) + ' for ' + fmtBytes(text.length + bin.length * 2));
+  const plain = await readZip(new Uint8Array(await makeZip(files).arrayBuffer()));
+  ok('ZIP: uncompressed ZIPs read too', files.every(f => same(plain.get(f.name), f.data)));
+  let bad = false; try { const d = u.slice(); d[40] ^= 0xff; await readZip(d); } catch (e) { bad = true; }
+  ok('ZIP: damage is detected', bad);
+});
+
+UI_TESTS.push(async function projects(ok, { wait, reset }) {
+  // a picture opened from a file (as users do): the project keeps the file, so it decodes exactly the same way
+  await openFile(new File([await canvasToBlob(demoCanvas(), 'image/png')], 'sunset.png', { type: 'image/png' })); await wait(30);
+  applySettings({ mode: 'ascii', cols: 77, cropL: 10, rotate: 90, colorMode: 'color', captionTop: 'MY TITLE', gamma: 1.4 });
+  renderNow();
+  setMaskMode(true); renderNow(); uiDrag($('#srcCanvas'), [0.2, 0.5], [0.8, 0.5]); setMaskMode(false);
+  maskFlush(); renderNow();
+  const r0 = App.res; Edits.cols = r0.cols; Edits.rows = r0.rows; Edits.cells.set(3, { cp: 0x263a, rgb: 0x00ff00 }); Edits.ver++;
+  App.dirty = true; renderNow();
+  const text0 = resultText(App.res), maskInk = () => { const m = Mask.canvas, d = m.getContext('2d').getImageData(0, 0, m.width, m.height).data; let s = 0; for (let i = 3; i < d.length; i += 4) s += d[i]; return s; }, ink0 = maskInk();
+  const got = await uiCaptureDownloads(saveProject);
+  ok('Project: saved as one .textart file', got.length === 1 && /\.textart$/.test(got[0].name), got[0] && got[0].name);
+  reset(); await demoAnim(); await wait(30);
+  ok('Project: (something else is open now)', App.src.kind === 'anim');
+  await openProject(new File([got[0].blob], got[0].name));
+  maskFlush(); App.dirty = true; renderNow();
+  ok('Project: the picture is back', App.src.kind === 'image' && App.src.w === 960 && App.src.h === 640);
+  ok('Project: every setting is back', S.mode === 'ascii' && S.cols === 77 && S.cropL === 10 && S.rotate === 90 && S.gamma === 1.4 && S.captionTop === 'MY TITLE');
+  ok('Project: the mask is back', !!Mask.canvas && Math.abs(maskInk() - ink0) / ink0 < 0.02, maskInk() + ' vs ' + ink0);
+  ok('Project: the hand edit is back', Edits.cells.get(3) && Edits.cells.get(3).cp === 0x263a);
+  ok('Project: the result is exactly the same', resultText(App.res) === text0);
+  // an animation keeps its trim
+  reset(); await demoAnim(); await wait(30); App.tin = 0.5; App.tout = 1.5;
+  const g2 = await uiCaptureDownloads(saveProject);
+  reset(); await demoImage();
+  await openProject(new File([g2[0].blob], g2[0].name));
+  ok('Project: an animation opens with its trim', App.src.kind === 'anim' && App.src.frames.length === 48 && App.tin === 0.5 && App.tout === 1.5);
+  // coloured ANSI text
+  reset(); openTextArt('\x1b[31mRED\x1b[0m \x1b[44mblue bg\x1b[0m', 'c.ans');
+  const t0 = resultANSI(App.res = textResult(App.src.text, S, App.src.ansi));
+  const g3 = await uiCaptureDownloads(saveProject);
+  reset(); await demoImage();
+  await openProject(new File([g3[0].blob], g3[0].name));
+  ok('Project: coloured ANSI text opens with its colours', App.src.kind === 'text' && !!App.src.ansi && resultANSI(textResult(App.src.text, S, App.src.ansi)) === t0);
+  const before = App.src;
+  await openFile(new File([await makeZip([{ name: 'x.txt', data: new Uint8Array(5) }]).arrayBuffer()], 'other.zip'));
+  ok('Project: an ordinary ZIP is refused, nothing changes', App.src === before);
+  editsClear(); maskClear();
 });
 
 UI_TESTS.push(async function captions(ok) {
