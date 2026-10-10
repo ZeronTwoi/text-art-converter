@@ -114,6 +114,20 @@ And the text itself: the picture below, adapted for Discord — paste
 ```
 </details>
 
+### Videos
+
+GIFs and videos convert the same way — these previews play right here (7-second cuts, reduced).
+The full-quality files are on the release:
+[source 1](https://github.com/ZeronTwoi/text-art-converter/releases/download/desktop-v1.0.0/Video1-Normal.mp4) ·
+[dots](https://github.com/ZeronTwoi/text-art-converter/releases/download/desktop-v1.0.0/Video1-Dot.mp4) ·
+[source 2](https://github.com/ZeronTwoi/text-art-converter/releases/download/desktop-v1.0.0/Video2-Normal.mp4) ·
+[quadrant](https://github.com/ZeronTwoi/text-art-converter/releases/download/desktop-v1.0.0/Video2-Quadrant.gif)
+
+| The source | The text art |
+| --- | --- |
+| <img src="examples/Video1-Normal.gif" width="380"> | **Dots**<br><img src="examples/Video1-Dot.gif" width="380"> |
+| <img src="examples/Video2-Normal.gif" width="380"> | **Quadrant mosaic**<br><img src="examples/Video2-Quadrant.gif" width="380"> |
+
 ## What it does
 
 - Braille, ASCII, blocks, halftone, emoji and many more looks, each tuned per picture — plus one

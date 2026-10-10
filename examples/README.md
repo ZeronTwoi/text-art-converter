@@ -6,6 +6,9 @@ is the standing character (`Standing-ImageNormal.png`) adapted for Discord: past
 and it shows as braille dots. `app-screenshot.png` is the app itself — the look cards always
 preview your own picture.
 
+The `Video…` GIFs are 7-second reduced previews of two video conversions (Dots and Quadrant
+mosaic); the full-quality originals are attached to the `desktop-v1.0.0` release.
+
 The sources:
 - The character illustrations are by the project's author (same MIT license as the repository).
 - `astronaut.jpg` — Bruce McCandless II during the first untethered spacewalk, 1984.
