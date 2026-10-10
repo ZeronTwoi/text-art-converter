@@ -22,7 +22,8 @@ async function uiTest() {
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
   Object.assign(S, saved); syncControls();
   const fails = log.filter(l => l.startsWith('FAIL')).length;
-  say(`${fails ? 'FAIL' : 'PASS'} ${log.length - fails} of ${log.length} feature checks`);
+  const checks = log.filter(l => /^(PASS|FAIL) /.test(l)).length;   // timing notes are not checks
+  say(`${fails ? 'FAIL' : 'PASS'} ${checks - fails} of ${checks} feature checks`);
   document.title = fails ? 'UITEST FAIL' : 'UITEST PASS';
 }
 const UI_TESTS = [];

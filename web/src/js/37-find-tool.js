@@ -6,6 +6,8 @@
 function showControl(el, tab) {
   if (!el) return;
   if (tab) { setTab(tab); if (isNarrow()) setSheet('settings'); }
+  for (let d = el.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;   // open the folds it is in
+  if (el.matches && el.matches('.look.extra')) setAllLooks(true);
   else if (el.closest('#exportPanel') && isNarrow()) setSheet('export');
   if (!el.offsetParent) { const g = el.closest('[data-when]'); if (g && g.hidden) toast('That option appears when it applies (e.g. for this style or colour choice)'); }
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -49,6 +49,8 @@ function buildRampsUI() {
     row.querySelector('button').addEventListener('click', () => { Ramps.list.splice(i, 1); buildRampsUI(); rampsChanged(); });
     box.appendChild(row);
   });
+  $('#rampSum').textContent = Ramps.list.length ? `${Ramps.list.length} change${Ramps.list.length > 1 ? 's' : ''} while it plays` : 'animations & videos';
+  if (Ramps.list.length) $('#rampSum').closest('details').open = true;
   $('#rampNote').textContent = Ramps.list.length ? 'Plays from the start to the end of the trim range, and every animated export follows it.' : 'Nothing changes over time yet.';
 }
 function addRamp(key = 'brightness') {

@@ -511,6 +511,7 @@ function maskStroke(px, py, from) {
 }
 function setMaskMode(on) {
   Mask.on = on && !!App.src && App.src.kind !== 'text';
+  if (Mask.on) $('#maskPaint').closest('details').open = true;
   if (Mask.on && Crop.on) setCropMode(false);
   $('#maskPaint').classList.toggle('primary', Mask.on);
   $('#maskPaint').textContent = Mask.on ? '✓ Painting (drag on the original)' : '🖌 Paint on the picture';

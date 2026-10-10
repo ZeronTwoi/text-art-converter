@@ -67,6 +67,7 @@
     <section class="tab" data-tab="look">
       <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button></span></h3>
       <div class="looks" id="looks"></div>
+      <button class="btn wide moreLooks" id="moreLooks" aria-expanded="false">Show all looks ▾</button>
       <h3 class="h">Drawn with <span>the kind of characters</span></h3>
       <div class="modes" id="modes"></div>
       <div class="hint" id="modeHint"></div>
@@ -101,17 +102,17 @@
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
         </div>
       </div>
-      <div class="group fx-only">
-        <h3 class="h">Animate this picture <span>then save a GIF, MP4…</span></h3>
+      <details class="group fold fx-only" data-fold="animate">
+        <summary class="h">Animate this picture <span>then save a GIF, MP4…</span></summary>
         <div class="pair">
           <div class="row"><label for="fxKind">Effect</label><select id="fxKind"></select></div>
           <div class="row"><label for="fxSecs">Length <output id="fxSecsOut">3 s</output></label><input type="range" id="fxSecs" min="1" max="10" step="0.5" value="3"></div>
         </div>
         <button class="btn wide primary" id="fxMake">▶ Make the animation</button>
         <button class="btn wide" id="fxBack" hidden>◀ Back to the still picture</button>
-      </div>
-      <div class="group">
-        <h3 class="h">Caption <span>words written on the picture</span></h3>
+      </details>
+      <details class="group fold" data-fold="caption">
+        <summary class="h">Caption <span>words written on the picture</span></summary>
         <div class="row"><label for="capTop">Top</label><input type="text" id="capTop" data-key="captionTop" placeholder="e.g. HAPPY BIRTHDAY" spellcheck="false" autocomplete="off"></div>
         <div class="row"><label for="capBottom">Bottom</label><input type="text" id="capBottom" data-key="captionBottom" placeholder="a subtitle" spellcheck="false" autocomplete="off"></div>
         <div class="pair">
@@ -119,7 +120,7 @@
           <div class="row"><label for="capColor">Colour</label><input type="color" id="capColor" data-key="captionColor"></div>
         </div>
         <div class="row"><label class="chk"><input type="checkbox" data-key="captionBox"> Clear the picture behind the words</label></div>
-      </div>
+      </details>
     </section>
 
     <!-- ADJUST -->
@@ -177,12 +178,12 @@
             </select></div>
         </div>
       </div>
-      <div class="group anim-only">
-        <h3 class="h">Change over time <span>animations &amp; videos</span></h3>
+      <details class="group fold anim-only" data-fold="ramps">
+        <summary class="h">Change over time <span id="rampSum">animations &amp; videos</span></summary>
         <div id="rampList"></div>
         <p class="hint" id="rampNote"></p>
         <button class="btn wide" id="rampAdd" title="Let a setting go from one value to another while the animation plays">+ Add a change (e.g. fade in)</button>
-      </div>
+      </details>
       <div class="pair">
         <button class="btn" id="resetTone">Reset light</button>
         <button class="btn" id="resetEdges">Reset lines</button>
@@ -237,8 +238,8 @@
           <button data-val="cell"><b>Tinted</b><small>by the image</small></button>
         </div>
       </div>
-      <div class="group">
-        <h3 class="h">Drawing</h3>
+      <details class="group fold" data-fold="drawing">
+        <summary class="h">Drawing <span>font, dots</span></summary>
         <div data-when="mode:braille,half,quad,halftone" class="adv">
           <div class="row"><label>Draw as</label>
             <select data-key="renderStyle"><option value="shapes">Shapes (crisp, same on every computer)</option><option value="font">Font characters</option></select></div>
@@ -255,7 +256,7 @@
           </select></div>
         <p class="hint" data-when="fontFamily:pixel">Pictures, GIFs, videos and SVG use the pixel font exactly. Copied text and .txt / .html use the fonts of the app you paste into.</p>
         <div class="row" data-when="fontFamily:custom"><label>Font name (installed on this computer)</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
-      </div>
+      </details>
     </section>
 
     <!-- CROP -->
@@ -279,8 +280,8 @@
         </div>
       </div>
       <button class="btn wide" id="resetTransform">Reset crop &amp; turn</button>
-      <div class="group" style="margin-top:10px">
-        <h3 class="h">Mask <span>paint where to hide or keep</span></h3>
+      <details class="group fold" data-fold="mask" style="margin-top:10px">
+        <summary class="h">Mask <span>paint where to hide or keep</span></summary>
         <button class="btn wide" id="maskPaint">🖌 Paint on the picture</button>
         <div class="choices row3" id="maskBrushes">
           <button data-brush="hide"><b>Hide</b><small>no characters there</small></button>
@@ -296,7 +297,7 @@
           <button class="btn" id="maskRedo" title="Redo (Ctrl+Y while painting)" disabled>↷ Redo</button>
         </div>
         <button class="btn wide" id="maskClearBtn">Clear the mask</button>
-      </div>
+      </details>
     </section>
     <div class="panelfoot"><button class="btn wide" id="resetAll">Reset everything</button></div>
   </aside>

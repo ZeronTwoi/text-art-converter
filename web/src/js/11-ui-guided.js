@@ -66,7 +66,15 @@ function openLookDialog() {
   let n = 1; while (userLooks.some(l => l.name === 'My look ' + n)) n++;
   inp.value = 'My look ' + n; d.showModal(); inp.focus(); inp.select();
 }
-function markLooks() { $$('.look').forEach(c => c.classList.toggle('on', c.dataset.look === App.look)); }
+/* the looks shown first; the others behind "Show all looks" (the active one is always shown) */
+const FEATURED_LOOKS = ['Braille: colour', 'Braille: classic', 'ASCII: colour', 'Pixel art (half blocks)', 'Comic (outlines + shading)', 'Matrix', 'Emoji mosaic', 'Game Boy'];
+function markLooks() { $$('.look').forEach(c => { c.classList.toggle('on', c.dataset.look === App.look); c.classList.toggle('shown', c.dataset.look === App.look); }); }
+function setAllLooks(on) {
+  $('#looks').classList.toggle('all', on); const b = $('#moreLooks');
+  b.textContent = on ? 'Show fewer looks ▴' : `Show all ${Object.keys(PRESETS).length} looks ▾`; b.setAttribute('aria-expanded', on);
+  try { localStorage.setItem('textArtStudio.allLooks', on ? '1' : ''); } catch (e) {}
+  if (on) scheduleLooks();
+}
 function buildLooks() {
   const el = $('#looks'); el.innerHTML = '';
   const card = (id, label, user) => {
@@ -84,7 +92,7 @@ function buildLooks() {
     }
     el.appendChild(b);
   };
-  for (const name of Object.keys(PRESETS)) card(name, name, false);
+  for (const name of Object.keys(PRESETS)) { card(name, name, false); if (!FEATURED_LOOKS.includes(name)) el.lastChild.classList.add('extra'); }
   for (const l of userLooks) card(USER_PREFIX + l.name, l.name, true);
   const add = document.createElement('button'); add.className = 'look add'; add.title = 'Save the current settings as your own look';
   add.innerHTML = '<b>+</b><span>Save current look</span>'; add.addEventListener('click', openLookDialog);
@@ -92,7 +100,7 @@ function buildLooks() {
 }
 let looksTimer = 0, looksSig = '';
 function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
-const renderLooks = () => renderLookCards($$('#looks .look[data-look]'), { cols: 56, fontSize: 4 }, renderLooks);
+const renderLooks = () => renderLookCards($$('#looks .look[data-look]').filter(c => c.offsetParent), { cols: 56, fontSize: 4 }, renderLooks);
 /* draws each look card's picture: the current picture (or the demo) in that look */
 async function renderLookCards(cards, size, owner) {
   const token = owner.token = {};
@@ -130,6 +138,17 @@ function openGallery() {
   d.showModal(); renderGallery();
 }
 const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
+/* folds (details) remember whether you left them open */
+function initFold(d) {
+  if (!d || d._fold) return; d._fold = true;
+  let s = {}; try { s = JSON.parse(localStorage.getItem('textArtStudio.folds') || '{}'); } catch (e) {}
+  if (d.dataset.fold in s) d.open = !!s[d.dataset.fold];
+  d.addEventListener('toggle', () => {
+    let m = {}; try { m = JSON.parse(localStorage.getItem('textArtStudio.folds') || '{}'); } catch (e) {}
+    m[d.dataset.fold] = d.open; try { localStorage.setItem('textArtStudio.folds', JSON.stringify(m)); } catch (e) {}
+    if (d.open && d.dataset.fold === 'drawing') scheduleLooks();
+  });
+}
 function setTab(t) {
   $$('#leftTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); a11ySync(b); });
   $$('#settings .tab').forEach(sec => { sec.hidden = sec.dataset.tab !== t; });
@@ -227,6 +246,9 @@ function updateFilmstrip(force) {
 
 function initUI2() {
   loadUserLooks(); buildLooks();
+  let all = false; try { all = localStorage.getItem('textArtStudio.allLooks') === '1'; } catch (e) {}
+  setAllLooks(all); $('#moreLooks').addEventListener('click', () => setAllLooks(!$('#looks').classList.contains('all')));
+  $$('details.fold[data-fold]').forEach(initFold);
   $('#galleryOpen').addEventListener('click', openGallery);
   $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
   $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });

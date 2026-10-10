@@ -1234,10 +1234,16 @@ function buildExportPanel() {
     d.innerHTML = `<h3>${title}${sub ? `<span class="muted">${sub}</span>` : ''}</h3><div class="xbtns"></div>`;
     body.appendChild(d); return d;
   };
+  /* opt.more: the button goes into the section's "More formats" fold (kept short for first-time users) */
+  const moreOf = (sec, name) => {
+    let d = sec.querySelector(':scope > details.xmore');
+    if (!d) { d = document.createElement('details'); d.className = 'xmore fold'; d.dataset.fold = 'x-' + name; d.innerHTML = '<summary>More formats</summary><div class="xbtns"></div>'; sec.insertBefore(d, sec.querySelector(':scope > .xopts')); initFold(d); }
+    return d.querySelector('.xbtns');
+  };
   const btn = (sec, label, fn, opt = {}) => {
     const b = document.createElement('button'); b.className = 'btn' + (opt.primary ? ' primary' : ''); b.textContent = label;
     if (opt.est) { b.dataset.est = opt.est; b.classList.add('hasz'); const z = document.createElement('small'); z.className = 'sz'; b.appendChild(z); }
-    if (opt.title) b.title = opt.title; b.addEventListener('click', fn); sec.querySelector('.xbtns').appendChild(b); return b;
+    if (opt.title) b.title = opt.title; b.addEventListener('click', fn); (opt.more ? moreOf(sec, opt.more) : sec.querySelector('.xbtns')).appendChild(b); return b;
   };
   const opts = (sec, html) => { const d = document.createElement('div'); d.className = 'xopts'; d.innerHTML = html; sec.appendChild(d); bindControls(d); };
   const frameNote = animated ? 'current frame' : s.kind === 'webcam' ? 'snapshot' : '';
@@ -1267,16 +1273,16 @@ function buildExportPanel() {
 
   const t = section('Text', animated ? 'current frame' : ''); t.dataset.goal = 'text';
   btn(t, 'Copy text', actCopyText, { title: 'Copy unformatted plain text (best for Notepad / code editors)' });
-  btn(t, 'Copy ANSI', actCopyANSI, { title: 'Copy with 24-bit colour escape codes for terminals' });
   btn(t, 'Copy with colours', actCopyHTML, { title: 'Copy as coloured rich text, for Word, Google Docs or an email' });
   btn(t, '.txt', () => saveText('txt'), { title: 'Plain UTF-8 text file' });
-  btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)' });
-  btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals' });
-  btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image' });
-  t.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
+  btn(t, 'Copy ANSI', actCopyANSI, { title: 'Copy with 24-bit colour escape codes for terminals', more: 'text' });
+  btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)', more: 'text' });
+  btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals', more: 'text' });
+  btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image', more: 'text' });
+  moreOf(t, 'text').parentNode.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
-  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded' });
+  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded', more: 'text' });
   if (!animated) for (const k of ['sh', 'ps1', 'py']) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = '.' + k; b.title = ({ sh: 'Shell script (macOS, Linux, Git Bash)', ps1: 'PowerShell script (Windows)', py: 'Python script (any computer)' })[k]; b.addEventListener('click', () => exportTerminalScript(k)); t.querySelector('#scriptBtns').appendChild(b); }
 
   if (s.kind !== 'text' || true) {
@@ -1299,18 +1305,18 @@ function buildExportPanel() {
     const an = section('Animation', 'uses the trim range'); an.dataset.goal = 'save';
     btn(an, 'GIF', exportGIF, { primary: true, title: 'Animated GIF of the text frames', est: 'gif' });
     if (canShareFiles('image/gif')) btn(an, 'Share GIF…', actShareGIF, { title: 'Make the GIF and send it to another app (share sheet)' });
-    if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers' });
-    if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality' });
     const vids = FAST_VIDEO_OK ? [{ label: 'MP4', ext: 'mp4' }, { label: 'WEBM', ext: 'webm' }] : VIDEO_FORMATS;
     vids.forEach(f => btn(an, f.label, () => exportVideoAny(f.ext), { title: `Save a ${f.label} video`, est: f.ext }));
-    btn(an, 'Frames .txt', () => exportFramesText('txt'), { title: 'Every frame as text in one file' });
-    btn(an, 'Animated .svg', exportSVGAnim, { title: 'Scalable animation that plays in any browser (best for short clips)' });
-    btn(an, 'Frames .json', () => exportFramesText('json'), { title: 'Every frame as text with delays (JSON)' });
-    btn(an, 'HTML player', exportHTMLPlayer, { title: 'Stand-alone web page that plays the text animation' });
-    btn(an, 'PNG frames .zip', exportZip, { title: 'ZIP of PNG + TXT for every frame' });
-    btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)' });
-    btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour' });
-    btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour' });
+    if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers', more: 'anim' });
+    if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality', more: 'anim' });
+    btn(an, 'Frames .txt', () => exportFramesText('txt'), { title: 'Every frame as text in one file', more: 'anim' });
+    btn(an, 'Animated .svg', exportSVGAnim, { title: 'Scalable animation that plays in any browser (best for short clips)', more: 'anim' });
+    btn(an, 'Frames .json', () => exportFramesText('json'), { title: 'Every frame as text with delays (JSON)', more: 'anim' });
+    btn(an, 'HTML player', exportHTMLPlayer, { title: 'Stand-alone web page that plays the text animation', more: 'anim' });
+    btn(an, 'PNG frames .zip', exportZip, { title: 'ZIP of PNG + TXT for every frame', more: 'anim' });
+    btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)', more: 'anim' });
+    btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour', more: 'anim' });
+    btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour', more: 'anim' });
     let o = '';
     if (s.kind === 'video') o += `<div class="row"><label>Frames per second (GIF / text) <output data-out="gifFps"></output></label><input type="range" data-key="gifFps" min="1" max="30" step="1"></div>`;
     else o += `<div class="row"><label>Use every Nth frame <output data-out="frameStep"></output></label><input type="range" data-key="frameStep" min="1" max="10" step="1"></div>`;
@@ -1322,12 +1328,15 @@ function buildExportPanel() {
     o += `<div class="row"><label>Video bitrate (Mbit/s) <output data-out="videoBitrate"></output></label><input type="range" data-key="videoBitrate" min="1" max="40" step="1"></div>`;
     if (s.kind === 'video') o += `<div class="row"><label class="chk"><input type="checkbox" data-key="includeAudio"> Include original audio in video</label></div>`;
     else o += `<div class="row"><label>Video: repeat loop <output data-out="animRepeat" data-suffix="×"></output></label><input type="range" data-key="animRepeat" min="1" max="20" step="1"></div>`;
-    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p>`;
-    opts(an, o);
+    o = `<details class="fold xoptfold" data-fold="x-animopts"><summary>Animation options (frames, colours, quality)</summary>${o}`;
+    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p></details>`;
+    opts(an, o); initFold(an.querySelector('details.xoptfold'));
   }
   { const st = section('Stickers &amp; emoji', animated ? 'animated' : ''); st.dataset.goal = 'save';
-    for (const [id, P] of Object.entries(STICKERS)) btn(st, P.name, () => exportSticker(id), { title: P.note + '. Made to fit: fewer colours or frames when needed' });
-    st.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:6px 0 0">Square, in each app\'s size and file limit (it is made smaller automatically when needed).</p>'); }
+    const d = document.createElement('details'); d.className = 'fold xstick'; d.dataset.fold = 'x-stickers';
+    d.innerHTML = `<summary>Discord, Slack &amp; Telegram sizes</summary><div class="xbtns"></div><p class="muted small" style="margin:6px 0 0">Square, in each app's size and file limit (made smaller automatically when needed).</p>`;
+    st.querySelector('.xbtns').replaceWith(d); initFold(d);
+    for (const [id, P] of Object.entries(STICKERS)) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = P.name; b.title = P.note + '. Made to fit: fewer colours or frames when needed'; b.addEventListener('click', () => exportSticker(id)); d.querySelector('.xbtns').appendChild(b); } }
   if (s.kind === 'webcam') {
     const lv = section('Live recording'); lv.dataset.goal = 'save';
     btn(lv, App.recorder ? '■ Stop & save' : '● Record video', toggleLiveRecord, { primary: true });

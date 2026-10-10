@@ -378,6 +378,20 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
 @keyframes flashfocus{0%,35%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 .statusbar .srcinfo{flex:0 1 auto;max-width:40%}
 @media (max-width:1100px){ .findbtn b,.findbtn kbd{display:none} }
+/* folds: secondary sections open on demand (and stay as you left them) */
+details.fold>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸";color:var(--muted);font-size:11px;transition:transform .15s;display:inline-block}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.group.fold>summary.h{margin:10px 0}
+details.group.fold:not([open]){padding-bottom:0}
+details.group.fold>summary.h span{margin-left:auto}
+.xsec details.fold>summary{font-size:12.5px;color:var(--muted);padding:6px 0 2px}
+.xsec details.fold>summary:hover{color:var(--text)}
+.xsec details.fold[open]>summary{color:var(--text)}
+.xsec details.xmore .xbtns,.xsec details.xstick .xbtns{margin-top:4px}
+.looks:not(.all) .look.extra:not(.shown){display:none}
+.moreLooks{margin-top:8px}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -495,6 +509,7 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
     <section class="tab" data-tab="look">
       <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button></span></h3>
       <div class="looks" id="looks"></div>
+      <button class="btn wide moreLooks" id="moreLooks" aria-expanded="false">Show all looks ▾</button>
       <h3 class="h">Drawn with <span>the kind of characters</span></h3>
       <div class="modes" id="modes"></div>
       <div class="hint" id="modeHint"></div>
@@ -529,17 +544,17 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
         </div>
       </div>
-      <div class="group fx-only">
-        <h3 class="h">Animate this picture <span>then save a GIF, MP4…</span></h3>
+      <details class="group fold fx-only" data-fold="animate">
+        <summary class="h">Animate this picture <span>then save a GIF, MP4…</span></summary>
         <div class="pair">
           <div class="row"><label for="fxKind">Effect</label><select id="fxKind"></select></div>
           <div class="row"><label for="fxSecs">Length <output id="fxSecsOut">3 s</output></label><input type="range" id="fxSecs" min="1" max="10" step="0.5" value="3"></div>
         </div>
         <button class="btn wide primary" id="fxMake">▶ Make the animation</button>
         <button class="btn wide" id="fxBack" hidden>◀ Back to the still picture</button>
-      </div>
-      <div class="group">
-        <h3 class="h">Caption <span>words written on the picture</span></h3>
+      </details>
+      <details class="group fold" data-fold="caption">
+        <summary class="h">Caption <span>words written on the picture</span></summary>
         <div class="row"><label for="capTop">Top</label><input type="text" id="capTop" data-key="captionTop" placeholder="e.g. HAPPY BIRTHDAY" spellcheck="false" autocomplete="off"></div>
         <div class="row"><label for="capBottom">Bottom</label><input type="text" id="capBottom" data-key="captionBottom" placeholder="a subtitle" spellcheck="false" autocomplete="off"></div>
         <div class="pair">
@@ -547,7 +562,7 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
           <div class="row"><label for="capColor">Colour</label><input type="color" id="capColor" data-key="captionColor"></div>
         </div>
         <div class="row"><label class="chk"><input type="checkbox" data-key="captionBox"> Clear the picture behind the words</label></div>
-      </div>
+      </details>
     </section>
 
     <!-- ADJUST -->
@@ -605,12 +620,12 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
             </select></div>
         </div>
       </div>
-      <div class="group anim-only">
-        <h3 class="h">Change over time <span>animations &amp; videos</span></h3>
+      <details class="group fold anim-only" data-fold="ramps">
+        <summary class="h">Change over time <span id="rampSum">animations &amp; videos</span></summary>
         <div id="rampList"></div>
         <p class="hint" id="rampNote"></p>
         <button class="btn wide" id="rampAdd" title="Let a setting go from one value to another while the animation plays">+ Add a change (e.g. fade in)</button>
-      </div>
+      </details>
       <div class="pair">
         <button class="btn" id="resetTone">Reset light</button>
         <button class="btn" id="resetEdges">Reset lines</button>
@@ -665,8 +680,8 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
           <button data-val="cell"><b>Tinted</b><small>by the image</small></button>
         </div>
       </div>
-      <div class="group">
-        <h3 class="h">Drawing</h3>
+      <details class="group fold" data-fold="drawing">
+        <summary class="h">Drawing <span>font, dots</span></summary>
         <div data-when="mode:braille,half,quad,halftone" class="adv">
           <div class="row"><label>Draw as</label>
             <select data-key="renderStyle"><option value="shapes">Shapes (crisp, same on every computer)</option><option value="font">Font characters</option></select></div>
@@ -683,7 +698,7 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
           </select></div>
         <p class="hint" data-when="fontFamily:pixel">Pictures, GIFs, videos and SVG use the pixel font exactly. Copied text and .txt / .html use the fonts of the app you paste into.</p>
         <div class="row" data-when="fontFamily:custom"><label>Font name (installed on this computer)</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
-      </div>
+      </details>
     </section>
 
     <!-- CROP -->
@@ -707,8 +722,8 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
         </div>
       </div>
       <button class="btn wide" id="resetTransform">Reset crop &amp; turn</button>
-      <div class="group" style="margin-top:10px">
-        <h3 class="h">Mask <span>paint where to hide or keep</span></h3>
+      <details class="group fold" data-fold="mask" style="margin-top:10px">
+        <summary class="h">Mask <span>paint where to hide or keep</span></summary>
         <button class="btn wide" id="maskPaint">🖌 Paint on the picture</button>
         <div class="choices row3" id="maskBrushes">
           <button data-brush="hide"><b>Hide</b><small>no characters there</small></button>
@@ -724,7 +739,7 @@ dialog.find{width:min(640px,calc(100vw - 32px));padding:10px;margin-top:10vh}
           <button class="btn" id="maskRedo" title="Redo (Ctrl+Y while painting)" disabled>↷ Redo</button>
         </div>
         <button class="btn wide" id="maskClearBtn">Clear the mask</button>
-      </div>
+      </details>
     </section>
     <div class="panelfoot"><button class="btn wide" id="resetAll">Reset everything</button></div>
   </aside>
@@ -3436,6 +3451,7 @@ function maskStroke(px, py, from) {
 }
 function setMaskMode(on) {
   Mask.on = on && !!App.src && App.src.kind !== 'text';
+  if (Mask.on) $('#maskPaint').closest('details').open = true;
   if (Mask.on && Crop.on) setCropMode(false);
   $('#maskPaint').classList.toggle('primary', Mask.on);
   $('#maskPaint').textContent = Mask.on ? '✓ Painting (drag on the original)' : '🖌 Paint on the picture';
@@ -4773,10 +4789,16 @@ function buildExportPanel() {
     d.innerHTML = `<h3>${title}${sub ? `<span class="muted">${sub}</span>` : ''}</h3><div class="xbtns"></div>`;
     body.appendChild(d); return d;
   };
+  /* opt.more: the button goes into the section's "More formats" fold (kept short for first-time users) */
+  const moreOf = (sec, name) => {
+    let d = sec.querySelector(':scope > details.xmore');
+    if (!d) { d = document.createElement('details'); d.className = 'xmore fold'; d.dataset.fold = 'x-' + name; d.innerHTML = '<summary>More formats</summary><div class="xbtns"></div>'; sec.insertBefore(d, sec.querySelector(':scope > .xopts')); initFold(d); }
+    return d.querySelector('.xbtns');
+  };
   const btn = (sec, label, fn, opt = {}) => {
     const b = document.createElement('button'); b.className = 'btn' + (opt.primary ? ' primary' : ''); b.textContent = label;
     if (opt.est) { b.dataset.est = opt.est; b.classList.add('hasz'); const z = document.createElement('small'); z.className = 'sz'; b.appendChild(z); }
-    if (opt.title) b.title = opt.title; b.addEventListener('click', fn); sec.querySelector('.xbtns').appendChild(b); return b;
+    if (opt.title) b.title = opt.title; b.addEventListener('click', fn); (opt.more ? moreOf(sec, opt.more) : sec.querySelector('.xbtns')).appendChild(b); return b;
   };
   const opts = (sec, html) => { const d = document.createElement('div'); d.className = 'xopts'; d.innerHTML = html; sec.appendChild(d); bindControls(d); };
   const frameNote = animated ? 'current frame' : s.kind === 'webcam' ? 'snapshot' : '';
@@ -4806,16 +4828,16 @@ function buildExportPanel() {
 
   const t = section('Text', animated ? 'current frame' : ''); t.dataset.goal = 'text';
   btn(t, 'Copy text', actCopyText, { title: 'Copy unformatted plain text (best for Notepad / code editors)' });
-  btn(t, 'Copy ANSI', actCopyANSI, { title: 'Copy with 24-bit colour escape codes for terminals' });
   btn(t, 'Copy with colours', actCopyHTML, { title: 'Copy as coloured rich text, for Word, Google Docs or an email' });
   btn(t, '.txt', () => saveText('txt'), { title: 'Plain UTF-8 text file' });
-  btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)' });
-  btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals' });
-  btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image' });
-  t.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
+  btn(t, 'Copy ANSI', actCopyANSI, { title: 'Copy with 24-bit colour escape codes for terminals', more: 'text' });
+  btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)', more: 'text' });
+  btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals', more: 'text' });
+  btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image', more: 'text' });
+  moreOf(t, 'text').parentNode.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
-  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded' });
+  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded', more: 'text' });
   if (!animated) for (const k of ['sh', 'ps1', 'py']) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = '.' + k; b.title = ({ sh: 'Shell script (macOS, Linux, Git Bash)', ps1: 'PowerShell script (Windows)', py: 'Python script (any computer)' })[k]; b.addEventListener('click', () => exportTerminalScript(k)); t.querySelector('#scriptBtns').appendChild(b); }
 
   if (s.kind !== 'text' || true) {
@@ -4838,18 +4860,18 @@ function buildExportPanel() {
     const an = section('Animation', 'uses the trim range'); an.dataset.goal = 'save';
     btn(an, 'GIF', exportGIF, { primary: true, title: 'Animated GIF of the text frames', est: 'gif' });
     if (canShareFiles('image/gif')) btn(an, 'Share GIF…', actShareGIF, { title: 'Make the GIF and send it to another app (share sheet)' });
-    if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers' });
-    if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality' });
     const vids = FAST_VIDEO_OK ? [{ label: 'MP4', ext: 'mp4' }, { label: 'WEBM', ext: 'webm' }] : VIDEO_FORMATS;
     vids.forEach(f => btn(an, f.label, () => exportVideoAny(f.ext), { title: `Save a ${f.label} video`, est: f.ext }));
-    btn(an, 'Frames .txt', () => exportFramesText('txt'), { title: 'Every frame as text in one file' });
-    btn(an, 'Animated .svg', exportSVGAnim, { title: 'Scalable animation that plays in any browser (best for short clips)' });
-    btn(an, 'Frames .json', () => exportFramesText('json'), { title: 'Every frame as text with delays (JSON)' });
-    btn(an, 'HTML player', exportHTMLPlayer, { title: 'Stand-alone web page that plays the text animation' });
-    btn(an, 'PNG frames .zip', exportZip, { title: 'ZIP of PNG + TXT for every frame' });
-    btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)' });
-    btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour' });
-    btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour' });
+    if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers', more: 'anim' });
+    if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality', more: 'anim' });
+    btn(an, 'Frames .txt', () => exportFramesText('txt'), { title: 'Every frame as text in one file', more: 'anim' });
+    btn(an, 'Animated .svg', exportSVGAnim, { title: 'Scalable animation that plays in any browser (best for short clips)', more: 'anim' });
+    btn(an, 'Frames .json', () => exportFramesText('json'), { title: 'Every frame as text with delays (JSON)', more: 'anim' });
+    btn(an, 'HTML player', exportHTMLPlayer, { title: 'Stand-alone web page that plays the text animation', more: 'anim' });
+    btn(an, 'PNG frames .zip', exportZip, { title: 'ZIP of PNG + TXT for every frame', more: 'anim' });
+    btn(an, 'Terminal .sh', () => exportTerminalScript('sh'), { title: 'Shell script that plays the animation in a terminal, in colour (macOS, Linux, Git Bash)', more: 'anim' });
+    btn(an, 'Terminal .ps1', () => exportTerminalScript('ps1'), { title: 'PowerShell script that plays the animation in Windows Terminal, in colour', more: 'anim' });
+    btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour', more: 'anim' });
     let o = '';
     if (s.kind === 'video') o += `<div class="row"><label>Frames per second (GIF / text) <output data-out="gifFps"></output></label><input type="range" data-key="gifFps" min="1" max="30" step="1"></div>`;
     else o += `<div class="row"><label>Use every Nth frame <output data-out="frameStep"></output></label><input type="range" data-key="frameStep" min="1" max="10" step="1"></div>`;
@@ -4861,12 +4883,15 @@ function buildExportPanel() {
     o += `<div class="row"><label>Video bitrate (Mbit/s) <output data-out="videoBitrate"></output></label><input type="range" data-key="videoBitrate" min="1" max="40" step="1"></div>`;
     if (s.kind === 'video') o += `<div class="row"><label class="chk"><input type="checkbox" data-key="includeAudio"> Include original audio in video</label></div>`;
     else o += `<div class="row"><label>Video: repeat loop <output data-out="animRepeat" data-suffix="×"></output></label><input type="range" data-key="animRepeat" min="1" max="20" step="1"></div>`;
-    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p>`;
-    opts(an, o);
+    o = `<details class="fold xoptfold" data-fold="x-animopts"><summary>Animation options (frames, colours, quality)</summary>${o}`;
+    o += `<p class="muted small" style="margin:6px 0 0">${FAST_VIDEO_OK ? (s.kind === 'video' ? 'Videos are encoded as fast as your computer allows. With "Include original audio" they are recorded in real time instead (keep this tab visible).' : 'Videos are encoded as fast as your computer allows.') : VIDEO_FORMATS.length ? 'Video files are recorded in real time. Keep this tab visible while recording.' : 'Video recording is not supported in this browser. GIF, text and ZIP still work.'}</p></details>`;
+    opts(an, o); initFold(an.querySelector('details.xoptfold'));
   }
   { const st = section('Stickers &amp; emoji', animated ? 'animated' : ''); st.dataset.goal = 'save';
-    for (const [id, P] of Object.entries(STICKERS)) btn(st, P.name, () => exportSticker(id), { title: P.note + '. Made to fit: fewer colours or frames when needed' });
-    st.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:6px 0 0">Square, in each app\'s size and file limit (it is made smaller automatically when needed).</p>'); }
+    const d = document.createElement('details'); d.className = 'fold xstick'; d.dataset.fold = 'x-stickers';
+    d.innerHTML = `<summary>Discord, Slack &amp; Telegram sizes</summary><div class="xbtns"></div><p class="muted small" style="margin:6px 0 0">Square, in each app's size and file limit (made smaller automatically when needed).</p>`;
+    st.querySelector('.xbtns').replaceWith(d); initFold(d);
+    for (const [id, P] of Object.entries(STICKERS)) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = P.name; b.title = P.note + '. Made to fit: fewer colours or frames when needed'; b.addEventListener('click', () => exportSticker(id)); d.querySelector('.xbtns').appendChild(b); } }
   if (s.kind === 'webcam') {
     const lv = section('Live recording'); lv.dataset.goal = 'save';
     btn(lv, App.recorder ? '■ Stop & save' : '● Record video', toggleLiveRecord, { primary: true });
@@ -5228,7 +5253,15 @@ function openLookDialog() {
   let n = 1; while (userLooks.some(l => l.name === 'My look ' + n)) n++;
   inp.value = 'My look ' + n; d.showModal(); inp.focus(); inp.select();
 }
-function markLooks() { $$('.look').forEach(c => c.classList.toggle('on', c.dataset.look === App.look)); }
+/* the looks shown first; the others behind "Show all looks" (the active one is always shown) */
+const FEATURED_LOOKS = ['Braille: colour', 'Braille: classic', 'ASCII: colour', 'Pixel art (half blocks)', 'Comic (outlines + shading)', 'Matrix', 'Emoji mosaic', 'Game Boy'];
+function markLooks() { $$('.look').forEach(c => { c.classList.toggle('on', c.dataset.look === App.look); c.classList.toggle('shown', c.dataset.look === App.look); }); }
+function setAllLooks(on) {
+  $('#looks').classList.toggle('all', on); const b = $('#moreLooks');
+  b.textContent = on ? 'Show fewer looks ▴' : `Show all ${Object.keys(PRESETS).length} looks ▾`; b.setAttribute('aria-expanded', on);
+  try { localStorage.setItem('textArtStudio.allLooks', on ? '1' : ''); } catch (e) {}
+  if (on) scheduleLooks();
+}
 function buildLooks() {
   const el = $('#looks'); el.innerHTML = '';
   const card = (id, label, user) => {
@@ -5246,7 +5279,7 @@ function buildLooks() {
     }
     el.appendChild(b);
   };
-  for (const name of Object.keys(PRESETS)) card(name, name, false);
+  for (const name of Object.keys(PRESETS)) { card(name, name, false); if (!FEATURED_LOOKS.includes(name)) el.lastChild.classList.add('extra'); }
   for (const l of userLooks) card(USER_PREFIX + l.name, l.name, true);
   const add = document.createElement('button'); add.className = 'look add'; add.title = 'Save the current settings as your own look';
   add.innerHTML = '<b>+</b><span>Save current look</span>'; add.addEventListener('click', openLookDialog);
@@ -5254,7 +5287,7 @@ function buildLooks() {
 }
 let looksTimer = 0, looksSig = '';
 function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
-const renderLooks = () => renderLookCards($$('#looks .look[data-look]'), { cols: 56, fontSize: 4 }, renderLooks);
+const renderLooks = () => renderLookCards($$('#looks .look[data-look]').filter(c => c.offsetParent), { cols: 56, fontSize: 4 }, renderLooks);
 /* draws each look card's picture: the current picture (or the demo) in that look */
 async function renderLookCards(cards, size, owner) {
   const token = owner.token = {};
@@ -5292,6 +5325,17 @@ function openGallery() {
   d.showModal(); renderGallery();
 }
 const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
+/* folds (details) remember whether you left them open */
+function initFold(d) {
+  if (!d || d._fold) return; d._fold = true;
+  let s = {}; try { s = JSON.parse(localStorage.getItem('textArtStudio.folds') || '{}'); } catch (e) {}
+  if (d.dataset.fold in s) d.open = !!s[d.dataset.fold];
+  d.addEventListener('toggle', () => {
+    let m = {}; try { m = JSON.parse(localStorage.getItem('textArtStudio.folds') || '{}'); } catch (e) {}
+    m[d.dataset.fold] = d.open; try { localStorage.setItem('textArtStudio.folds', JSON.stringify(m)); } catch (e) {}
+    if (d.open && d.dataset.fold === 'drawing') scheduleLooks();
+  });
+}
 function setTab(t) {
   $$('#leftTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); a11ySync(b); });
   $$('#settings .tab').forEach(sec => { sec.hidden = sec.dataset.tab !== t; });
@@ -5389,6 +5433,9 @@ function updateFilmstrip(force) {
 
 function initUI2() {
   loadUserLooks(); buildLooks();
+  let all = false; try { all = localStorage.getItem('textArtStudio.allLooks') === '1'; } catch (e) {}
+  setAllLooks(all); $('#moreLooks').addEventListener('click', () => setAllLooks(!$('#looks').classList.contains('all')));
+  $$('details.fold[data-fold]').forEach(initFold);
   $('#galleryOpen').addEventListener('click', openGallery);
   $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
   $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });
@@ -6614,7 +6661,8 @@ async function uiTest() {
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
   Object.assign(S, saved); syncControls();
   const fails = log.filter(l => l.startsWith('FAIL')).length;
-  say(`${fails ? 'FAIL' : 'PASS'} ${log.length - fails} of ${log.length} feature checks`);
+  const checks = log.filter(l => /^(PASS|FAIL) /.test(l)).length;   // timing notes are not checks
+  say(`${fails ? 'FAIL' : 'PASS'} ${checks - fails} of ${checks} feature checks`);
   document.title = fails ? 'UITEST FAIL' : 'UITEST PASS';
 }
 const UI_TESTS = [];
@@ -8304,6 +8352,8 @@ function buildRampsUI() {
     row.querySelector('button').addEventListener('click', () => { Ramps.list.splice(i, 1); buildRampsUI(); rampsChanged(); });
     box.appendChild(row);
   });
+  $('#rampSum').textContent = Ramps.list.length ? `${Ramps.list.length} change${Ramps.list.length > 1 ? 's' : ''} while it plays` : 'animations & videos';
+  if (Ramps.list.length) $('#rampSum').closest('details').open = true;
   $('#rampNote').textContent = Ramps.list.length ? 'Plays from the start to the end of the trim range, and every animated export follows it.' : 'Nothing changes over time yet.';
 }
 function addRamp(key = 'brightness') {
@@ -8714,6 +8764,8 @@ async function videoTest() {
 function showControl(el, tab) {
   if (!el) return;
   if (tab) { setTab(tab); if (isNarrow()) setSheet('settings'); }
+  for (let d = el.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;   // open the folds it is in
+  if (el.matches && el.matches('.look.extra')) setAllLooks(true);
   else if (el.closest('#exportPanel') && isNarrow()) setSheet('export');
   if (!el.offsetParent) { const g = el.closest('[data-when]'); if (g && g.hidden) toast('That option appears when it applies (e.g. for this style or colour choice)'); }
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
