@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<meta name="description" content="Turn pictures, GIFs and videos into text art. Works offline; nothing is uploaded.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230d0f14'/%3E%3Cg fill='%236ee7b7'%3E%3Ccircle cx='196' cy='118' r='38'/%3E%3Ccircle cx='316' cy='118' r='38'/%3E%3Ccircle cx='196' cy='210' r='38'/%3E%3Ccircle cx='316' cy='210' r='38'/%3E%3Ccircle cx='196' cy='302' r='38'/%3E%3Ccircle cx='316' cy='302' r='38'/%3E%3Ccircle cx='196' cy='394' r='38'/%3E%3Ccircle cx='316' cy='394' r='38'/%3E%3C/g%3E%3C/svg%3E">
 <title>Text Art Studio</title>
 <style>
 :root{
@@ -396,6 +399,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <hr>
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
+        <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
       </div>
     </div>
     <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
@@ -838,6 +842,11 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
     <label class="chk"><input type="checkbox" id="batchGif" checked> GIF for animations &amp; videos</label>
   </div>
   <div class="acts"><button class="btn" id="batchCancel">Cancel</button><button class="btn primary" id="batchGo" disabled>Convert</button></div>
+</dialog>
+<dialog id="shareDialog">
+  <h3>Ready to share</h3>
+  <p class="muted" id="shareDialogText"></p>
+  <div class="acts"><button class="btn" id="shareDialogCancel">Cancel</button><button class="btn primary" id="shareDialogGo" autofocus>Share…</button></div>
 </dialog>
 <dialog id="copyDialog">
   <h3>Copy manually</h3>
@@ -4622,7 +4631,8 @@ function buildExportPanel() {
   sh.querySelector('#optApply').addEventListener('click', applyFixToEditor);
   sh.insertAdjacentHTML('beforeend', `<div class="xbtns" id="shareCopyBtns"></div>
     <p class="muted small" id="sharePartsNote" hidden style="margin:6px 0 0">Paste each part as its own message, in order. They stack into the full picture.</p>
-    <div class="xbtns" style="margin-top:6px"><button class="btn" id="sharePrev" title="Show roughly how it will look on the platform">Preview</button></div>`);
+    <div class="xbtns" style="margin-top:6px"><button class="btn" id="sharePrev" title="Show roughly how it will look on the platform">Preview</button>${canShareText() ? '<button class="btn" id="shareSend" title="Send the text straight to an app (share sheet)">Share to an app…</button>' : ''}</div>`);
+  if (sh.querySelector('#shareSend')) sh.querySelector('#shareSend').addEventListener('click', actShareText);
   sh.querySelector('#sharePrev').addEventListener('click', () => setView('platform'));
   sh.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:8px 0 0">Colours, animation and exact layout are only kept when you send an <b>image, GIF or video</b> (see below).</p>');
   bindControls(sh);
@@ -4648,12 +4658,14 @@ function buildExportPanel() {
   const im = section(animated ? 'Picture of this frame' : 'Picture', ''); im.dataset.goal = 'save';
   IMG_FORMATS.forEach((f, i) => btn(im, f.label, () => saveImage(f), { primary: i === 0, est: f.ext }));
   btn(im, 'Copy image', actCopyImage, { title: 'Copy PNG to the clipboard' });
+  if (canShareFiles('image/png')) btn(im, 'Share…', actSharePicture, { title: 'Send the picture to another app (share sheet)' });
   opts(im, `<div class="row adv"><label>Scale <output data-out="exportScale" data-suffix="×"></output></label><input type="range" data-key="exportScale" min="0.5" max="4" step="0.25"></div>
     <div class="row adv"><label>JPG / WEBP quality <output data-out="quality"></output></label><input type="range" data-key="quality" min="0.3" max="1" step="0.01"></div>`);
 
   if (animated) {
     const an = section('Animation', 'uses the trim range'); an.dataset.goal = 'save';
     btn(an, 'GIF', exportGIF, { primary: true, title: 'Animated GIF of the text frames', est: 'gif' });
+    if (canShareFiles('image/gif')) btn(an, 'Share GIF…', actShareGIF, { title: 'Make the GIF and send it to another app (share sheet)' });
     if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers' });
     if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality' });
     const vids = FAST_VIDEO_OK ? [{ label: 'MP4', ext: 'mp4' }, { label: 'WEBM', ext: 'webm' }] : VIDEO_FORMATS;
@@ -4955,6 +4967,7 @@ function initUI() {
   initGuides();
   initMobile();
   initA11y();
+  initPWA();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
@@ -6750,6 +6763,28 @@ UI_TESTS.push(async function accessibility(ok) {
   ok('Accessibility: text contrast at least 4.5:1 in every theme', bad.length === 0, bad.join('; '));
 });
 
+UI_TESTS.push(async function shareSheet(ok, { wait }) {
+  const shared = [], realShare = navigator.share, realCan = navigator.canShare;
+  Object.defineProperty(navigator, 'share', { configurable: true, value: async d => { shared.push(d); } });
+  Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+  try {
+    await demoImage(); await wait(30); renderNow(); buildExportPanel(); S.exportGoal = 'save'; applyGoal();
+    const b = $$('#exportBody button').find(x => x.textContent === 'Share…');
+    ok('Share: a Share button for the picture', !!b);
+    await actSharePicture();
+    ok('Share: sends a PNG file', shared.length === 1 && shared[0].files[0].type === 'image/png' && shared[0].files[0].size > 1000);
+    await actShareText();
+    ok('Share: sends the chat text', shared.length === 2 && typeof shared[1].text === 'string' && shared[1].text.length > 50);
+    await demoAnim(); await wait(30); buildExportPanel();
+    ok('Share: a Share GIF button for animations', $$('#exportBody button').some(x => x.textContent === 'Share GIF…'));
+    ok('Installable app: nothing is installed or cached when opened as a file', location.protocol !== 'file:' || !document.querySelector('link[rel=manifest]'));
+  } finally {
+    if (realShare) Object.defineProperty(navigator, 'share', { configurable: true, value: realShare }); else delete navigator.share;
+    if (realCan) Object.defineProperty(navigator, 'canShare', { configurable: true, value: realCan }); else delete navigator.canShare;
+    S.exportGoal = 'chat'; buildExportPanel();
+  }
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -7358,6 +7393,54 @@ function initA11y() {
 function contrastRatio(a, b) {
   const L = h => { const [r, g, bb] = hexToRgb(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * bb; };
   const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+/* =====================================================================
+   Sending to other apps (the system share sheet on phones and Windows) and the installable app (only when the
+   page is served over https or localhost; opened as a file it stays a plain offline page)
+   ===================================================================== */
+function canShareFiles(type) {
+  try { return typeof navigator.share === 'function' && !!navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(4)], 'x.' + type.split('/')[1], { type })] }); }
+  catch (e) { return false; }
+}
+const canShareText = () => typeof navigator.share === 'function';
+async function shareFile(blob, name) {
+  try { await navigator.share({ files: [new File([blob], name, { type: blob.type })], title: name }); return true; }
+  catch (e) { if (e && e.name === 'AbortError') return false; toast('Sharing did not work here (' + (e && e.message || e) + '). Save the file instead', 'error'); return false; }
+}
+async function actSharePicture() {
+  if (!requireRes()) return;
+  try { await shareFile(await renderStill(IMG_FORMATS[0]), baseName() + '.png'); } catch (e) { toast(e.message, 'error'); }
+}
+/* a GIF takes longer than a click allows to wait before sharing: make it, then share with a second tap */
+async function actShareGIF() {
+  if (!confirmLarge(countFrames())) return;
+  let blob = null;
+  await runExport('Making the GIF', async progress => { blob = new Blob([await gifBytes(progress)], { type: 'image/gif' }); });
+  if (!blob) return;
+  const d = $('#shareDialog');
+  $('#shareDialogText').textContent = `Your GIF is ready (${fmtBytes(blob.size)}).`;
+  $('#shareDialogGo').onclick = async () => { d.close(); await shareFile(blob, baseName() + '.gif'); };
+  d.showModal();
+}
+async function actShareText() {
+  if (!requireRes()) return;
+  updateShareUI(true);
+  const text = (App.shareParts && App.shareParts[0]) || resultText(App.res);
+  try { await navigator.share({ text }); } catch (e) { if (!(e && e.name === 'AbortError')) toast('Sharing did not work here. Use Copy instead', 'error'); }
+}
+/* ---- installable app ---- */
+const servedOnWeb = () => location.protocol === 'https:' || (location.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname));
+function initPWA() {
+  $('#shareDialogCancel').addEventListener('click', () => $('#shareDialog').close());
+  if (!servedOnWeb()) return;   // a file on disk: nothing to install, nothing to cache
+  const link = document.createElement('link'); link.rel = 'manifest'; link.href = 'manifest.webmanifest'; document.head.appendChild(link);
+  const apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = 'icon-192.png'; document.head.appendChild(apple);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('offline cache unavailable:', e && e.message));
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); App.installPrompt = e; $('#btnInstall').hidden = false; });
+  window.addEventListener('appinstalled', () => { App.installPrompt = null; $('#btnInstall').hidden = true; toast('Installed. Text Art Studio now opens like an app, also offline'); });
+  $('#btnInstall').addEventListener('click', async () => { const p = App.installPrompt; if (!p) return; p.prompt(); try { await p.userChoice; } catch (e) {} App.installPrompt = null; $('#btnInstall').hidden = true; });
+  // files opened with the installed app ("Open with…")
+  if ('launchQueue' in window) window.launchQueue.setConsumer(async params => { if (params.files && params.files.length) openFile(await params.files[0].getFile()); });
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

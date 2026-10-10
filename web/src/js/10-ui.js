@@ -268,6 +268,7 @@ function initUI() {
   initGuides();
   initMobile();
   initA11y();
+  initPWA();
   buildExportPanel();
   requestAnimationFrame(tick);
 }

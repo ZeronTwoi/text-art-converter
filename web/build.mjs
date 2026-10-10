@@ -3,6 +3,7 @@
 //   src/styles.css     the styles
 //   src/js/NN-*.js     the script, in file-name order (one classic script: the parts share one scope)
 //   src/wasm/          the edge detector: edges_simd.wat (source) and edges_simd.b64 (compiled, inlined into the script)
+//   src/sw.js          the offline cache for the installed app → sw.js (manifest.webmanifest and icons are kept as they are)
 //
 //   node build.mjs           write index.html
 //   node build.mjs --check   only check that index.html is up to date (exit code 1 if not)
@@ -10,6 +11,7 @@
 //
 // After changing anything, open index.html#selftest and index.html#equiv in a browser: both must say PASS.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,10 +34,13 @@ const script = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM
 const page = read(src, 'page.html');
 const html = page.replace('@@STYLES@@\n', () => read(src, 'styles.css')).replace('@@SCRIPTS@@\n', () => script);
 
+// the offline cache of the installed app: its version follows the page, so a new build replaces the cached copy
+const swOut = join(here, 'sw.js'), sw = read(src, 'sw.js').replace('@@VERSION@@', createHash('sha256').update(html).digest('hex').slice(0, 12));
 if (args.includes('--check')) {
-  const same = existsSync(out) && read(out) === html;
-  console.log(same ? 'index.html is up to date' : 'index.html differs from src/ (run: node build.mjs)');
+  const same = existsSync(out) && read(out) === html && existsSync(swOut) && read(swOut) === sw;
+  console.log(same ? 'index.html is up to date' : 'index.html or sw.js differs from src/ (run: node build.mjs)');
   process.exit(same ? 0 : 1);
 }
 writeFileSync(out, html);
+writeFileSync(swOut, sw);
 console.log(`index.html written (${parts.length} script parts, ${(html.length / 1024).toFixed(0)} KB)`);

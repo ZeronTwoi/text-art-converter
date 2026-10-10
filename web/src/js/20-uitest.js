@@ -387,6 +387,28 @@ UI_TESTS.push(async function accessibility(ok) {
   ok('Accessibility: text contrast at least 4.5:1 in every theme', bad.length === 0, bad.join('; '));
 });
 
+UI_TESTS.push(async function shareSheet(ok, { wait }) {
+  const shared = [], realShare = navigator.share, realCan = navigator.canShare;
+  Object.defineProperty(navigator, 'share', { configurable: true, value: async d => { shared.push(d); } });
+  Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+  try {
+    await demoImage(); await wait(30); renderNow(); buildExportPanel(); S.exportGoal = 'save'; applyGoal();
+    const b = $$('#exportBody button').find(x => x.textContent === 'Share…');
+    ok('Share: a Share button for the picture', !!b);
+    await actSharePicture();
+    ok('Share: sends a PNG file', shared.length === 1 && shared[0].files[0].type === 'image/png' && shared[0].files[0].size > 1000);
+    await actShareText();
+    ok('Share: sends the chat text', shared.length === 2 && typeof shared[1].text === 'string' && shared[1].text.length > 50);
+    await demoAnim(); await wait(30); buildExportPanel();
+    ok('Share: a Share GIF button for animations', $$('#exportBody button').some(x => x.textContent === 'Share GIF…'));
+    ok('Installable app: nothing is installed or cached when opened as a file', location.protocol !== 'file:' || !document.querySelector('link[rel=manifest]'));
+  } finally {
+    if (realShare) Object.defineProperty(navigator, 'share', { configurable: true, value: realShare }); else delete navigator.share;
+    if (realCan) Object.defineProperty(navigator, 'canShare', { configurable: true, value: realCan }); else delete navigator.canShare;
+    S.exportGoal = 'chat'; buildExportPanel();
+  }
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

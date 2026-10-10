@@ -2,6 +2,7 @@
 //   #selftest  GIF round-trip, ZIP CRC, every mode and export
 //   #equiv     bit-exact regression hashes of the engine, text formats and encoders (plus the worker copies)
 //   #uitest    the interactive features: gallery, crop, wipe, projects, batch ZIP, editing, effects, palettes, ANSI import
+//   pwa        served over http://localhost: the app installs its offline cache and still opens with the network off
 //
 //   node test.mjs                 run all three (exit code 1 if any fails)
 //   node test.mjs selftest equiv  run only these
@@ -9,17 +10,23 @@
 //
 // It first checks that index.html is built from src/ (node build.mjs).
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { existsSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wanted = process.argv.slice(2).filter(a => !a.startsWith('-'));
-const suites = wanted.length ? wanted : ['selftest', 'equiv', 'uitest'];
+const suites = wanted.length ? wanted : ['selftest', 'equiv', 'uitest', 'pwa'];
 
 try { execFileSync(process.execPath, [join(here, 'build.mjs'), '--check'], { stdio: 'inherit' }); }
 catch { console.error('index.html is stale: run  node build.mjs  first'); process.exit(1); }
+{ // the installable app's files: a valid manifest whose icons exist, and the offline cache lists only files that exist
+  const m = JSON.parse(readFileSync(join(here, 'manifest.webmanifest'), 'utf8')), sw = readFileSync(join(here, 'sw.js'), 'utf8');
+  const missing = m.icons.map(i => i.src).concat((/FILES = \[([^\]]*)\]/.exec(sw) || ['', ''])[1].match(/'\.\/[^']*'/g).map(s => s.slice(3, -1)).filter(Boolean)).filter(f => !existsSync(join(here, f)));
+  if (!m.name || !m.start_url || missing.length) { console.error('app files: ' + (missing.length ? 'missing ' + missing.join(', ') : 'manifest incomplete')); process.exit(1); }
+}
 
 const candidates = [process.env.CHROME,
   'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
@@ -57,6 +64,7 @@ try {
   };
   for (const suite of suites) {
     const t0 = Date.now();
+    if (suite === 'pwa') { const ok = await pwaCheck(); if (!ok) failed = true; continue; }
     const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
     errors.set(sessionId, []);
@@ -74,6 +82,42 @@ try {
     console.log((ok ? lines.filter(l => /^(PASS|NOTE|SKIP)/.test(l) || l === lines[lines.length - 1]) : lines).join('\n'));
     for (const e of errors.get(sessionId)) console.log('PAGE ERROR ' + e);
     await send('Target.closeTarget', { targetId });
+  }
+  // the installed app: over http://localhost the page registers its offline cache; with the network off it still opens
+  async function pwaCheck() {
+    const types = { '.html': 'text/html', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+    const server = createServer((req, res) => {
+      const p = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html';
+      const f = join(here, p);
+      if (!f.startsWith(here) || !existsSync(f) || p.includes('..')) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'content-type': types[p.slice(p.lastIndexOf('.'))] || 'application/octet-stream' }); res.end(readFileSync(f));
+    });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const url = `http://127.0.0.1:${server.address().port}/index.html`, t0 = Date.now(), lines = [];
+    const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
+    errors.set(sessionId, []);
+    const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }, sessionId)).result.value;
+    const until = async (expr, ms = 15000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await sleep(200); } return false; };
+    let ok = true; const check = (name, c) => { lines.push(`${c ? 'PASS' : 'FAIL'} ${name}`); if (!c) ok = false; };
+    try {
+      await send('Runtime.enable', {}, sessionId); await send('Network.enable', {}, sessionId);
+      await send('Page.navigate', { url }, sessionId);
+      check('page opens over http', await until("typeof App === 'object' && document.readyState === 'complete'"));
+      check('manifest linked', await ev("!!document.querySelector('link[rel=manifest]')"));
+      check('offline cache installed', await until("navigator.serviceWorker.ready.then(r => !!r.active)"));
+      await send('Page.reload', {}, sessionId);
+      check('offline cache controls the page', await until("!!navigator.serviceWorker.controller"));
+      check('every app file cached', await ev("caches.keys().then(ks => caches.open(ks.find(k => k.startsWith('textart-')))).then(c => c.keys()).then(k => k.length >= 7)"));
+      await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 }, sessionId);
+      await send('Page.reload', {}, sessionId);
+      check('opens with the network off', await until("typeof App === 'object' && document.readyState === 'complete' && !!document.getElementById('empty')"));
+      await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }, sessionId);
+    } catch (e) { check('pwa check ran: ' + e.message, false); }
+    for (const e of errors.get(sessionId)) { lines.push('PAGE ERROR ' + e); ok = false; }
+    await send('Target.closeTarget', { targetId }); server.close();
+    console.log(`\n=== pwa: ${ok ? 'PASS' : 'FAIL'} (${((Date.now() - t0) / 1000).toFixed(1)} s)\n` + lines.join('\n'));
+    return ok;
   }
 } catch (e) { console.error('ERROR', e.message); failed = true; }
 finally {

@@ -1258,7 +1258,8 @@ function buildExportPanel() {
   sh.querySelector('#optApply').addEventListener('click', applyFixToEditor);
   sh.insertAdjacentHTML('beforeend', `<div class="xbtns" id="shareCopyBtns"></div>
     <p class="muted small" id="sharePartsNote" hidden style="margin:6px 0 0">Paste each part as its own message, in order. They stack into the full picture.</p>
-    <div class="xbtns" style="margin-top:6px"><button class="btn" id="sharePrev" title="Show roughly how it will look on the platform">Preview</button></div>`);
+    <div class="xbtns" style="margin-top:6px"><button class="btn" id="sharePrev" title="Show roughly how it will look on the platform">Preview</button>${canShareText() ? '<button class="btn" id="shareSend" title="Send the text straight to an app (share sheet)">Share to an app…</button>' : ''}</div>`);
+  if (sh.querySelector('#shareSend')) sh.querySelector('#shareSend').addEventListener('click', actShareText);
   sh.querySelector('#sharePrev').addEventListener('click', () => setView('platform'));
   sh.insertAdjacentHTML('beforeend', '<p class="muted small" style="margin:8px 0 0">Colours, animation and exact layout are only kept when you send an <b>image, GIF or video</b> (see below).</p>');
   bindControls(sh);
@@ -1284,12 +1285,14 @@ function buildExportPanel() {
   const im = section(animated ? 'Picture of this frame' : 'Picture', ''); im.dataset.goal = 'save';
   IMG_FORMATS.forEach((f, i) => btn(im, f.label, () => saveImage(f), { primary: i === 0, est: f.ext }));
   btn(im, 'Copy image', actCopyImage, { title: 'Copy PNG to the clipboard' });
+  if (canShareFiles('image/png')) btn(im, 'Share…', actSharePicture, { title: 'Send the picture to another app (share sheet)' });
   opts(im, `<div class="row adv"><label>Scale <output data-out="exportScale" data-suffix="×"></output></label><input type="range" data-key="exportScale" min="0.5" max="4" step="0.25"></div>
     <div class="row adv"><label>JPG / WEBP quality <output data-out="quality"></output></label><input type="range" data-key="quality" min="0.3" max="1" step="0.01"></div>`);
 
   if (animated) {
     const an = section('Animation', 'uses the trim range'); an.dataset.goal = 'save';
     btn(an, 'GIF', exportGIF, { primary: true, title: 'Animated GIF of the text frames', est: 'gif' });
+    if (canShareFiles('image/gif')) btn(an, 'Share GIF…', actShareGIF, { title: 'Make the GIF and send it to another app (share sheet)' });
     if (APNG_OK) btn(an, 'APNG', () => exportAnimated('apng'), { title: 'Animated PNG: every colour kept exactly, plays in all modern browsers' });
     if (ANIM_WEBP_OK) btn(an, 'WEBP anim', () => exportAnimated('webp'), { title: 'Animated WEBP: full colour, small for colourful pictures (fine dot art is usually smaller as GIF or APNG). Quality = JPG / WEBP quality' });
     const vids = FAST_VIDEO_OK ? [{ label: 'MP4', ext: 'mp4' }, { label: 'WEBM', ext: 'webm' }] : VIDEO_FORMATS;
