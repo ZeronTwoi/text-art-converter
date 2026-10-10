@@ -400,5 +400,8 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-# Claude Code worktrees and per-machine settings
-.claude/worktrees/
+# Local tooling that does not belong in the public repository
+.claude/
+.idea/
+ImageTo_Text_TextImage/
+ImageTo_Text_TextImage.sln
