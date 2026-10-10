@@ -3,6 +3,8 @@
    (compressed) in this file and unpacked only when it is chosen. A translator walks the page (text, titles,
    placeholders, labels; short formatted paragraphs as a whole) and watches it for new text (toasts, panels that
    are rebuilt). Numbers inside sentences are kept: "Frame {0} of {1}". In English nothing runs.
+   New English text: add it to every src/i18n/<lang>.json (numbers as {0}, {1}…; names inside sentences as {0} too).
+   Text that is missing stays English; uitest "Languages: nearly everything is translated" shows how much is.
    ===================================================================== */
 const LANGS = { en: 'English', tr: 'Türkçe', de: 'Deutsch', es: 'Español', ru: 'Русский', ja: '日本語', zh: '中文' };
 const LANG_KEYS = '@@LANG_KEYS@@';   // the English sentences, once

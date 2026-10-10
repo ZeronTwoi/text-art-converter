@@ -131,15 +131,15 @@ function runFind(i) {
   setTimeout(() => { try { t.run(); } catch (e) { console.error(e); } }, 30);
 }
 /* ---- what's new: once for people who used an earlier version ---- */
-const WHATS_NEW_ID = '2026-10';
+const WHATS_NEW_ID = '2026-10b';
 const WAS_HERE_BEFORE = (() => { try { return !!localStorage.getItem('textArtStudio.seenHelp'); } catch (e) { return false; } })();   // read before start-up marks it
 const WHATS_NEW = [
-  ['Point at a look to preview it', 'Pick a look (styles gallery)'], ['Wipe between original and result', 'Wipe: drag between original and result'],
-  ['Draw the crop on the picture', 'Draw the crop on the picture'], ['Edit characters: brush, type, select, fill', 'Edit single characters (brush)'],
-  ['Captions and big letters', 'Caption: words on the picture'], ['Animate a still picture', 'Animate a still picture (typewriter, Matrix rain, glitch…)'],
-  ['Emoji mosaic, retro palettes and your own palette', 'Your own palette (from the picture, paste, lospec)'], ['Built-in pixel font', 'Font (incl. the built-in pixel font)'],
-  ['Versions A–D to compare settings', 'Keep these settings as a version (A–D)'], ['Settings that change over time', 'Change over time (fade in, ramps)'],
-  ['Projects and "continue where you left off"', 'Save project (.textart)'], ['Stickers, terminal scripts, code and links', 'Stickers & emoji (Discord, Slack, Telegram)'],
+  ['Interface in 7 languages', 'Language (English, Türkçe, Deutsch, Español, Русский, 日本語, 中文)'], ['Full screen and OBS view', 'Full screen / OBS view'],
+  ['Before → after video', 'Before → after video (picture turns into the art)'], ['Print and posters', 'Print or poster (A4, A3, PDF)'],
+  ['Plotter and laser SVG', 'Plotter / laser SVG (lines only)'], ['Design your own characters', 'Design your own characters'],
+  ['Reverse, boomerang, speed, smooth loop', 'Reverse, boomerang, speed, smooth loop'], ['Share looks as a link or file', 'Share a look (link or .textlook file)'],
+  ['A picture on top (logo, watermark)', 'Picture on top (logo, watermark, frame)'], ['Look pictures play along with GIFs and videos', 'Look pictures play along (on / off)'],
+  ['Customize the screen', 'Customize the screen (hide parts)'],
 ];
 function openWhatsNew() {
   const box = $('#newsList'); box.textContent = '';

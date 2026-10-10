@@ -707,6 +707,8 @@ UI_TESTS.push(async function leanScreen(ok, { wait }) {
   const visible = el => el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : !!el.offsetWidth;
   const n = $$('button, input:not([type=hidden]), select, textarea, label.btn').filter(visible).length;
   ok('Lean: the first screen shows at most 64 controls', n <= 64, n + ' visible');
+  const nav = performance.getEntriesByType('navigation')[0], ready = nav ? Math.round(nav.domContentLoadedEventEnd) : 0;
+  ok('Lean: the page is ready in under a second', ready > 0 && ready < 1000, ready + ' ms');
   openCustomize(); const boxes = $$('#customList input');
   boxes[0].click(); boxes[1].click();
   ok('Customize: hiding parts hides them', document.body.classList.contains('hide-steps') && getComputedStyle($('.steps')).display === 'none' && getComputedStyle($('#versions')).display === 'none');
@@ -829,8 +831,8 @@ UI_TESTS.push(async function videoTools(ok, { wait, reset }) {
   ok('Video tools: very fast merges frames (no delay under 20 ms)', r.every(f => f.d >= 20) && r.length < 48 && Math.abs(dur(r) - dur(fwd) / 4) <= 25, `${r.length} frames, ${dur(r)} ms`);
   set({ loopFade: 0.5 }); r = await collectResults(() => {}); const n = 48 - r.length, rt = texts(r);
   ok('Video tools: smooth loop starts later and fades the end into the start', n >= 8 && n <= 12 && rt[0] === txt[n] && rt[r.length - 1] !== txt[47] && rt[r.length - 1] !== txt[n - 1] && rt[r.length - n - 1] === txt[47 - n], 'faded frames: ' + n);
-  const f0 = Pool.failures, gif = await gifBytes(() => {});
-  ok('Video tools: a GIF with crossfaded frames', gif.length > 1000 && Pool.failures === f0);
+  const f0 = Pool.failures.length, gif = await gifBytes(() => {});
+  ok('Video tools: a GIF with crossfaded frames', gif.length > 1000 && Pool.failures.length === f0);
   set({ playOrder: 'reverse' }); App.time = 1; App.loop = true; setPlaying(true); await wait(300); const t1 = App.time; setPlaying(false);
   ok('Video tools: the preview plays backwards too', t1 < 1 && t1 > 0.3, 'time ' + t1.toFixed(2));
   set({});

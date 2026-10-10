@@ -49,6 +49,15 @@ async function videoTest() {
       let dur = 0;
       if (got[0]) { const t = document.createElement('video'); t.muted = true; t.src = URL.createObjectURL(got[0].blob); await new Promise(r => { t.onloadedmetadata = r; t.onerror = r; setTimeout(r, 4000); }); dur = t.duration; URL.revokeObjectURL(t.src); }
       ok('Exporting the trimmed part (1 s) as ' + ext.toUpperCase(), Math.abs(dur - 1) < 0.15, dur.toFixed(2) + ' s');
+      // video tools on a real video: frames are taken by seeking, so order and speed follow the plan
+      const texts = rs => rs.map(x => resultText(x.res));
+      applySettings({ playOrder: 'forward', playSpeed: 2, loopFade: 0 }); const fwd = texts(await collectResults(() => {}));
+      applySettings({ playOrder: 'reverse' }); const rev = texts(await collectResults(() => {}));
+      ok('Video tools: 2× speed takes half the frames', fwd.length === Math.floor(S.gifFps / 2 + 1e-6), fwd.length + ' frames at ' + S.gifFps + ' fps');
+      ok('Video tools: reversed is the same frames backwards', rev.length === fwd.length && rev.every((t, i) => t === fwd[fwd.length - 1 - i]));
+      applySettings({ playOrder: 'forward', playSpeed: 1, loopFade: 0.25 }); const f0 = Pool.failures.length, fade = await collectResults(() => {});
+      ok('Video tools: smooth loop fades the end into the start', fade.length < S.gifFps && fade.length > S.gifFps / 2 && Pool.failures.length === f0, fade.length + ' frames, ' + (Pool.failures.length - f0) + ' worker failures');
+      applySettings({ playOrder: 'forward', playSpeed: 1, loopFade: 0 });
       clearTrim();
     }
   } catch (e) { console.error(e); say('FAIL the check stopped: ' + (e && e.message || e)); }
