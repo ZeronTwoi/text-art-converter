@@ -25,6 +25,8 @@ const runVideo = !videoBrowser && (wanted.length ? wanted.includes('video') : tr
 
 if (!videoBrowser) try { execFileSync(process.execPath, [join(here, 'build.mjs'), '--check'], { stdio: 'inherit' }); }
 catch { console.error('index.html is stale: run  node build.mjs  first'); process.exit(1); }
+if (!videoBrowser) try { execFileSync(process.execPath, [join(here, 'build.mjs'), '--types'], { stdio: 'inherit' }); }
+catch { console.error('the type check found mistakes (above)'); process.exit(1); }
 { // the installable app's files: a valid manifest whose icons exist, and the offline cache lists only files that exist
   const m = JSON.parse(readFileSync(join(here, 'manifest.webmanifest'), 'utf8')), sw = readFileSync(join(here, 'sw.js'), 'utf8');
   const missing = m.icons.map(i => i.src).concat((/FILES = \[([^\]]*)\]/.exec(sw) || ['', ''])[1].match(/'\.\/[^']*'/g).map(s => s.slice(3, -1)).filter(Boolean)).filter(f => !existsSync(join(here, f)));

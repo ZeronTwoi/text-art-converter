@@ -1,5 +1,5 @@
 /* =====================================================================
-   Feature test (open index.html#uitest): the interactive features on a demo picture and synthetic files
+   Feature test (open test.html#uitest): the interactive features on a demo picture and synthetic files
    (overlay: captions + edits, ANSI import, gallery, crop, wipe, projects, ZIP, mask undo, palettes, emoji, effects…)
    ===================================================================== */
 async function uiTest() {
@@ -21,6 +21,7 @@ async function uiTest() {
     }
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
   Object.assign(S, saved); syncControls();
+  ok('No background job failed (workers do every job they are given)', Pool.failures.length === 0, Pool.failures.slice(0, 3).join(' | '));
   const fails = log.filter(l => l.startsWith('FAIL')).length;
   const checks = log.filter(l => /^(PASS|FAIL) /.test(l)).length;   // timing notes are not checks
   say(`${fails ? 'FAIL' : 'PASS'} ${checks - fails} of ${checks} feature checks`);
@@ -287,7 +288,7 @@ UI_TESTS.push(async function captionControls(ok, { wait }) {
   ok('Caption field: typing writes it on the picture', S.captionTop === 'SUMMER 2026' && uiRow(App.res, 1).includes('SUMMER 2026'));
   $('#capStyle').value = 'big'; $('#capStyle').dispatchEvent(new Event('change', { bubbles: true })); renderNow();
   ok('Caption field: big letters', S.captionStyle === 'big' && !uiRow(App.res, 1).includes('SUMMER'));
-  History.step(true); History.step(true); renderNow();
+  UndoHistory.step(true); UndoHistory.step(true); renderNow();
   ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
 });
 
@@ -404,7 +405,7 @@ UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
   touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
   ok('Double-tap: zooms in', App.zoom === 2);
   touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
-  ok('Double-tap again: back to fit', App.zoom === 0 && Touch.pts.size === 0);
+  ok('Double-tap again: back to fit', App.zoom === 0 && TouchState.pts.size === 0);
   setSheet('settings'); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
   ok('Tap on the picture closes the sheet', !sheetOpen());
   applyZoom();
@@ -507,7 +508,7 @@ UI_TESTS.push(async function versions(ok, { wait }) {
   ok('Versions: click switches back', S.mode === 'braille' && $('#versions .ver[data-ver="A"]').classList.contains('on'));
   window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true }));
   ok('Versions: key 2 switches to B', S.mode === 'ascii' && S.colorMode === 'color');
-  History.step(true);
+  UndoHistory.step(true);
   ok('Versions: switching can be undone', S.mode === 'braille');
   $('#versions .ver[data-ver="A"]').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(200); renderNow();
   ok('Versions: pointing previews it', !!App.peek && App.peek.mode === 'braille');
@@ -673,6 +674,24 @@ UI_TESTS.push(async function findTool(ok, { wait }) {
   }
   HTMLInputElement.prototype.click = realOpen; window.startWebcam = realWebcam; setAdvanced(false);
   ok('Find a tool: every entry runs without an error', errors.length === 0, errors.slice(0, 3).join(' | '));
+});
+
+/* nothing may cover the page by accident (a class name clash once made a toolbar part a full-page overlay) */
+function uiCoverCheck() {
+  const vw = innerWidth, vh = innerHeight, allowed = new Set(['empty', 'views', 'dropOverlay', 'progress', 'videoHost']);
+  return $$('body *').filter(el => {
+    if (allowed.has(el.id) || el.closest('dialog')) return false;
+    const st = getComputedStyle(el); if (st.position !== 'absolute' && st.position !== 'fixed') return false;
+    if (el.checkVisibility && !el.checkVisibility({ visibilityProperty: true })) return false;
+    const b = el.getBoundingClientRect(); return b.width * b.height > 0.6 * vw * vh;
+  }).map(el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').join('.') : ''));
+}
+UI_TESTS.push(async function layoutCover(ok, { wait }) {
+  ok('Layout: nothing unexpected covers the start screen', uiCoverCheck().length === 0, uiCoverCheck().join(', '));
+  await demoImage(); await wait(30); renderNow();
+  for (const tab of ['look', 'adjust', 'colour', 'crop']) setTab(tab);
+  setTab('look');
+  ok('Layout: nothing unexpected covers the page with a picture', uiCoverCheck().length === 0, uiCoverCheck().join(', '));
 });
 
 UI_TESTS.push(async function captions(ok) {

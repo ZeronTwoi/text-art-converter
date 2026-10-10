@@ -26,7 +26,7 @@ function lookSettings(id) {
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
   endPeek(true);
-  History.commit(); applySettings(Object.assign({}, st)); History.commit();   // one undo step per look
+  UndoHistory.commit(); applySettings(Object.assign({}, st)); UndoHistory.commit();   // one undo step per look
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
 }
 /* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
@@ -252,14 +252,14 @@ function initUI2() {
   $('#galleryOpen').addEventListener('click', openGallery);
   $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
   $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });
-  $('#btnUndo').addEventListener('click', () => History.step(true));
-  $('#btnRedo').addEventListener('click', () => History.step(false));
+  $('#btnUndo').addEventListener('click', () => UndoHistory.step(true));
+  $('#btnRedo').addEventListener('click', () => UndoHistory.step(false));
   const ld = $('#lookDialog');
   $('#lookCancel').addEventListener('click', () => ld.close());
   const doSave = () => { if (saveUserLook($('#lookName').value)) { ld.close(); toast('Look saved: ' + $('#lookName').value.trim()); } else $('#lookName').focus(); };
   $('#lookSave').addEventListener('click', doSave);
   $('#lookName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSave(); } });
-  History.reset();
+  UndoHistory.reset();
   $$('#leftTabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
   $$('#steps .step').forEach(b => b.addEventListener('click', () => gotoStep(+b.dataset.step)));
   $$('#goalSeg button').forEach(b => b.addEventListener('click', () => { S.exportGoal = b.dataset.goal; saveSettings(); applyGoal(); setStep(4); }));

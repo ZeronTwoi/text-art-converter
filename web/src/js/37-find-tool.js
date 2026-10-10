@@ -78,8 +78,8 @@ function toolList() {
   add('Copy a link to this art', 'Share panel', 'url link share', needSrc(actCopyLink));
   add('Terminal script that plays it (.sh, .ps1, .py)', 'Share panel', 'powershell bash python console', needSrc(() => showExport(App.src.kind === 'anim' || App.src.kind === 'video' ? 'save' : 'text', App.src.kind === 'anim' || App.src.kind === 'video' ? 'Terminal .sh' : '.sh')));
   if (canShareText()) add('Share to another app', 'Share panel', 'share sheet send', needSrc(() => showExport('save', 'Share…')));
-  add('Undo', 'Top bar', 'back ctrl+z', () => History.step(true));
-  add('Redo', 'Top bar', 'forward ctrl+y', () => History.step(false));
+  add('Undo', 'Top bar', 'back ctrl+z', () => UndoHistory.step(true));
+  add('Redo', 'Top bar', 'forward ctrl+y', () => UndoHistory.step(false));
   add('Light or dark theme', 'Top bar', 'dark mode light colours', () => $('#btnTheme').click());
   add('Show every expert setting (Advanced)', 'Top bar', 'expert more options', () => setAdvanced(true));
   add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
@@ -98,7 +98,7 @@ function renderFind() {
   const ul = $('#findList'); ul.textContent = '';
   findState.list.slice(0, 60).forEach((t, i) => {
     const li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'find-' + i; li.className = i === findState.sel ? 'on' : '';
-    li.setAttribute('aria-selected', i === findState.sel);
+    li.setAttribute('aria-selected', String(i === findState.sel));
     li.innerHTML = '<span></span><small></small>'; li.firstChild.textContent = t.name; li.lastChild.textContent = t.where;
     li.addEventListener('pointerdown', e => { e.preventDefault(); runFind(i); });
     ul.appendChild(li);

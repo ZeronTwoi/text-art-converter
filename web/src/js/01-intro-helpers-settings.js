@@ -6,7 +6,9 @@
    ===================================================================== */
 
 /* ---------------- helpers ---------------- */
+/** @type {(s: string, r?: ParentNode) => any} */
 const $ = (s, r = document) => r.querySelector(s);
+/** @type {(s: string, r?: ParentNode) => any[]} */
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const nextTick = () => new Promise(r => setTimeout(r, 0));

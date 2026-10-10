@@ -252,6 +252,8 @@ function engineSource() {
     applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
+  // functions are copied by their source text: an arrow function here would lose its name in the worker
+  for (const f of fns) if (typeof f !== 'function' || !/^(async\s+)?function[\s*]/.test(f.toString())) throw new Error(`engineSource: "${f && f.name}" must be a function declaration (arrows go in the arrows list)`);
   return [
     ...Object.entries(data).map(([k, v]) => `const ${k} = ${JSON.stringify(v)};`),
     ...Object.entries(arrows).map(([k, v]) => `const ${k} = ${v.toString()};`),
@@ -316,14 +318,19 @@ onmessage = async e => {
       const n = clamp((navigator.hardwareConcurrency || 4) - 1, 1, 8);
       for (let i = 0; i < n; i++) {
         const w = new Worker(url); w.busy = 0;
-        w.onmessage = e => { const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--; e.data.err ? j.rej(new Error(e.data.err)) : j.res(e.data.r); };
+        w.onmessage = e => {
+          const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--;
+          if (e.data.err) { failures.push(e.data.err); console.warn('background job failed (done here instead):', e.data.err); j.rej(new Error(e.data.err)); } else j.res(e.data.r);
+        };
         w.onerror = e => { e.preventDefault(); console.warn('worker failed', e.message, e.lineno); for (const [id, j] of jobs) if (j.w === w) { jobs.delete(id); j.rej(new Error('worker failed: ' + e.message)); } w.busy = 1e9; };
         workers.push(w);
       }
     } catch (e) { console.warn('workers unavailable', e); workers = []; }
     return workers;
   }
+  const failures = [];   // jobs that failed on a worker (they are redone on this thread, so only the tests notice)
   return {
+    failures,
     size: () => typeof window !== 'undefined' && window.__noWorkers ? 0 : init().filter(w => w.busy < 1e9).length,
     run(op, a, transfer) {
       const ws = this.size() ? init().filter(w => w.busy < 1e9) : [];

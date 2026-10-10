@@ -1,5 +1,5 @@
 /* =====================================================================
-   Video check (open index.html#videotest in your browser, press Start): makes a short test video here and
+   Video check (open test.html#videotest in your browser, press Start): makes a short test video here and
    checks playback, frame updates in every view, the look preview, looping, seeking and video export with
    real video decoding (automated headless browsers cannot show video frames reliably).
    ===================================================================== */

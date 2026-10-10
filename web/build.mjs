@@ -9,10 +9,14 @@
 //   node build.mjs           write index.html, test.html and sw.js
 //   node build.mjs --check   only check that they are up to date (exit code 1 if not)
 //   node build.mjs --wasm    first recompile src/wasm/edges_simd.wat (needs: npm install wabt)
+//   node build.mjs --types   type check every script file together (needs: npm install); fails on real mistakes:
+//                            unknown or misspelled names, double declarations, use before declaration, assigning
+//                            to a constant or function, wrong number of arguments, syntax errors
 //
 // After changing anything, run  node test.mjs  (or open test.html#selftest, #equiv, #uitest in a browser).
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,6 +33,18 @@ if (args.includes('--wasm')) {
   console.log('recompiled src/wasm/edges_simd.wat');
 }
 
+if (args.includes('--types')) {
+  const tsc = join(here, 'node_modules', 'typescript', 'bin', 'tsc');
+  if (!existsSync(tsc)) { console.log('type check skipped (run  npm install  in web/ once)'); process.exit(0); }
+  const r = spawnSync(process.execPath, [tsc, '-p', join(here, 'tsconfig.json'), '--pretty', 'false'], { encoding: 'utf8' });
+  const errors = (r.stdout || '').split(/\r?\n/).filter(l => / error TS\d+:/.test(l));
+  // the kinds that are real mistakes; the others are TypeScript being stricter than this plain JavaScript
+  const SERIOUS = new Set([1003, 1005, 1109, 1128, 1135, 1161, 2300, 2304, 2349, 2391, 2393, 2448, 2451, 2551, 2552, 2554, 2555, 2588, 2630]);
+  const serious = errors.filter(l => SERIOUS.has(+/error TS(\d+)/.exec(l)[1]));
+  for (const l of serious) console.log(l);
+  console.log(serious.length ? `type check: ${serious.length} mistake${serious.length > 1 ? 's' : ''} (${errors.length - serious.length} hints)` : `type check: no mistakes (${errors.length} hints)`);
+  process.exit(serious.length ? 1 : 0);
+}
 const list = dir => readdirSync(join(src, dir)).filter(f => /^\d+-.*\.js$/.test(f)).sort();
 const parts = list('js'), testParts = list('tests');
 const wasm = read(src, 'wasm', 'edges_simd.b64').trim();

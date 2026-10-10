@@ -17,7 +17,7 @@ function keepVersion() {
 }
 function applyVersion(name) {
   const v = Versions.list.find(x => x.name === name); if (!v) return;
-  endPeek(true); History.commit(); applySettings(Object.assign({}, v.settings)); History.commit(); App.look = null; markLooks(); markVersions();
+  endPeek(true); UndoHistory.commit(); applySettings(Object.assign({}, v.settings)); UndoHistory.commit(); App.look = null; markLooks(); markVersions();
   toast('Version ' + name);
 }
 function deleteVersion(name) { Versions.list = Versions.list.filter(v => v.name !== name); endPeek(); buildVersions(); scheduleSessionSave(); }

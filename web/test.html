@@ -1014,7 +1014,9 @@ details.group.fold>summary.h span{margin-left:auto}
    ===================================================================== */
 
 /* ---------------- helpers ---------------- */
+/** @type {(s: string, r?: ParentNode) => any} */
 const $ = (s, r = document) => r.querySelector(s);
+/** @type {(s: string, r?: ParentNode) => any[]} */
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const nextTick = () => new Promise(r => setTimeout(r, 0));
@@ -2825,6 +2827,8 @@ function engineSource() {
     applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
+  // functions are copied by their source text: an arrow function here would lose its name in the worker
+  for (const f of fns) if (typeof f !== 'function' || !/^(async\s+)?function[\s*]/.test(f.toString())) throw new Error(`engineSource: "${f && f.name}" must be a function declaration (arrows go in the arrows list)`);
   return [
     ...Object.entries(data).map(([k, v]) => `const ${k} = ${JSON.stringify(v)};`),
     ...Object.entries(arrows).map(([k, v]) => `const ${k} = ${v.toString()};`),
@@ -2889,14 +2893,19 @@ onmessage = async e => {
       const n = clamp((navigator.hardwareConcurrency || 4) - 1, 1, 8);
       for (let i = 0; i < n; i++) {
         const w = new Worker(url); w.busy = 0;
-        w.onmessage = e => { const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--; e.data.err ? j.rej(new Error(e.data.err)) : j.res(e.data.r); };
+        w.onmessage = e => {
+          const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--;
+          if (e.data.err) { failures.push(e.data.err); console.warn('background job failed (done here instead):', e.data.err); j.rej(new Error(e.data.err)); } else j.res(e.data.r);
+        };
         w.onerror = e => { e.preventDefault(); console.warn('worker failed', e.message, e.lineno); for (const [id, j] of jobs) if (j.w === w) { jobs.delete(id); j.rej(new Error('worker failed: ' + e.message)); } w.busy = 1e9; };
         workers.push(w);
       }
     } catch (e) { console.warn('workers unavailable', e); workers = []; }
     return workers;
   }
+  const failures = [];   // jobs that failed on a worker (they are redone on this thread, so only the tests notice)
   return {
+    failures,
     size: () => typeof window !== 'undefined' && window.__noWorkers ? 0 : init().filter(w => w.busy < 1e9).length,
     run(op, a, transfer) {
       const ws = this.size() ? init().filter(w => w.busy < 1e9) : [];
@@ -4156,7 +4165,7 @@ function showProgress(title, indeterminate) {
   $('#progCancel').hidden = !!indeterminate;
   $('#progress').hidden = false;
 }
-function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', Math.round(v)); if (text != null) $('#progText').textContent = text; }
+function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', String(Math.round(+v))); if (text != null) $('#progText').textContent = text; }
 function hideProgress() { $('#progress').hidden = true; }
 const cancelled = () => { const e = new Error('cancelled'); e.cancelled = true; return e; };
 
@@ -4931,7 +4940,7 @@ function updateModeButtons() {
   $('#modeHint').textContent = (MODES[S.mode] && MODES[S.mode].hint) || '';
 }
 function onSettingsChanged() {
-  History.changed();
+  UndoHistory.changed();
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
@@ -4958,7 +4967,7 @@ function bindControls(root = document) {
 function applySettings(obj) { Object.assign(S, obj); syncControls(); onSettingsChanged(); }
 /* ---- undo / redo of settings: changes within 350 ms (one slider drag) are one step ---- */
 const HIST_SKIP = new Set(['exportGoal', 'calib', 'shareOptimize']);
-const History = {
+const UndoHistory = {
   undo: [], redo: [], base: null, timer: 0, applying: false,
   snap() { const o = {}; for (const k in DEFAULTS) if (!HIST_SKIP.has(k)) o[k] = S[k]; return o; },
   same(a, b) { for (const k in a) if (a[k] !== b[k]) return false; return true; },
@@ -5144,7 +5153,7 @@ function initUI() {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k0 === 'z' || k0 === 'y')) {   // undo / redo (text fields keep their own)
       if (e.target.closest && e.target.closest('input[type=text],input[type=number],textarea,[contenteditable]')) return;
       if (document.querySelector('dialog[open]') || App.exporting) return;
-      e.preventDefault(); History.step(k0 === 'z' && !e.shiftKey); return;
+      e.preventDefault(); UndoHistory.step(k0 === 'z' && !e.shiftKey); return;
     }
     if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
     if (document.querySelector('dialog[open]') || App.exporting || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -5213,7 +5222,7 @@ function lookSettings(id) {
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
   endPeek(true);
-  History.commit(); applySettings(Object.assign({}, st)); History.commit();   // one undo step per look
+  UndoHistory.commit(); applySettings(Object.assign({}, st)); UndoHistory.commit();   // one undo step per look
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
 }
 /* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
@@ -5439,14 +5448,14 @@ function initUI2() {
   $('#galleryOpen').addEventListener('click', openGallery);
   $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
   $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });
-  $('#btnUndo').addEventListener('click', () => History.step(true));
-  $('#btnRedo').addEventListener('click', () => History.step(false));
+  $('#btnUndo').addEventListener('click', () => UndoHistory.step(true));
+  $('#btnRedo').addEventListener('click', () => UndoHistory.step(false));
   const ld = $('#lookDialog');
   $('#lookCancel').addEventListener('click', () => ld.close());
   const doSave = () => { if (saveUserLook($('#lookName').value)) { ld.close(); toast('Look saved: ' + $('#lookName').value.trim()); } else $('#lookName').focus(); };
   $('#lookSave').addEventListener('click', doSave);
   $('#lookName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSave(); } });
-  History.reset();
+  UndoHistory.reset();
   $$('#leftTabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
   $$('#steps .step').forEach(b => b.addEventListener('click', () => gotoStep(+b.dataset.step)));
   $$('#goalSeg button').forEach(b => b.addEventListener('click', () => { S.exportGoal = b.dataset.goal; saveSettings(); applyGoal(); setStep(4); }));
@@ -6184,7 +6193,7 @@ async function openProjectParts(meta, get) {
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
   applySettings(st);
-  History.reset();
+  UndoHistory.reset();
   Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
   buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
@@ -6687,35 +6696,35 @@ function setSheet(which) {
 }
 const sheetOpen = () => document.body.classList.contains('sheet-settings') || document.body.classList.contains('sheet-export');
 /* two fingers: zoom (keeping the point between them in place); one quick sideways swipe: Result ↔ Original */
-const Touch = { pts: new Map(), pinch: null, swipe: null, tap: null, lastTap: 0 };
+const TouchState = { pts: new Map(), pinch: null, swipe: null, tap: null, lastTap: 0 };
 STAGE_TOOLS.unshift({
   down(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return false;
-    if (sheetOpen()) { setSheet(null); Touch.tap = null; return true; }   // a tap on the picture closes the sheet
-    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
-    Touch.tap = Touch.pts.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null;   // maybe a (double) tap
-    if (Touch.pts.size === 2) {
-      const [a, b] = [...Touch.pts.values()], stage = $('#stage');
-      Touch.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: App.zoom || currentScaleForZoom(), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, sl: stage.scrollLeft, st: stage.scrollTop };
-      Touch.swipe = null; return true;
+    if (sheetOpen()) { setSheet(null); TouchState.tap = null; return true; }   // a tap on the picture closes the sheet
+    TouchState.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    TouchState.tap = TouchState.pts.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null;   // maybe a (double) tap
+    if (TouchState.pts.size === 2) {
+      const [a, b] = [...TouchState.pts.values()], stage = $('#stage');
+      TouchState.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: App.zoom || currentScaleForZoom(), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, sl: stage.scrollLeft, st: stage.scrollTop };
+      TouchState.swipe = null; return true;
     }
-    if (Touch.pts.size === 1 && !App.zoom && App.src && !Crop.on && !Mask.on && !Edit.on && App.view !== 'wipe') { Touch.swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; return true; }
+    if (TouchState.pts.size === 1 && !App.zoom && App.src && !Crop.on && !Mask.on && !Edit.on && App.view !== 'wipe') { TouchState.swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; return true; }
     return false;
   },
   move(e) {
-    if (!Touch.pts.has(e.pointerId)) return;
-    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
-    const P = Touch.pinch; if (!P || Touch.pts.size < 2) return;
-    const [a, b] = [...Touch.pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (!TouchState.pts.has(e.pointerId)) return;
+    TouchState.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const P = TouchState.pinch; if (!P || TouchState.pts.size < 2) return;
+    const [a, b] = [...TouchState.pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
     const z = clamp(P.z * d / Math.max(1, P.d), ZOOMS[0], ZOOMS[ZOOMS.length - 1]), stage = $('#stage'), r = stage.getBoundingClientRect();
     App.zoom = z; applyZoom();
     const k = z / P.z, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;   // keep the pinched point under the fingers
     stage.scrollLeft = (P.sl + P.mx - r.left) * k - (mx - r.left); stage.scrollTop = (P.st + P.my - r.top) * k - (my - r.top);
   },
   up(e) {
-    Touch.pts.delete(e && e.pointerId);
-    if (Touch.pinch) { if (Touch.pts.size < 2) Touch.pinch = null; return; }
-    const sw = Touch.swipe; Touch.swipe = null; if (!sw || !e) return;
+    TouchState.pts.delete(e && e.pointerId);
+    if (TouchState.pinch) { if (TouchState.pts.size < 2) TouchState.pinch = null; return; }
+    const sw = TouchState.swipe; TouchState.swipe = null; if (!sw || !e) return;
     const dx = e.clientX - sw.x, dy = e.clientY - sw.y, dt = performance.now() - sw.t;
     if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 700) {
       const order = ['out', 'src'], i = order.indexOf(App.view);
@@ -6726,12 +6735,12 @@ STAGE_TOOLS.unshift({
 });
 function initMobile() {
   const forget = e => {
-    const tap = Touch.tap; Touch.tap = null;
-    if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !Touch.pinch && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 300) {
+    const tap = TouchState.tap; TouchState.tap = null;
+    if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !TouchState.pinch && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 300) {
       const now = performance.now();   // double-tap: zoom in to 2× / back to fit (zoomed or not)
-      if (now - Touch.lastTap < 350 && App.src && !Edit.on && !Crop.on && !Mask.on) { App.zoom = App.zoom ? 0 : 2; applyZoom(); Touch.lastTap = 0; } else Touch.lastTap = now;
+      if (now - TouchState.lastTap < 350 && App.src && !Edit.on && !Crop.on && !Mask.on) { App.zoom = App.zoom ? 0 : 2; applyZoom(); TouchState.lastTap = 0; } else TouchState.lastTap = now;
     }
-    Touch.pts.delete(e.pointerId); if (Touch.pts.size < 2) Touch.pinch = null;
+    TouchState.pts.delete(e.pointerId); if (TouchState.pts.size < 2) TouchState.pinch = null;
   };
   window.addEventListener('pointerup', forget, true); window.addEventListener('pointercancel', forget, true);
   $('#mbSettings').addEventListener('click', () => setSheet(document.body.classList.contains('sheet-settings') ? null : 'settings'));
@@ -6962,7 +6971,7 @@ function keepVersion() {
 }
 function applyVersion(name) {
   const v = Versions.list.find(x => x.name === name); if (!v) return;
-  endPeek(true); History.commit(); applySettings(Object.assign({}, v.settings)); History.commit(); App.look = null; markLooks(); markVersions();
+  endPeek(true); UndoHistory.commit(); applySettings(Object.assign({}, v.settings)); UndoHistory.commit(); App.look = null; markLooks(); markVersions();
   toast('Version ' + name);
 }
 function deleteVersion(name) { Versions.list = Versions.list.filter(v => v.name !== name); endPeek(); buildVersions(); scheduleSessionSave(); }
@@ -7620,8 +7629,8 @@ function toolList() {
   add('Copy a link to this art', 'Share panel', 'url link share', needSrc(actCopyLink));
   add('Terminal script that plays it (.sh, .ps1, .py)', 'Share panel', 'powershell bash python console', needSrc(() => showExport(App.src.kind === 'anim' || App.src.kind === 'video' ? 'save' : 'text', App.src.kind === 'anim' || App.src.kind === 'video' ? 'Terminal .sh' : '.sh')));
   if (canShareText()) add('Share to another app', 'Share panel', 'share sheet send', needSrc(() => showExport('save', 'Share…')));
-  add('Undo', 'Top bar', 'back ctrl+z', () => History.step(true));
-  add('Redo', 'Top bar', 'forward ctrl+y', () => History.step(false));
+  add('Undo', 'Top bar', 'back ctrl+z', () => UndoHistory.step(true));
+  add('Redo', 'Top bar', 'forward ctrl+y', () => UndoHistory.step(false));
   add('Light or dark theme', 'Top bar', 'dark mode light colours', () => $('#btnTheme').click());
   add('Show every expert setting (Advanced)', 'Top bar', 'expert more options', () => setAdvanced(true));
   add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
@@ -7640,7 +7649,7 @@ function renderFind() {
   const ul = $('#findList'); ul.textContent = '';
   findState.list.slice(0, 60).forEach((t, i) => {
     const li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'find-' + i; li.className = i === findState.sel ? 'on' : '';
-    li.setAttribute('aria-selected', i === findState.sel);
+    li.setAttribute('aria-selected', String(i === findState.sel));
     li.innerHTML = '<span></span><small></small>'; li.firstChild.textContent = t.name; li.lastChild.textContent = t.where;
     li.addEventListener('pointerdown', e => { e.preventDefault(); runFind(i); });
     ul.appendChild(li);
@@ -7727,7 +7736,7 @@ if (location.hash.startsWith('#demo=')) {   // e.g. #demo=ASCII%3A%20colour;plat
 else if (location.hash === '#demo') demoImage();
 else if (location.hash.startsWith('#demoanim')) { const gm = /goal=(\w+)/.exec(location.hash); if (gm) S.exportGoal = gm[1]; demoAnim(); }
 /* =====================================================================
-   Self-test (open index.html#selftest): GIF round-trip, ZIP CRC, all modes
+   Self-test (open test.html#selftest): GIF round-trip, ZIP CRC, all modes
    ===================================================================== */
 async function selfTest() {
   const out = $('#selftest'); out.hidden = false;
@@ -7919,7 +7928,7 @@ async function selfTest() {
     const estTxt = ($('[data-est="gif"] .sz') || {}).textContent || '';
     const parse = t => { const m = /([\d.]+)\s*(B|KB|MB)/.exec(t); return m ? +m[1] * { B: 1, KB: 1024, MB: 1048576 }[m[2]] : NaN; };
     // the real export, with the same settings
-    const grab = async fn => { const keep = download; let blob = null; download = bl => { blob = bl; }; try { await fn(); } finally { download = keep; } return blob ? new Uint8Array(await blob.arrayBuffer()) : null; };
+    const grab = async fn => { const keep = download; let blob = null; window.download = bl => { blob = bl; }; try { await fn(); } finally { window.download = keep; } return blob ? new Uint8Array(await blob.arrayBuffer()) : null; };
     const realBytes = await grab(exportGIF), real = realBytes ? realBytes.length : NaN, est = parse(estTxt);
     ok(`GIF size estimate ${estTxt} vs real ${fmtBytes(real)} (within 35%)`, isFinite(est) && Math.abs(est - real) / real < 0.35);
     // GIF options: the same picture, smaller files
@@ -7982,9 +7991,9 @@ async function selfTest() {
   } catch (e) { ok('size & quality: ' + e.message, false); }
   Object.assign(S, saved); await demoImage();   // the demo animation above disposed the saved source
   try {   // ---- undo / redo and your own looks ----
-    History.commit(); const b0 = S.brightness;
-    applySettings({ brightness: 0.37 }); applySettings({ brightness: 0.41 }); History.commit();
-    History.step(true); const afterUndo = S.brightness; History.step(false);
+    UndoHistory.commit(); const b0 = S.brightness;
+    applySettings({ brightness: 0.37 }); applySettings({ brightness: 0.41 }); UndoHistory.commit();
+    UndoHistory.step(true); const afterUndo = S.brightness; UndoHistory.step(false);
     ok('Undo restores the value before the change, redo re-applies it', afterUndo === b0 && S.brightness === 0.41);
     const keep = JSON.stringify(userLooks);
     applySettings({ mode: 'quad', fg: '#123456', cols: 77 }); saveUserLook('Selftest look');
@@ -7997,8 +8006,8 @@ async function selfTest() {
   Object.assign(S, saved);
   try {   // ---- batch conversion ----
     const keepSrc = App.src, png = await new Promise(r => demoCanvas().toBlob(r, 'image/png')), keepDl = download; let zip = null;
-    download = b => { zip = b; };
-    try { await runBatch([new File([png], 'a.png', { type: 'image/png' }), new File(['hi'], 'b.txt', { type: 'text/plain' }), new File([new Uint8Array([1, 2, 3])], 'c.jpg', { type: 'image/jpeg' })], { png: true, txt: true }); } finally { download = keepDl; }
+    window.download = b => { zip = b; };
+    try { await runBatch([new File([png], 'a.png', { type: 'image/png' }), new File(['hi'], 'b.txt', { type: 'text/plain' }), new File([new Uint8Array([1, 2, 3])], 'c.jpg', { type: 'image/jpeg' })], { png: true, txt: true }); } finally { window.download = keepDl; }
     const d = zip ? new Uint8Array(await zip.arrayBuffer()) : new Uint8Array(0), names = [];
     for (let p = 0; p + 30 < d.length && d[p] === 0x50 && d[p + 1] === 0x4b && d[p + 2] === 3 && d[p + 3] === 4;) { const n = d[p + 26] | d[p + 27] << 8, sz = d[p + 18] | d[p + 19] << 8 | d[p + 20] << 16 | d[p + 21] << 24; names.push(new TextDecoder().decode(d.subarray(p + 30, p + 30 + n))); p += 30 + n + sz; }
     ok(`Batch conversion: ${names.join(', ')}`, names.join() === `a_${S.mode}.png,a_${S.mode}.txt,b_text.png,b_text.txt,c_FAILED.txt` && App.src === keepSrc);
@@ -8030,12 +8039,13 @@ async function selfTest() {
   const tr = textResult('ab\n⣿⣿⣿', S); ok('text source grid', tr.cols === 3 && tr.rows === 2 && resultText(tr) === 'ab \n⣿⣿⣿');
   App.dirty = true;
   out.textContent = log.join('\n');
+  log.push((Pool.failures.length ? 'FAIL' : 'PASS') + ' No background job failed' + (Pool.failures.length ? ': ' + Pool.failures.slice(0, 3).join(' | ') : '')); out.textContent = log.join('\n');
   document.title = (log.some(l => l.startsWith('FAIL')) ? 'SELFTEST FAIL' : 'SELFTEST PASS');
   console.log(log.join('\n'));
 }
 
 /* =====================================================================
-   Regression test (open index.html#equiv): hashes of the conversion engine, the text formats and the encoders
+   Regression test (open test.html#equiv): hashes of the conversion engine, the text formats and the encoders
    on synthetic pixels. No canvas resampling and no fonts are involved, so the hashes are the same on every
    machine and browser. Each group must match EQUIV_BASELINE; after an intended change of results, paste the
    new baseline the page prints into EQUIV_BASELINE.
@@ -8117,6 +8127,7 @@ async function equivTest() {
   add('crc', crc32(synthPixels(50, 50, 3)));
   // the same conversions on a worker must give the same results
   let workerNote = 'workers unavailable, skipped';
+  if (typeof Worker === 'function' && typeof OffscreenCanvas === 'function' && !window.__noWorkers && !Pool.size()) { say('FAIL the background workers could not start (see the console)'); workerNote = 'workers did not start: results differ from a working page'; }
   if (Pool.size()) {
     let bad = 0;
     await Promise.all(viaWorker.map(async ([k, h, pre]) => {
@@ -8140,7 +8151,7 @@ async function equivTest() {
   document.title = fails || /differ/.test(workerNote) ? 'EQUIV FAIL' : 'EQUIV PASS';
 }
 /* =====================================================================
-   Feature test (open index.html#uitest): the interactive features on a demo picture and synthetic files
+   Feature test (open test.html#uitest): the interactive features on a demo picture and synthetic files
    (overlay: captions + edits, ANSI import, gallery, crop, wipe, projects, ZIP, mask undo, palettes, emoji, effects…)
    ===================================================================== */
 async function uiTest() {
@@ -8162,6 +8173,7 @@ async function uiTest() {
     }
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
   Object.assign(S, saved); syncControls();
+  ok('No background job failed (workers do every job they are given)', Pool.failures.length === 0, Pool.failures.slice(0, 3).join(' | '));
   const fails = log.filter(l => l.startsWith('FAIL')).length;
   const checks = log.filter(l => /^(PASS|FAIL) /.test(l)).length;   // timing notes are not checks
   say(`${fails ? 'FAIL' : 'PASS'} ${checks - fails} of ${checks} feature checks`);
@@ -8428,7 +8440,7 @@ UI_TESTS.push(async function captionControls(ok, { wait }) {
   ok('Caption field: typing writes it on the picture', S.captionTop === 'SUMMER 2026' && uiRow(App.res, 1).includes('SUMMER 2026'));
   $('#capStyle').value = 'big'; $('#capStyle').dispatchEvent(new Event('change', { bubbles: true })); renderNow();
   ok('Caption field: big letters', S.captionStyle === 'big' && !uiRow(App.res, 1).includes('SUMMER'));
-  History.step(true); History.step(true); renderNow();
+  UndoHistory.step(true); UndoHistory.step(true); renderNow();
   ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
 });
 
@@ -8545,7 +8557,7 @@ UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
   touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
   ok('Double-tap: zooms in', App.zoom === 2);
   touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
-  ok('Double-tap again: back to fit', App.zoom === 0 && Touch.pts.size === 0);
+  ok('Double-tap again: back to fit', App.zoom === 0 && TouchState.pts.size === 0);
   setSheet('settings'); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
   ok('Tap on the picture closes the sheet', !sheetOpen());
   applyZoom();
@@ -8648,7 +8660,7 @@ UI_TESTS.push(async function versions(ok, { wait }) {
   ok('Versions: click switches back', S.mode === 'braille' && $('#versions .ver[data-ver="A"]').classList.contains('on'));
   window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true }));
   ok('Versions: key 2 switches to B', S.mode === 'ascii' && S.colorMode === 'color');
-  History.step(true);
+  UndoHistory.step(true);
   ok('Versions: switching can be undone', S.mode === 'braille');
   $('#versions .ver[data-ver="A"]').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(200); renderNow();
   ok('Versions: pointing previews it', !!App.peek && App.peek.mode === 'braille');
@@ -8816,6 +8828,24 @@ UI_TESTS.push(async function findTool(ok, { wait }) {
   ok('Find a tool: every entry runs without an error', errors.length === 0, errors.slice(0, 3).join(' | '));
 });
 
+/* nothing may cover the page by accident (a class name clash once made a toolbar part a full-page overlay) */
+function uiCoverCheck() {
+  const vw = innerWidth, vh = innerHeight, allowed = new Set(['empty', 'views', 'dropOverlay', 'progress', 'videoHost']);
+  return $$('body *').filter(el => {
+    if (allowed.has(el.id) || el.closest('dialog')) return false;
+    const st = getComputedStyle(el); if (st.position !== 'absolute' && st.position !== 'fixed') return false;
+    if (el.checkVisibility && !el.checkVisibility({ visibilityProperty: true })) return false;
+    const b = el.getBoundingClientRect(); return b.width * b.height > 0.6 * vw * vh;
+  }).map(el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').join('.') : ''));
+}
+UI_TESTS.push(async function layoutCover(ok, { wait }) {
+  ok('Layout: nothing unexpected covers the start screen', uiCoverCheck().length === 0, uiCoverCheck().join(', '));
+  await demoImage(); await wait(30); renderNow();
+  for (const tab of ['look', 'adjust', 'colour', 'crop']) setTab(tab);
+  setTab('look');
+  ok('Layout: nothing unexpected covers the page with a picture', uiCoverCheck().length === 0, uiCoverCheck().join(', '));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -8885,7 +8915,7 @@ UI_TESTS.push(async function ansiImport(ok) {
   ok('ANSI: pasted escape codes open as a coloured source', App.src && App.src.kind === 'text' && !!App.src.ansi && S.colorMode === 'color');
 });
 /* =====================================================================
-   Video check (open index.html#videotest in your browser, press Start): makes a short test video here and
+   Video check (open test.html#videotest in your browser, press Start): makes a short test video here and
    checks playback, frame updates in every view, the look preview, looping, seeking and video export with
    real video decoding (automated headless browsers cannot show video frames reliably).
    ===================================================================== */

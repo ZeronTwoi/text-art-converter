@@ -1,5 +1,5 @@
 /* =====================================================================
-   Self-test (open index.html#selftest): GIF round-trip, ZIP CRC, all modes
+   Self-test (open test.html#selftest): GIF round-trip, ZIP CRC, all modes
    ===================================================================== */
 async function selfTest() {
   const out = $('#selftest'); out.hidden = false;
@@ -191,7 +191,7 @@ async function selfTest() {
     const estTxt = ($('[data-est="gif"] .sz') || {}).textContent || '';
     const parse = t => { const m = /([\d.]+)\s*(B|KB|MB)/.exec(t); return m ? +m[1] * { B: 1, KB: 1024, MB: 1048576 }[m[2]] : NaN; };
     // the real export, with the same settings
-    const grab = async fn => { const keep = download; let blob = null; download = bl => { blob = bl; }; try { await fn(); } finally { download = keep; } return blob ? new Uint8Array(await blob.arrayBuffer()) : null; };
+    const grab = async fn => { const keep = download; let blob = null; window.download = bl => { blob = bl; }; try { await fn(); } finally { window.download = keep; } return blob ? new Uint8Array(await blob.arrayBuffer()) : null; };
     const realBytes = await grab(exportGIF), real = realBytes ? realBytes.length : NaN, est = parse(estTxt);
     ok(`GIF size estimate ${estTxt} vs real ${fmtBytes(real)} (within 35%)`, isFinite(est) && Math.abs(est - real) / real < 0.35);
     // GIF options: the same picture, smaller files
@@ -254,9 +254,9 @@ async function selfTest() {
   } catch (e) { ok('size & quality: ' + e.message, false); }
   Object.assign(S, saved); await demoImage();   // the demo animation above disposed the saved source
   try {   // ---- undo / redo and your own looks ----
-    History.commit(); const b0 = S.brightness;
-    applySettings({ brightness: 0.37 }); applySettings({ brightness: 0.41 }); History.commit();
-    History.step(true); const afterUndo = S.brightness; History.step(false);
+    UndoHistory.commit(); const b0 = S.brightness;
+    applySettings({ brightness: 0.37 }); applySettings({ brightness: 0.41 }); UndoHistory.commit();
+    UndoHistory.step(true); const afterUndo = S.brightness; UndoHistory.step(false);
     ok('Undo restores the value before the change, redo re-applies it', afterUndo === b0 && S.brightness === 0.41);
     const keep = JSON.stringify(userLooks);
     applySettings({ mode: 'quad', fg: '#123456', cols: 77 }); saveUserLook('Selftest look');
@@ -269,8 +269,8 @@ async function selfTest() {
   Object.assign(S, saved);
   try {   // ---- batch conversion ----
     const keepSrc = App.src, png = await new Promise(r => demoCanvas().toBlob(r, 'image/png')), keepDl = download; let zip = null;
-    download = b => { zip = b; };
-    try { await runBatch([new File([png], 'a.png', { type: 'image/png' }), new File(['hi'], 'b.txt', { type: 'text/plain' }), new File([new Uint8Array([1, 2, 3])], 'c.jpg', { type: 'image/jpeg' })], { png: true, txt: true }); } finally { download = keepDl; }
+    window.download = b => { zip = b; };
+    try { await runBatch([new File([png], 'a.png', { type: 'image/png' }), new File(['hi'], 'b.txt', { type: 'text/plain' }), new File([new Uint8Array([1, 2, 3])], 'c.jpg', { type: 'image/jpeg' })], { png: true, txt: true }); } finally { window.download = keepDl; }
     const d = zip ? new Uint8Array(await zip.arrayBuffer()) : new Uint8Array(0), names = [];
     for (let p = 0; p + 30 < d.length && d[p] === 0x50 && d[p + 1] === 0x4b && d[p + 2] === 3 && d[p + 3] === 4;) { const n = d[p + 26] | d[p + 27] << 8, sz = d[p + 18] | d[p + 19] << 8 | d[p + 20] << 16 | d[p + 21] << 24; names.push(new TextDecoder().decode(d.subarray(p + 30, p + 30 + n))); p += 30 + n + sz; }
     ok(`Batch conversion: ${names.join(', ')}`, names.join() === `a_${S.mode}.png,a_${S.mode}.txt,b_text.png,b_text.txt,c_FAILED.txt` && App.src === keepSrc);
@@ -302,6 +302,7 @@ async function selfTest() {
   const tr = textResult('ab\n⣿⣿⣿', S); ok('text source grid', tr.cols === 3 && tr.rows === 2 && resultText(tr) === 'ab \n⣿⣿⣿');
   App.dirty = true;
   out.textContent = log.join('\n');
+  log.push((Pool.failures.length ? 'FAIL' : 'PASS') + ' No background job failed' + (Pool.failures.length ? ': ' + Pool.failures.slice(0, 3).join(' | ') : '')); out.textContent = log.join('\n');
   document.title = (log.some(l => l.startsWith('FAIL')) ? 'SELFTEST FAIL' : 'SELFTEST PASS');
   console.log(log.join('\n'));
 }

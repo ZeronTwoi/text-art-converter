@@ -138,7 +138,7 @@ async function openProjectParts(meta, get) {
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
   applySettings(st);
-  History.reset();
+  UndoHistory.reset();
   Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
   buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {

@@ -601,7 +601,7 @@ function showProgress(title, indeterminate) {
   $('#progCancel').hidden = !!indeterminate;
   $('#progress').hidden = false;
 }
-function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', Math.round(v)); if (text != null) $('#progText').textContent = text; }
+function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', String(Math.round(+v))); if (text != null) $('#progText').textContent = text; }
 function hideProgress() { $('#progress').hidden = true; }
 const cancelled = () => { const e = new Error('cancelled'); e.cancelled = true; return e; };
 

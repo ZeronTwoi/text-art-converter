@@ -5,9 +5,12 @@
   "scripts": {
     "build": "node build.mjs",
     "check": "node build.mjs --check",
-    "build:wasm": "node build.mjs --wasm"
+    "build:wasm": "node build.mjs --wasm",
+    "types": "node build.mjs --types",
+    "test": "node test.mjs"
   },
   "devDependencies": {
+    "typescript": "^5.6.3",
     "wabt": "1.0.39"
   }
 }

@@ -29,7 +29,7 @@ function updateModeButtons() {
   $('#modeHint').textContent = (MODES[S.mode] && MODES[S.mode].hint) || '';
 }
 function onSettingsChanged() {
-  History.changed();
+  UndoHistory.changed();
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
@@ -56,7 +56,7 @@ function bindControls(root = document) {
 function applySettings(obj) { Object.assign(S, obj); syncControls(); onSettingsChanged(); }
 /* ---- undo / redo of settings: changes within 350 ms (one slider drag) are one step ---- */
 const HIST_SKIP = new Set(['exportGoal', 'calib', 'shareOptimize']);
-const History = {
+const UndoHistory = {
   undo: [], redo: [], base: null, timer: 0, applying: false,
   snap() { const o = {}; for (const k in DEFAULTS) if (!HIST_SKIP.has(k)) o[k] = S[k]; return o; },
   same(a, b) { for (const k in a) if (a[k] !== b[k]) return false; return true; },
@@ -242,7 +242,7 @@ function initUI() {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k0 === 'z' || k0 === 'y')) {   // undo / redo (text fields keep their own)
       if (e.target.closest && e.target.closest('input[type=text],input[type=number],textarea,[contenteditable]')) return;
       if (document.querySelector('dialog[open]') || App.exporting) return;
-      e.preventDefault(); History.step(k0 === 'z' && !e.shiftKey); return;
+      e.preventDefault(); UndoHistory.step(k0 === 'z' && !e.shiftKey); return;
     }
     if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
     if (document.querySelector('dialog[open]') || App.exporting || e.ctrlKey || e.metaKey || e.altKey) return;

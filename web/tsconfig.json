@@ -1,0 +1,16 @@
+{
+  // Type check of the page's script (no build output): node build.mjs --types, also run by node test.mjs.
+  // All src files form one global script (as in the page), so a misspelled or missing name anywhere is an error.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src/types.d.ts", "src/js/*.js", "src/tests/*.js"]
+}

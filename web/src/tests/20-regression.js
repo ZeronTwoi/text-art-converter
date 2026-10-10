@@ -1,5 +1,5 @@
 /* =====================================================================
-   Regression test (open index.html#equiv): hashes of the conversion engine, the text formats and the encoders
+   Regression test (open test.html#equiv): hashes of the conversion engine, the text formats and the encoders
    on synthetic pixels. No canvas resampling and no fonts are involved, so the hashes are the same on every
    machine and browser. Each group must match EQUIV_BASELINE; after an intended change of results, paste the
    new baseline the page prints into EQUIV_BASELINE.
@@ -81,6 +81,7 @@ async function equivTest() {
   add('crc', crc32(synthPixels(50, 50, 3)));
   // the same conversions on a worker must give the same results
   let workerNote = 'workers unavailable, skipped';
+  if (typeof Worker === 'function' && typeof OffscreenCanvas === 'function' && !window.__noWorkers && !Pool.size()) { say('FAIL the background workers could not start (see the console)'); workerNote = 'workers did not start: results differ from a working page'; }
   if (Pool.size()) {
     let bad = 0;
     await Promise.all(viaWorker.map(async ([k, h, pre]) => {

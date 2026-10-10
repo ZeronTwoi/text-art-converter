@@ -1014,7 +1014,9 @@ details.group.fold>summary.h span{margin-left:auto}
    ===================================================================== */
 
 /* ---------------- helpers ---------------- */
+/** @type {(s: string, r?: ParentNode) => any} */
 const $ = (s, r = document) => r.querySelector(s);
+/** @type {(s: string, r?: ParentNode) => any[]} */
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const nextTick = () => new Promise(r => setTimeout(r, 0));
@@ -2825,6 +2827,8 @@ function engineSource() {
     applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
+  // functions are copied by their source text: an arrow function here would lose its name in the worker
+  for (const f of fns) if (typeof f !== 'function' || !/^(async\s+)?function[\s*]/.test(f.toString())) throw new Error(`engineSource: "${f && f.name}" must be a function declaration (arrows go in the arrows list)`);
   return [
     ...Object.entries(data).map(([k, v]) => `const ${k} = ${JSON.stringify(v)};`),
     ...Object.entries(arrows).map(([k, v]) => `const ${k} = ${v.toString()};`),
@@ -2889,14 +2893,19 @@ onmessage = async e => {
       const n = clamp((navigator.hardwareConcurrency || 4) - 1, 1, 8);
       for (let i = 0; i < n; i++) {
         const w = new Worker(url); w.busy = 0;
-        w.onmessage = e => { const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--; e.data.err ? j.rej(new Error(e.data.err)) : j.res(e.data.r); };
+        w.onmessage = e => {
+          const j = jobs.get(e.data.id); if (!j) return; jobs.delete(e.data.id); w.busy--;
+          if (e.data.err) { failures.push(e.data.err); console.warn('background job failed (done here instead):', e.data.err); j.rej(new Error(e.data.err)); } else j.res(e.data.r);
+        };
         w.onerror = e => { e.preventDefault(); console.warn('worker failed', e.message, e.lineno); for (const [id, j] of jobs) if (j.w === w) { jobs.delete(id); j.rej(new Error('worker failed: ' + e.message)); } w.busy = 1e9; };
         workers.push(w);
       }
     } catch (e) { console.warn('workers unavailable', e); workers = []; }
     return workers;
   }
+  const failures = [];   // jobs that failed on a worker (they are redone on this thread, so only the tests notice)
   return {
+    failures,
     size: () => typeof window !== 'undefined' && window.__noWorkers ? 0 : init().filter(w => w.busy < 1e9).length,
     run(op, a, transfer) {
       const ws = this.size() ? init().filter(w => w.busy < 1e9) : [];
@@ -4156,7 +4165,7 @@ function showProgress(title, indeterminate) {
   $('#progCancel').hidden = !!indeterminate;
   $('#progress').hidden = false;
 }
-function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', Math.round(v)); if (text != null) $('#progText').textContent = text; }
+function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', String(Math.round(+v))); if (text != null) $('#progText').textContent = text; }
 function hideProgress() { $('#progress').hidden = true; }
 const cancelled = () => { const e = new Error('cancelled'); e.cancelled = true; return e; };
 
@@ -4931,7 +4940,7 @@ function updateModeButtons() {
   $('#modeHint').textContent = (MODES[S.mode] && MODES[S.mode].hint) || '';
 }
 function onSettingsChanged() {
-  History.changed();
+  UndoHistory.changed();
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
@@ -4958,7 +4967,7 @@ function bindControls(root = document) {
 function applySettings(obj) { Object.assign(S, obj); syncControls(); onSettingsChanged(); }
 /* ---- undo / redo of settings: changes within 350 ms (one slider drag) are one step ---- */
 const HIST_SKIP = new Set(['exportGoal', 'calib', 'shareOptimize']);
-const History = {
+const UndoHistory = {
   undo: [], redo: [], base: null, timer: 0, applying: false,
   snap() { const o = {}; for (const k in DEFAULTS) if (!HIST_SKIP.has(k)) o[k] = S[k]; return o; },
   same(a, b) { for (const k in a) if (a[k] !== b[k]) return false; return true; },
@@ -5144,7 +5153,7 @@ function initUI() {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k0 === 'z' || k0 === 'y')) {   // undo / redo (text fields keep their own)
       if (e.target.closest && e.target.closest('input[type=text],input[type=number],textarea,[contenteditable]')) return;
       if (document.querySelector('dialog[open]') || App.exporting) return;
-      e.preventDefault(); History.step(k0 === 'z' && !e.shiftKey); return;
+      e.preventDefault(); UndoHistory.step(k0 === 'z' && !e.shiftKey); return;
     }
     if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
     if (document.querySelector('dialog[open]') || App.exporting || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -5213,7 +5222,7 @@ function lookSettings(id) {
 function applyPreset(id) {
   const st = lookSettings(id); if (!st) return;
   endPeek(true);
-  History.commit(); applySettings(Object.assign({}, st)); History.commit();   // one undo step per look
+  UndoHistory.commit(); applySettings(Object.assign({}, st)); UndoHistory.commit();   // one undo step per look
   App.look = id; markLooks(); toast('Look: ' + id.replace(USER_PREFIX, ''));
 }
 /* Preview a look on the big picture while the pointer rests on its card (or the card has keyboard focus).
@@ -5439,14 +5448,14 @@ function initUI2() {
   $('#galleryOpen').addEventListener('click', openGallery);
   $('#galleryClose').addEventListener('click', () => $('#galleryDialog').close());
   $('#galleryDialog').addEventListener('close', () => { renderGallery.token = null; });
-  $('#btnUndo').addEventListener('click', () => History.step(true));
-  $('#btnRedo').addEventListener('click', () => History.step(false));
+  $('#btnUndo').addEventListener('click', () => UndoHistory.step(true));
+  $('#btnRedo').addEventListener('click', () => UndoHistory.step(false));
   const ld = $('#lookDialog');
   $('#lookCancel').addEventListener('click', () => ld.close());
   const doSave = () => { if (saveUserLook($('#lookName').value)) { ld.close(); toast('Look saved: ' + $('#lookName').value.trim()); } else $('#lookName').focus(); };
   $('#lookSave').addEventListener('click', doSave);
   $('#lookName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSave(); } });
-  History.reset();
+  UndoHistory.reset();
   $$('#leftTabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
   $$('#steps .step').forEach(b => b.addEventListener('click', () => gotoStep(+b.dataset.step)));
   $$('#goalSeg button').forEach(b => b.addEventListener('click', () => { S.exportGoal = b.dataset.goal; saveSettings(); applyGoal(); setStep(4); }));
@@ -6184,7 +6193,7 @@ async function openProjectParts(meta, get) {
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
   applySettings(st);
-  History.reset();
+  UndoHistory.reset();
   Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
   buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
@@ -6687,35 +6696,35 @@ function setSheet(which) {
 }
 const sheetOpen = () => document.body.classList.contains('sheet-settings') || document.body.classList.contains('sheet-export');
 /* two fingers: zoom (keeping the point between them in place); one quick sideways swipe: Result ↔ Original */
-const Touch = { pts: new Map(), pinch: null, swipe: null, tap: null, lastTap: 0 };
+const TouchState = { pts: new Map(), pinch: null, swipe: null, tap: null, lastTap: 0 };
 STAGE_TOOLS.unshift({
   down(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return false;
-    if (sheetOpen()) { setSheet(null); Touch.tap = null; return true; }   // a tap on the picture closes the sheet
-    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
-    Touch.tap = Touch.pts.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null;   // maybe a (double) tap
-    if (Touch.pts.size === 2) {
-      const [a, b] = [...Touch.pts.values()], stage = $('#stage');
-      Touch.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: App.zoom || currentScaleForZoom(), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, sl: stage.scrollLeft, st: stage.scrollTop };
-      Touch.swipe = null; return true;
+    if (sheetOpen()) { setSheet(null); TouchState.tap = null; return true; }   // a tap on the picture closes the sheet
+    TouchState.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    TouchState.tap = TouchState.pts.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null;   // maybe a (double) tap
+    if (TouchState.pts.size === 2) {
+      const [a, b] = [...TouchState.pts.values()], stage = $('#stage');
+      TouchState.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: App.zoom || currentScaleForZoom(), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, sl: stage.scrollLeft, st: stage.scrollTop };
+      TouchState.swipe = null; return true;
     }
-    if (Touch.pts.size === 1 && !App.zoom && App.src && !Crop.on && !Mask.on && !Edit.on && App.view !== 'wipe') { Touch.swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; return true; }
+    if (TouchState.pts.size === 1 && !App.zoom && App.src && !Crop.on && !Mask.on && !Edit.on && App.view !== 'wipe') { TouchState.swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; return true; }
     return false;
   },
   move(e) {
-    if (!Touch.pts.has(e.pointerId)) return;
-    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
-    const P = Touch.pinch; if (!P || Touch.pts.size < 2) return;
-    const [a, b] = [...Touch.pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (!TouchState.pts.has(e.pointerId)) return;
+    TouchState.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const P = TouchState.pinch; if (!P || TouchState.pts.size < 2) return;
+    const [a, b] = [...TouchState.pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
     const z = clamp(P.z * d / Math.max(1, P.d), ZOOMS[0], ZOOMS[ZOOMS.length - 1]), stage = $('#stage'), r = stage.getBoundingClientRect();
     App.zoom = z; applyZoom();
     const k = z / P.z, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;   // keep the pinched point under the fingers
     stage.scrollLeft = (P.sl + P.mx - r.left) * k - (mx - r.left); stage.scrollTop = (P.st + P.my - r.top) * k - (my - r.top);
   },
   up(e) {
-    Touch.pts.delete(e && e.pointerId);
-    if (Touch.pinch) { if (Touch.pts.size < 2) Touch.pinch = null; return; }
-    const sw = Touch.swipe; Touch.swipe = null; if (!sw || !e) return;
+    TouchState.pts.delete(e && e.pointerId);
+    if (TouchState.pinch) { if (TouchState.pts.size < 2) TouchState.pinch = null; return; }
+    const sw = TouchState.swipe; TouchState.swipe = null; if (!sw || !e) return;
     const dx = e.clientX - sw.x, dy = e.clientY - sw.y, dt = performance.now() - sw.t;
     if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 700) {
       const order = ['out', 'src'], i = order.indexOf(App.view);
@@ -6726,12 +6735,12 @@ STAGE_TOOLS.unshift({
 });
 function initMobile() {
   const forget = e => {
-    const tap = Touch.tap; Touch.tap = null;
-    if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !Touch.pinch && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 300) {
+    const tap = TouchState.tap; TouchState.tap = null;
+    if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !TouchState.pinch && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 300) {
       const now = performance.now();   // double-tap: zoom in to 2× / back to fit (zoomed or not)
-      if (now - Touch.lastTap < 350 && App.src && !Edit.on && !Crop.on && !Mask.on) { App.zoom = App.zoom ? 0 : 2; applyZoom(); Touch.lastTap = 0; } else Touch.lastTap = now;
+      if (now - TouchState.lastTap < 350 && App.src && !Edit.on && !Crop.on && !Mask.on) { App.zoom = App.zoom ? 0 : 2; applyZoom(); TouchState.lastTap = 0; } else TouchState.lastTap = now;
     }
-    Touch.pts.delete(e.pointerId); if (Touch.pts.size < 2) Touch.pinch = null;
+    TouchState.pts.delete(e.pointerId); if (TouchState.pts.size < 2) TouchState.pinch = null;
   };
   window.addEventListener('pointerup', forget, true); window.addEventListener('pointercancel', forget, true);
   $('#mbSettings').addEventListener('click', () => setSheet(document.body.classList.contains('sheet-settings') ? null : 'settings'));
@@ -6962,7 +6971,7 @@ function keepVersion() {
 }
 function applyVersion(name) {
   const v = Versions.list.find(x => x.name === name); if (!v) return;
-  endPeek(true); History.commit(); applySettings(Object.assign({}, v.settings)); History.commit(); App.look = null; markLooks(); markVersions();
+  endPeek(true); UndoHistory.commit(); applySettings(Object.assign({}, v.settings)); UndoHistory.commit(); App.look = null; markLooks(); markVersions();
   toast('Version ' + name);
 }
 function deleteVersion(name) { Versions.list = Versions.list.filter(v => v.name !== name); endPeek(); buildVersions(); scheduleSessionSave(); }
@@ -7620,8 +7629,8 @@ function toolList() {
   add('Copy a link to this art', 'Share panel', 'url link share', needSrc(actCopyLink));
   add('Terminal script that plays it (.sh, .ps1, .py)', 'Share panel', 'powershell bash python console', needSrc(() => showExport(App.src.kind === 'anim' || App.src.kind === 'video' ? 'save' : 'text', App.src.kind === 'anim' || App.src.kind === 'video' ? 'Terminal .sh' : '.sh')));
   if (canShareText()) add('Share to another app', 'Share panel', 'share sheet send', needSrc(() => showExport('save', 'Share…')));
-  add('Undo', 'Top bar', 'back ctrl+z', () => History.step(true));
-  add('Redo', 'Top bar', 'forward ctrl+y', () => History.step(false));
+  add('Undo', 'Top bar', 'back ctrl+z', () => UndoHistory.step(true));
+  add('Redo', 'Top bar', 'forward ctrl+y', () => UndoHistory.step(false));
   add('Light or dark theme', 'Top bar', 'dark mode light colours', () => $('#btnTheme').click());
   add('Show every expert setting (Advanced)', 'Top bar', 'expert more options', () => setAdvanced(true));
   add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
@@ -7640,7 +7649,7 @@ function renderFind() {
   const ul = $('#findList'); ul.textContent = '';
   findState.list.slice(0, 60).forEach((t, i) => {
     const li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'find-' + i; li.className = i === findState.sel ? 'on' : '';
-    li.setAttribute('aria-selected', i === findState.sel);
+    li.setAttribute('aria-selected', String(i === findState.sel));
     li.innerHTML = '<span></span><small></small>'; li.firstChild.textContent = t.name; li.lastChild.textContent = t.where;
     li.addEventListener('pointerdown', e => { e.preventDefault(); runFind(i); });
     ul.appendChild(li);
