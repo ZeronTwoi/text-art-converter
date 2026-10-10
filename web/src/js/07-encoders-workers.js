@@ -247,7 +247,7 @@ function engineSource() {
   const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS,
     RETRO_PALETTES, WIDE_CONT, EMOJI_SETS, EMOJI_FONT, PIXEL_FONT_DATA, BLOCK_RECTS, BOX_ARMS, DOT_SIZES };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
-  const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
+  const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid, steadyApply,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
     applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, drawSharpLayer, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
@@ -265,6 +265,7 @@ function engineSource() {
     'const work = { sample: newCanvas() }, sctx = work.sample.getContext("2d", { willReadFrequently: true });',
     'const hiCanvas = newCanvas(), hiCtx = hiCanvas.getContext("2d", { willReadFrequently: true });',
     'let LZW_TABLE = null, LZW_USED = null, edgesWasm;',
+    'const Steady = { key: "", data: null };',
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
     'function drawLayer() {}',

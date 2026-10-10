@@ -1212,5 +1212,8 @@
 "The original sound is included": "Оригинальный звук включён",
 "The size of your last export with these settings": "Размер вашего последнего экспорта с этими настройками",
 "Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "Видео кодируется так быстро, как позволяет компьютер; «Включить исходный звук» добавляет звук из файла.",
-"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Оценка по битрейту; на простых картинках кодировщик даёт меньше"
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Оценка по битрейту; на простых картинках кодировщик даёт меньше",
+"Hold steady (less flicker)": "Держать ровно (меньше мерцания)",
+"Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off": "Не даёт символам мерцать, когда картинка почти неподвижна: ячейка меняется только если действительно изменилась. 0 выключает",
+"Too wide: about {0} of the {1} characters fit per line here, so it arrives wrapped like this. \"Fix all\" in the Share panel makes a copy that fits.": "Слишком широко: здесь в строку помещается примерно {0} из {1} символов, поэтому текст приходит с такими переносами. «Исправить всё» на панели «Поделиться» делает копию по размеру."
 }

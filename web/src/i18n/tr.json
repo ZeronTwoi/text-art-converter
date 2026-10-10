@@ -1210,5 +1210,8 @@
 "The original sound is included": "Orijinal ses dahil edildi",
 "The size of your last export with these settings": "Bu ayarlarla son dışa aktarmanızın boyutu",
 "Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "Videolar bilgisayarınızın izin verdiği hızda kodlanır; \"Orijinal sesi dahil et\" dosyanın kendi sesini ekler.",
-"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Bit hızından tahmin edilir; basit resimlerde kodlayıcı daha küçük sonuç verir"
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Bit hızından tahmin edilir; basit resimlerde kodlayıcı daha küçük sonuç verir",
+"Hold steady (less flicker)": "Sabit tut (daha az titreme)",
+"Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off": "Görüntü neredeyse hareketsizken karakterlerin titremesini önler: bir hücre ancak gerçekten değiştiyse değişir. 0 kapatır",
+"Too wide: about {0} of the {1} characters fit per line here, so it arrives wrapped like this. \"Fix all\" in the Share panel makes a copy that fits.": "Çok geniş: burada satır başına {1} karakterin yaklaşık {0} tanesi sığıyor, bu yüzden böyle sarılmış hâlde ulaşır. Paylaş panelindeki \"Tümünü düzelt\" sığan bir kopya hazırlar."
 }

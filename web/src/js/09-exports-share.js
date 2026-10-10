@@ -477,9 +477,11 @@ function updatePlatformView() {
     px = clamp(px, 4, 28);
   }
   // line height so a cell is as tall relative to its width as the conversion assumed (charAspect),
-  // measured on this picture's own characters: then this view's proportions match the app's views
+  // measured on this picture's own characters: then this view's proportions match the app's views.
+  // Art that is too wide wraps (as it really would); wrapped lines keep a chat's dense spacing.
+  const fits = !tc || res.cols <= tc;
   let lh = 1.25;
-  if (mono) {
+  if (mono && fits) {
     const sample = lines.find(l => l.trim().length > 3) || 'MMMM';
     const adv = g.measureText(sample).width / Math.max(1, Array.from(sample).length) / 100;
     lh = clamp(adv * ((App.shareSettings || S).charAspect || 2), 0.8, 3);
@@ -498,6 +500,8 @@ function updatePlatformView() {
     } else pre.textContent = t;
     bubble.appendChild(pre); chat.appendChild(bubble);
   }
+  const warn = $('#phoneWarn'); warn.hidden = fits;
+  if (!fits) warn.textContent = `Too wide: about ${tc} of the ${res.cols} characters fit per line here, so it arrives wrapped like this. "Fix all" in the Share panel makes a copy that fits.`;
   $('#phoneNote').textContent = (desk ? 'Desktop' : 'Phone') + ' preview, ' + (mono ? 'monospace code block' : 'normal proportional font') + (parts.length > 1 ? `, ${parts.length} separate messages` : '') + (colour ? ', Discord colours (desktop only)' : '. Colours are not sent') + '. Real apps differ slightly by device.';
 }
 function saveText(kind) {
@@ -763,6 +767,7 @@ async function gifSharedPalette(scale, colors, withTransparency, s = App.src) {
    in frame order. onFirst(W, H, scale) runs once, before the first frame is drawn. */
 /* o: { fps (video sources), ropts (renderResult options, e.g. even size / solid background), throttle (awaited before each frame) } */
 async function forEachRenderedFrame(progress, onFirst, onFrame, src = App.src, o = {}) {
+  Steady.key = '';   // the export starts over from the trim start: no held values from playback
   const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
   const renders = new OrderedJobs(), ready = [], delays = [];
   let scale = 1, W = 0, H = 0, next = 0, started = false;
@@ -1477,7 +1482,8 @@ function buildExportPanel() {
     btn(an, 'Terminal .py', () => exportTerminalScript('py'), { title: 'Python script that plays the animation in any terminal, in colour', more: 'anim' });
     let o = `<div class="row"><label for="playOrder">Play</label><select id="playOrder" data-key="playOrder"><option value="forward">Forward</option><option value="reverse">Reversed</option><option value="boomerang">Boomerang (forward, then back)</option></select></div>
       <div class="row"><label>Speed <output data-out="playSpeed" data-suffix="×"></output></label><input type="range" data-key="playSpeed" min="0.25" max="4" step="0.25"></div>
-      <div class="row"><label title="The end fades into the start, so the loop has no jump">Smooth loop (crossfade) <output data-out="loopFade" data-suffix=" s"></output></label><input type="range" data-key="loopFade" min="0" max="2" step="0.1"></div>`;
+      <div class="row"><label title="The end fades into the start, so the loop has no jump">Smooth loop (crossfade) <output data-out="loopFade" data-suffix=" s"></output></label><input type="range" data-key="loopFade" min="0" max="2" step="0.1"></div>
+      <div class="row"><label title="Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off">Hold steady (less flicker) <output data-out="steady" data-pct></output></label><input type="range" data-key="steady" min="0" max="1" step="0.05"></div>`;
     if (s.kind === 'video') o += `<div class="row"><label>Frames per second (GIF / text) <output data-out="gifFps"></output></label><input type="range" data-key="gifFps" min="1" max="30" step="1"></div>`;
     else o += `<div class="row"><label>Use every Nth frame <output data-out="frameStep"></output></label><input type="range" data-key="frameStep" min="1" max="10" step="1"></div>`;
     o += `<div class="row"><label>GIF colours <output data-out="gifColors"></output></label><input type="range" data-key="gifColors" min="2" max="256" step="1"></div>`;

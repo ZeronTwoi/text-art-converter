@@ -1210,5 +1210,8 @@
 "The original sound is included": "El sonido original está incluido",
 "The size of your last export with these settings": "El tamaño de tu última exportación con estos ajustes",
 "Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "Los vídeos se codifican tan rápido como permita tu equipo; «Incluir audio original» añade el sonido del archivo.",
-"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Estimado a partir del bitrate; con imágenes simples el codificador sale más pequeño"
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "Estimado a partir del bitrate; con imágenes simples el codificador sale más pequeño",
+"Hold steady (less flicker)": "Mantener estable (menos parpadeo)",
+"Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off": "Evita que los caracteres parpadeen cuando la imagen apenas se mueve: una celda solo cambia si cambió de verdad. 0 lo desactiva",
+"Too wide: about {0} of the {1} characters fit per line here, so it arrives wrapped like this. \"Fix all\" in the Share panel makes a copy that fits.": "Demasiado ancho: aquí caben unos {0} de los {1} caracteres por línea, por eso llega envuelto así. «Arreglar todo» en el panel de compartir crea una copia que cabe."
 }

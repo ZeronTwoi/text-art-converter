@@ -244,6 +244,7 @@ function setSource(s) {
   endPeek(true); if (Crop.on) setCropMode(false); editsClear(); if (Edit.on) setEditMode(false);
   disposeSource(App.src); Prefetch.clear(); maskClear(); previewCacheClear(); if (Mask.on) setMaskMode(false);
   App.src = s; App.time = 0; App.tin = App.tout = null; App.lastIdx = -1; App.lastVT = -1; App.playing = false;
+  Steady.key = '';   // held sample values belong to the previous source
   if (s.bmp) srcOwner.set(s.bmp, s); if (s.video) srcOwner.set(s.video, s);
   if (s.video) {
     const v = s.video;

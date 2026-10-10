@@ -1212,5 +1212,8 @@
 "The original sound is included": "元の音声が入っています",
 "The size of your last export with these settings": "この設定での前回の書き出しのサイズ",
 "Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "動画はパソコンの許すかぎり速くエンコードされます。「元の音声を含める」はファイル自身の音声を加えます。",
-"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "ビットレートからの見積もり。単純な絵ではエンコーダーはより小さく仕上げます"
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "ビットレートからの見積もり。単純な絵ではエンコーダーはより小さく仕上げます",
+"Hold steady (less flicker)": "安定させる(ちらつき軽減)",
+"Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off": "映像がほとんど動かないときに文字がちらつくのを防ぎます。セルは本当に変わったときだけ変わります。0 でオフ",
+"Too wide: about {0} of the {1} characters fit per line here, so it arrives wrapped like this. \"Fix all\" in the Share panel makes a copy that fits.": "幅が広すぎます: ここでは1行に {1} 文字中およそ {0} 文字しか入らないため、このように折り返されて届きます。共有パネルの「すべて修正」でぴったり収まるコピーを作れます。"
 }

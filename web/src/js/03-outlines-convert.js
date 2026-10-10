@@ -297,6 +297,23 @@ function convertRaw(src, sw, sh, S) {
 }
 /* an already computed conversion (without overlay), or undefined (never converts) */
 function peekResult(src, sw, sh, S) { const key = memoKey(src, sw, sh, S); return key ? resultCache.get(key) : undefined; }
+/* Holding steady: a playing video's tiny noise and compression shimmer cross character
+   thresholds and make cells flicker although nothing really moves. Each sampled value keeps
+   its previous frame's value unless it changed by more than the deadband (S.steady sets it;
+   0 turns it off). State lives per grid size and resets when the source changes. */
+const Steady = { key: '', data: null };
+function steadyApply(data, W, H, strength) {
+  const key = W + 'x' + H;
+  if (Steady.key !== key || !Steady.data || Steady.data.length !== data.length) {
+    Steady.key = key; Steady.data = new Uint8ClampedArray(data); return data;
+  }
+  const prev = Steady.data, T = Math.round(3 + strength * 25);
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i] - prev[i];
+    if (d > T || d < -T) prev[i] = data[i]; else data[i] = prev[i];
+  }
+  return data;
+}
 /* The source resampled to the character grid (cached for immutable sources). */
 function samplePixels(src, sw, sh, S, W, H, sk) {
   const skey = sk && `${sk}|${transformSig(S)}|${W}x${H}`;
@@ -308,6 +325,11 @@ function samplePixels(src, sw, sh, S, W, H, sk) {
     data = sctx.getImageData(0, 0, W, H).data;
     if (skey) sampleCache.set(skey, data, data.length);
   }
+  // only live sources (video, webcam) are steadied: their frames are sampled fresh and strictly in
+  // order, so holding is deterministic. Animation frames are cached and can be re-sampled out of
+  // order, which would hold against the wrong frame — they stay as they are.
+  if (S.steady > 0 && typeof App !== 'undefined' && App.src && (App.src.kind === 'video' || App.src.kind === 'webcam') && !skey)
+    data = steadyApply(data, W, H, S.steady);
   return data;
 }
 const outlineAmount = S => S.mode === 'emoji' ? 0 : S.mode === 'edge' ? Math.max(S.outline, 0.35) : S.outline;

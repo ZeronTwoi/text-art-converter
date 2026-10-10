@@ -1,6 +1,6 @@
 {
   "name": "text-art-studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Turns pictures, GIFs and videos into text art, offline. The desktop shell around web/index.html.",
   "author": "LighterVoids <afra.kamil.05@gmail.com>",

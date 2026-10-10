@@ -1212,5 +1212,8 @@
 "The original sound is included": "已包含原始声音",
 "The size of your last export with these settings": "这些设置下你上次导出的大小",
 "Videos are encoded as fast as your computer allows; \"Include original audio\" adds the file’s own sound.": "视频会以电脑允许的最快速度编码;“包含原始音频”会加入文件自己的声音。",
-"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "按码率估算;画面简单时编码器会更小"
+"Estimated from the bitrate; the encoder comes out smaller for simple pictures": "按码率估算;画面简单时编码器会更小",
+"Hold steady (less flicker)": "保持稳定(减少闪烁)",
+"Keeps characters from flickering when the picture barely moves: a cell only changes when it really changed. 0 turns it off": "当画面几乎不动时防止字符闪烁: 单元格只有真正变化时才改变。0 表示关闭",
+"Too wide: about {0} of the {1} characters fit per line here, so it arrives wrapped like this. \"Fix all\" in the Share panel makes a copy that fits.": "太宽了: 这里每行只能容纳 {1} 个字符中的约 {0} 个,所以会像这样换行送达。分享面板中的“全部修复”会生成合适的副本。"
 }
