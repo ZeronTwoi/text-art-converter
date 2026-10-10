@@ -25,18 +25,22 @@ double-click it. A `.deb` package is there too.
 
 ## Examples
 
-Everything below was made by the app from its own built-in demo picture. The source, every
-result, and the chat-ready text files are in [`examples/`](examples/).
+The app itself — every look card previews **your** picture, and the Share panel checks the text
+for the chat app you choose:
+
+<img src="examples/app-screenshot.png" width="920">
+
+Two sources, three of the twenty-plus looks (all files, including the chat-ready text, are in
+[`examples/`](examples/)):
 
 | | |
 | --- | --- |
-| **The source picture**<br><img src="examples/demo-sunset.png" width="400"> | **ASCII: colour**<br><img src="examples/ascii-colour.png" width="400"> |
-| **Braille: classic**<br><img src="examples/braille-classic.png" width="400"> | **Matrix**<br><img src="examples/matrix.png" width="400"> |
-| **Pop-art dots**<br><img src="examples/pop-art-dots.png" width="400"> | **Emoji mosaic**<br><img src="examples/emoji-mosaic.png" width="400"> |
-| **Pencil sketch (edges)**<br><img src="examples/pencil-sketch.png" width="400"> | *…and over twenty more looks in the app, each with one slider to re-balance it.* |
+| **A drawn portrait (the source)**<br><img src="examples/portrait.png" width="380"> | **ASCII: colour**<br><img src="examples/portrait-ascii-colour.png" width="380"> |
+| **A photo (the source — NASA, 1984)**<br><img src="examples/astronaut.jpg" width="380"> | **Braille: classic**<br><img src="examples/astronaut-braille.png" width="380"> |
+| **Pixel art (half blocks)**<br><img src="examples/portrait-half-blocks.png" width="380"> | **Matrix**<br><img src="examples/astronaut-matrix.png" width="380"> |
 
 The same art as plain text, ready to paste into a chat:
-[braille-classic.txt](examples/braille-classic.txt) · [ascii-colour.txt](examples/ascii-colour.txt)
+[portrait-ascii-colour.txt](examples/portrait-ascii-colour.txt) · [astronaut-braille.txt](examples/astronaut-braille.txt)
 
 ## What it does
 
