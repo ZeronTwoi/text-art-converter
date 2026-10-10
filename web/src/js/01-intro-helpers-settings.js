@@ -60,6 +60,7 @@ const MODES = {
   quad:     { name: 'Quadrant',    icon: '▛▟', sx: 2, sy: 2, shapes: true, hint: '2×2 block pixels per character (▘▝▖▗ …).' },
   halftone: { name: 'Halftone',    icon: '·•●', sx: 1, sy: 1, shapes: true, hint: 'Dot size follows brightness, like print halftone.' },
   word:     { name: 'Text fill',   icon: 'Tx', sx: 1, sy: 1, hint: 'Your own text forms the picture.' },
+  emoji:    { name: 'Emoji',       icon: '🟩🟥', sx: 1, sy: 1, wide: true, hint: 'A mosaic of emoji: every two columns become the emoji closest in colour (emoji are two characters wide in chat apps and terminals).' },
   text:     { name: 'Text', icon: 'T', sx: 1, sy: 1 },
 };
 const FONTS = {
@@ -91,7 +92,7 @@ const PLATFORMS = {
 const DEFAULTS = {
   mode: 'braille', cols: 120, charAspect: 2, fontSize: 10,
   charset: 'standard', customChars: ' .:-=+*#%@', sortRamp: false, brailleBlank: 'braille',
-  glyphSet: 'ascii', glyphCustom: ' .,:;/\\|-_=+*#', edgeThreshold: 0.22, edgeFill: true,
+  glyphSet: 'ascii', glyphCustom: ' .,:;/\\|-_=+*#', edgeThreshold: 0.22, edgeFill: true, emojiSet: 'blocks',
   wordText: 'TEXT ART STUDIO ', wordFillAll: false,
   brightness: 0, contrast: 0, gamma: 1, saturation: 1, threshold: 0.5, edge: 0, sharpen: 0, outline: 0.45, outlineWidth: 1, outlineDir: true, fill: 1, localContrast: 0, bgFade: 0, dither: 'floyd', invert: false, autoLevels: false,
   colorMode: 'mono', fg: '#e8e6e3', bg: '#0b0d12', gradA: '#14123a', gradB: '#7cf7c4', bgMode: 'solid',
@@ -121,6 +122,10 @@ const PRESETS = {
   'Halftone print': { mode: 'halftone', colorMode: 'mono', fg: '#151515', bg: '#f4efe4', dotShape: 'circle', dotSize: 1, renderStyle: 'shapes' },
   'Lyrics poster (text fill)': { mode: 'word', colorMode: 'color', wordFillAll: true, bg: '#000000', saturation: 1.3 },
   'Shade blocks': { mode: 'ascii', charset: 'blocks', colorMode: 'gradient', gradA: '#1b1035', gradB: '#ffd27a', bg: '#0b0816', dither: 'floyd' },
+  'Game Boy': { mode: 'half', colorMode: 'app', appPalette: 'gameboy', bg: '#0f380f', renderStyle: 'shapes', contrast: 0.15 },
+  'Commodore 64': { mode: 'quad', colorMode: 'app', appPalette: 'c64', bg: '#352879', dither: 'bayer4', renderStyle: 'shapes', saturation: 1.3 },
+  'Amber terminal': { mode: 'ascii', charset: 'standard', colorMode: 'app', appPalette: 'amber', bg: '#1a0d00', dither: 'none' },
+  'Emoji mosaic': { mode: 'emoji', emojiSet: 'blocks', colorMode: 'color', bg: '#ffffff', saturation: 1.2 },
 };
 const BRAILLE_BIT = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]];   // [dy][dx]
 const BRAILLE_POS = [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [0, 3], [1, 3]]; // bit j -> [dx,dy]

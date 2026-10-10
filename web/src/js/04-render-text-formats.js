@@ -9,8 +9,8 @@ function cellSize(S, scale) {
   return [cw, ch];
 }
 const chrCache = new Map();
-function chr(cp) { let s = chrCache.get(cp); if (s === undefined) { s = String.fromCodePoint(cp); chrCache.set(cp, s); } return s; }
-const isBlankCp = v => v === 32 || v === 0x2800 || v === 0x3000 || v === 0;
+function chr(cp) { if (cp === WIDE_CONT) return ''; let s = chrCache.get(cp); if (s === undefined) { s = String.fromCodePoint(cp); chrCache.set(cp, s); } return s; }
+const isBlankCp = v => v === 32 || v === 0x2800 || v === 0x3000 || v === 0 || v === WIDE_CONT;
 function groupsOf(res, skip) {
   const map = new Map(), n = res.cols * res.rows, fg = res.fg;
   if (res.uniform) {
@@ -89,6 +89,13 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       }
       ctx.fill();
     }
+  } else if (m === 'emoji') {   // an emoji spans its cell and the next one
+    ctx.font = Math.max(1, Math.min(2 * cw, ch) * 0.92) + 'px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const cp = res.cp, ov = res.ov;
+    for (const [k, list] of groupsOf(res, c => isBlankCp(cp[c]) || (ov && ov[c]))) {
+      ctx.fillStyle = hex6(k);
+      for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
+    }
   } else {
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -98,7 +105,7 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
-  if (shapes && res.ov) {   // captions and edited cells of a dot / block picture: drawn as characters
+  if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
@@ -159,6 +166,7 @@ function appColour(pal, r, g, b) {
   let c = m.get(key);
   if (!c) {
     if (pal === 'discord') c = hexToRgb(DISCORD_CSS[discordCode(r, g, b)]);
+    else if (RETRO_PALETTES[pal]) c = retroColour(RETRO_PALETTES[pal], r, g, b);
     else {
       const P = pal === 'ansi256' ? ANSI256 : ANSI16; let bd = Infinity;
       for (const q of P) { const dr = r - q[0], dg = g - q[1], db = b - q[2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; c = q; } }
@@ -248,9 +256,9 @@ function svgBody(res, S, parts) {
     }
   }
   if (!shapes || res.ov) {
-    const ov = shapes ? res.ov : null;
-    const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
-    parts.push(`<g font-family="${fontCss(S).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
+    const ov = shapes ? res.ov : null, wide = m === 'emoji';
+    const fontPx = wide ? Math.min(2 * cw, ch) * 0.92 : Math.max(1, Math.min(cw / 0.6, ch / 1.1));
+    parts.push(`<g font-family="${(wide ? EMOJI_FONT : fontCss(S)).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
     for (let y = 0; y < rows; y++) {
       let xs = [], txt = '', k0 = -1;
       const flush = () => { if (txt) parts.push(`<text x="${xs.join(' ')}" y="${f(y * ch + ch / 2)}" fill="${hex6(k0)}">${escHTML(txt)}</text>`); xs = []; txt = ''; };
@@ -258,7 +266,7 @@ function svgBody(res, S, parts) {
         const c = y * cols + x; if (isBlankCp(cp[c]) || (ov && !ov[c])) continue;
         const o = c * 3, k = (fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2];
         if (k !== k0) { flush(); k0 = k; }
-        xs.push(f(x * cw + cw / 2)); txt += chr(cp[c]);
+        xs.push(f(x * cw + (wide && !(res.ov && res.ov[c]) ? cw : cw / 2))); txt += chr(cp[c]);
       }
       flush();
     }

@@ -310,17 +310,18 @@ function samplePixels(src, sw, sh, S, W, H, sk) {
   }
   return data;
 }
-const outlineAmount = S => S.mode === 'edge' ? Math.max(S.outline, 0.35) : S.outline;
+const outlineAmount = S => S.mode === 'emoji' ? 0 : S.mode === 'edge' ? Math.max(S.outline, 0.35) : S.outline;
 /* Everything convert needs from the canvas, drawn on this thread, so the rest can run on a worker:
    convertCore(null, sw, sh, S, null, convertInputs(...)) gives exactly the result of convert.
    The arrays may be shared with the caches: copy them to a worker, never transfer them. */
 function convertInputs(src, sw, sh, S) {
   const sk = srcKey(src), { W, H, sx } = gridFor(sw, sh, S), sample = samplePixels(src, sw, sh, S, W, H, sk), mask = maskPixels(src, S, W, H);
-  if (!(outlineAmount(S) > 0)) return { sample, hi: null, mask };
+  const emoji = S.mode === 'emoji' ? emojiTable(S.emojiSet, S.bg) : null;   // measured here: workers never measure fonts
+  if (!(outlineAmount(S) > 0)) return { sample, hi: null, mask, emoji };
   const f = hiFactor(W, H, sx), HW = W * f, HH = H * f, key = sk && `${sk}|${transformSig(S)}|hi${HW}x${HH}`;
   let hi = key && sampleCache.get(key);
   if (!hi) { hi = hiPixels(src, sw, sh, S, HW, HH); if (key) sampleCache.set(key, hi, hi.length); }
-  return { sample, hi, mask };
+  return { sample, hi, mask, emoji };
 }
 function convertCore(src, sw, sh, S, sk, pre) {
   const mode = S.mode, m = MODES[mode];
@@ -541,6 +542,24 @@ function convertCore(src, sw, sh, S, sk, pre) {
       else if (S.edgeFill) cp[c] = ramp[clamp(Math.round((si / 4 + 0.5 - S.threshold) * nr), 0, nr)];
       else cp[c] = 32;
       if (needColor) { const a = cellAvg(cx, cy, null); paint(fg, c, a[0], a[1], a[2]); } else paint(fg, c, 0, 0, 0);
+    }
+  } else if (mode === 'emoji') {   // two columns per emoji: the nearest emoji to the colour there, then WIDE_CONT
+    const T = (pre && pre.emoji) || emojiTable(S.emojiSet, S.bg);
+    for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx += 2) {
+      const c = cy * cols + cx;
+      if (cx + 1 >= cols) { cp[c] = 32; paint(fg, c, BG[0], BG[1], BG[2]); continue; }
+      let r = 0, g = 0, b = 0, w = 0;
+      for (let k = 0; k < 2; k++) {
+        const i = cy * W + cx + k, o = i * 3;
+        let a = A[i];
+        if (bgm) a *= 1 - S.bgFade * bgm[i] * (MK ? 1 - keepAt(i) : 1);
+        if (MK) a *= 1 - hideAt(i);
+        r += C[o] * a; g += C[o + 1] * a; b += C[o + 2] * a; w += a;
+      }
+      if (w < 0.8) { cp[c] = cp[c + 1] = 32; paint(fg, c, BG[0], BG[1], BG[2]); paint(fg, c + 1, BG[0], BG[1], BG[2]); continue; }
+      paint(fg, c, r / w, g / w, b / w);
+      const o = c * 3; fg[o + 3] = fg[o]; fg[o + 4] = fg[o + 1]; fg[o + 5] = fg[o + 2];
+      cp[c] = nearestEmoji(T, fg[o], fg[o + 1], fg[o + 2]); cp[c + 1] = WIDE_CONT;
     }
   } else if (mode === 'word') {
     let chars = Array.from(S.wordText || '');

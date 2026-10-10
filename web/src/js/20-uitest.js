@@ -13,8 +13,10 @@ async function uiTest() {
     reset();
     await demoImage(); await wait(50); renderNow();
     for (const t of UI_TESTS) {
+      const t0 = performance.now();
       try { await t(ok, { reset, wait, say }); }
       catch (e) { console.error(e); ok(t.name + ' threw', false, e && e.message || e); }
+      finally { const ms = performance.now() - t0; if (ms > 1000) say(`NOTE ${t.name} took ${(ms / 1000).toFixed(1)} s`); }
       reset();
     }
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
@@ -239,6 +241,46 @@ UI_TESTS.push(async function captionControls(ok, { wait }) {
   ok('Caption field: big letters', S.captionStyle === 'big' && !uiRow(App.res, 1).includes('SUMMER'));
   History.step(true); History.step(true); renderNow();
   ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
+});
+
+UI_TESTS.push(async function retroPalettes(ok) {
+  const gb = RETRO_PALETTES.gameboy.cols, key = c => c.join();
+  ok('Retro: Game Boy maps by brightness (black → darkest, white → lightest)', key(appColour('gameboy', 0, 0, 0)) === key(gb[0]) && key(appColour('gameboy', 255, 255, 255)) === key(gb[3]));
+  ok('Retro: C64 red is the C64 red', key(appColour('c64', 140, 0, 0)) === '136,0,0');
+  const St = Object.assign({}, DEFAULTS, { mode: 'half', colorMode: 'app', appPalette: 'pico8', cols: 50 }), r = uiDemoRes(St);
+  const allowed = new Set(RETRO_PALETTES.pico8.cols.map(key)); let bad = 0;
+  for (let i = 0; i < r.fg.length; i += 3) { if (!allowed.has(r.fg[i] + ',' + r.fg[i + 1] + ',' + r.fg[i + 2])) bad++; if (!allowed.has(r.bgc[i] + ',' + r.bgc[i + 1] + ',' + r.bgc[i + 2])) bad++; }
+  ok('Retro: every pixel uses the palette', bad === 0, bad + ' outside');
+  ok('Retro: looks in the gallery', ['Game Boy', 'Commodore 64', 'Amber terminal'].every(n => $(`#looks .look[data-look="${n}"]`)));
+  ok('Retro: palettes in the colour menu', $$('[data-key="appPalette"] option').length >= 9);
+});
+
+UI_TESTS.push(async function emojiMosaic(ok) {
+  const St = Object.assign({}, DEFAULTS, { mode: 'emoji', colorMode: 'color', cols: 41, bg: '#ffffff' }), c = demoCanvas();
+  const T = emojiTable('blocks', '#ffffff');
+  ok('Emoji: colours measured for the set', T.cps.length >= 20, T.cps.length + ' emoji');
+  const r = convertRaw(c, c.width, c.height, St);
+  let pairs = 0, bad = 0;
+  for (let y = 0; y < r.rows; y++) for (let x = 0; x + 1 < r.cols; x += 2) {
+    const a = r.cp[y * r.cols + x], b = r.cp[y * r.cols + x + 1];
+    if (a === 32 && b === 32) continue;
+    if (T.cps.includes(a) && b === WIDE_CONT) pairs++; else bad++;
+  }
+  ok('Emoji: every emoji fills two columns', pairs > 200 && bad === 0, `${pairs} emoji, ${bad} bad cells`);
+  ok('Emoji: odd last column stays empty', r.cp[r.cols - 1] === 32);
+  const t = resultText(r), lines = t.split('\n');
+  ok('Emoji: text has no hidden marker characters', !t.includes(String.fromCodePoint(WIDE_CONT)) && lines.every(l => Array.from(l).length <= 21), Array.from(lines[0]).length + ' per line');
+  ok('Emoji: square cells (rows follow two columns per emoji)', Math.abs(r.rows - Math.round(41 * (640 / 960) / 2)) <= 1, r.cols + 'x' + r.rows);
+  const red = nearestEmoji(T, 220, 30, 30);
+  ok('Emoji: red picks a red emoji', [0x1f7e5, 0x1f534].includes(red), chr(red));
+  if (Pool.size()) {
+    const pre = convertInputs(c, c.width, c.height, St), w = await Pool.run('convertPre', { pre, sw: c.width, sh: c.height, St });
+    ok('Emoji: a worker gives the same mosaic', w.cp.every((v, i) => v === r.cp[i]));
+  }
+  const svg = resultSVG(r, St), html = resultHTMLInner(r), cv = document.createElement('canvas'); renderResult(r, St, cv, 1);
+  ok('Emoji: SVG and HTML have the emoji, picture is drawn', svg.includes(chr(r.cp.find(v => v > 0x2000 && v !== WIDE_CONT))) && !html.includes(String.fromCodePoint(WIDE_CONT)) && cv.width > 100);
+  const res2 = withOverlay(r, Object.assign({}, St, { captionTop: 'HI' }));
+  ok('Emoji: captions on an emoji mosaic', resultText(res2).includes('HI'));
 });
 
 UI_TESTS.push(async function captions(ok) {

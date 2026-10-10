@@ -244,11 +244,12 @@ function encodeBMP(img) {
 /* The conversion engine as worker source, built from the live functions and tables above (one source of truth).
    Inside a worker every source is new, so nothing is cached between messages (srcKey → null). */
 function engineSource() {
-  const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS };
+  const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS,
+    RETRO_PALETTES, WIDE_CONT, EMOJI_SETS, EMOJI_FONT };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
-    applyOverlay, wrapCaption, captionRaster,
+    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -265,7 +266,7 @@ function engineSource() {
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
     'function withOverlay(r) { return r; }',
-    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r;',
+    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------

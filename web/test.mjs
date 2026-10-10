@@ -64,7 +64,8 @@ try {
     await send('Page.navigate', { url: page + '#' + suite }, sessionId);
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true }, sessionId)).result.value;
     let title = '';
-    while (Date.now() - t0 < 600000 && !/PASS|FAIL/.test(title)) { await sleep(300); title = await ev('document.title') || ''; }
+    // stop waiting early when the page threw before it could report (e.g. a syntax error)
+    while (Date.now() - t0 < 600000 && !/PASS|FAIL/.test(title) && !(errors.get(sessionId).length && Date.now() - t0 > 15000)) { await sleep(300); title = await ev('document.title') || ''; }
     const report = await ev("(document.getElementById('selftest') || {}).textContent || ''");
     const ok = /PASS/.test(title) && !errors.get(sessionId).length;
     if (!ok) failed = true;

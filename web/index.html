@@ -407,6 +407,11 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
         <div data-when="mode:edge">
           <div class="row"><label class="chk"><input type="checkbox" data-key="edgeFill"> Fill flat areas too</label></div>
         </div>
+        <div data-when="mode:emoji">
+          <div class="row"><label for="emojiSetSel">Emoji to use</label>
+            <select id="emojiSetSel" data-key="emojiSet"><option value="blocks">Squares, circles &amp; hearts (clean mosaic)</option><option value="mixed">Everything (fruit, plants, faces…)</option></select></div>
+          <p class="hint">Each emoji takes two columns, like in chat apps. The background colour decides how light emoji look.</p>
+        </div>
         <div data-when="mode:word">
           <div class="row"><label>Your text</label><textarea data-key="wordText" spellcheck="false"></textarea></div>
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
@@ -490,12 +495,15 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
         <div class="choices" data-choice="colorMode">
           <button data-val="mono"><i class="sw sw-mono"></i><b>Single colour</b><small>one text colour</small></button>
           <button data-val="color"><i class="sw sw-orig"></i><b>Original colours</b><small>full colour, best for pictures, GIF &amp; video</small></button>
-          <button data-val="app"><i class="sw sw-app"></i><b>App colours</b><small>only colours a chat app or terminal can show</small></button>
+          <button data-val="app"><i class="sw sw-app"></i><b>App &amp; retro colours</b><small>only colours a chat app or terminal can show, or a retro palette (Game Boy, C64…)</small></button>
           <button data-val="gray"><i class="sw sw-gray"></i><b>Greyscale</b><small>shades of grey</small></button>
           <button data-val="gradient"><i class="sw sw-grad"></i><b>Gradient</b><small>two colours of your choice</small></button>
         </div>
         <div class="row" data-when="colorMode:app"><label>Colours available in</label>
-          <select data-key="appPalette"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></select>
+          <select data-key="appPalette">
+            <optgroup label="Chat apps &amp; terminals"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></optgroup>
+            <optgroup label="Retro"><option value="gameboy">Game Boy (4 greens)</option><option value="cga">CGA (black, cyan, magenta, white)</option><option value="c64">Commodore 64 (16 colours)</option><option value="pico8">PICO-8 (16 colours)</option><option value="amber">Amber monitor</option><option value="green">Green monitor</option></optgroup>
+          </select>
           <p class="hint">The preview shows exactly the colours your colour text copy will have. Picture and video exports use them too.</p></div>
         <div class="row colors">
           <label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label>
@@ -849,6 +857,7 @@ const MODES = {
   quad:     { name: 'Quadrant',    icon: '▛▟', sx: 2, sy: 2, shapes: true, hint: '2×2 block pixels per character (▘▝▖▗ …).' },
   halftone: { name: 'Halftone',    icon: '·•●', sx: 1, sy: 1, shapes: true, hint: 'Dot size follows brightness, like print halftone.' },
   word:     { name: 'Text fill',   icon: 'Tx', sx: 1, sy: 1, hint: 'Your own text forms the picture.' },
+  emoji:    { name: 'Emoji',       icon: '🟩🟥', sx: 1, sy: 1, wide: true, hint: 'A mosaic of emoji: every two columns become the emoji closest in colour (emoji are two characters wide in chat apps and terminals).' },
   text:     { name: 'Text', icon: 'T', sx: 1, sy: 1 },
 };
 const FONTS = {
@@ -880,7 +889,7 @@ const PLATFORMS = {
 const DEFAULTS = {
   mode: 'braille', cols: 120, charAspect: 2, fontSize: 10,
   charset: 'standard', customChars: ' .:-=+*#%@', sortRamp: false, brailleBlank: 'braille',
-  glyphSet: 'ascii', glyphCustom: ' .,:;/\\|-_=+*#', edgeThreshold: 0.22, edgeFill: true,
+  glyphSet: 'ascii', glyphCustom: ' .,:;/\\|-_=+*#', edgeThreshold: 0.22, edgeFill: true, emojiSet: 'blocks',
   wordText: 'TEXT ART STUDIO ', wordFillAll: false,
   brightness: 0, contrast: 0, gamma: 1, saturation: 1, threshold: 0.5, edge: 0, sharpen: 0, outline: 0.45, outlineWidth: 1, outlineDir: true, fill: 1, localContrast: 0, bgFade: 0, dither: 'floyd', invert: false, autoLevels: false,
   colorMode: 'mono', fg: '#e8e6e3', bg: '#0b0d12', gradA: '#14123a', gradB: '#7cf7c4', bgMode: 'solid',
@@ -910,6 +919,10 @@ const PRESETS = {
   'Halftone print': { mode: 'halftone', colorMode: 'mono', fg: '#151515', bg: '#f4efe4', dotShape: 'circle', dotSize: 1, renderStyle: 'shapes' },
   'Lyrics poster (text fill)': { mode: 'word', colorMode: 'color', wordFillAll: true, bg: '#000000', saturation: 1.3 },
   'Shade blocks': { mode: 'ascii', charset: 'blocks', colorMode: 'gradient', gradA: '#1b1035', gradB: '#ffd27a', bg: '#0b0816', dither: 'floyd' },
+  'Game Boy': { mode: 'half', colorMode: 'app', appPalette: 'gameboy', bg: '#0f380f', renderStyle: 'shapes', contrast: 0.15 },
+  'Commodore 64': { mode: 'quad', colorMode: 'app', appPalette: 'c64', bg: '#352879', dither: 'bayer4', renderStyle: 'shapes', saturation: 1.3 },
+  'Amber terminal': { mode: 'ascii', charset: 'standard', colorMode: 'app', appPalette: 'amber', bg: '#1a0d00', dither: 'none' },
+  'Emoji mosaic': { mode: 'emoji', emojiSet: 'blocks', colorMode: 'color', bg: '#ffffff', saturation: 1.2 },
 };
 const BRAILLE_BIT = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]];   // [dy][dx]
 const BRAILLE_POS = [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [0, 3], [1, 3]]; // bit j -> [dx,dy]
@@ -1489,17 +1502,18 @@ function samplePixels(src, sw, sh, S, W, H, sk) {
   }
   return data;
 }
-const outlineAmount = S => S.mode === 'edge' ? Math.max(S.outline, 0.35) : S.outline;
+const outlineAmount = S => S.mode === 'emoji' ? 0 : S.mode === 'edge' ? Math.max(S.outline, 0.35) : S.outline;
 /* Everything convert needs from the canvas, drawn on this thread, so the rest can run on a worker:
    convertCore(null, sw, sh, S, null, convertInputs(...)) gives exactly the result of convert.
    The arrays may be shared with the caches: copy them to a worker, never transfer them. */
 function convertInputs(src, sw, sh, S) {
   const sk = srcKey(src), { W, H, sx } = gridFor(sw, sh, S), sample = samplePixels(src, sw, sh, S, W, H, sk), mask = maskPixels(src, S, W, H);
-  if (!(outlineAmount(S) > 0)) return { sample, hi: null, mask };
+  const emoji = S.mode === 'emoji' ? emojiTable(S.emojiSet, S.bg) : null;   // measured here: workers never measure fonts
+  if (!(outlineAmount(S) > 0)) return { sample, hi: null, mask, emoji };
   const f = hiFactor(W, H, sx), HW = W * f, HH = H * f, key = sk && `${sk}|${transformSig(S)}|hi${HW}x${HH}`;
   let hi = key && sampleCache.get(key);
   if (!hi) { hi = hiPixels(src, sw, sh, S, HW, HH); if (key) sampleCache.set(key, hi, hi.length); }
-  return { sample, hi, mask };
+  return { sample, hi, mask, emoji };
 }
 function convertCore(src, sw, sh, S, sk, pre) {
   const mode = S.mode, m = MODES[mode];
@@ -1721,6 +1735,24 @@ function convertCore(src, sw, sh, S, sk, pre) {
       else cp[c] = 32;
       if (needColor) { const a = cellAvg(cx, cy, null); paint(fg, c, a[0], a[1], a[2]); } else paint(fg, c, 0, 0, 0);
     }
+  } else if (mode === 'emoji') {   // two columns per emoji: the nearest emoji to the colour there, then WIDE_CONT
+    const T = (pre && pre.emoji) || emojiTable(S.emojiSet, S.bg);
+    for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx += 2) {
+      const c = cy * cols + cx;
+      if (cx + 1 >= cols) { cp[c] = 32; paint(fg, c, BG[0], BG[1], BG[2]); continue; }
+      let r = 0, g = 0, b = 0, w = 0;
+      for (let k = 0; k < 2; k++) {
+        const i = cy * W + cx + k, o = i * 3;
+        let a = A[i];
+        if (bgm) a *= 1 - S.bgFade * bgm[i] * (MK ? 1 - keepAt(i) : 1);
+        if (MK) a *= 1 - hideAt(i);
+        r += C[o] * a; g += C[o + 1] * a; b += C[o + 2] * a; w += a;
+      }
+      if (w < 0.8) { cp[c] = cp[c + 1] = 32; paint(fg, c, BG[0], BG[1], BG[2]); paint(fg, c + 1, BG[0], BG[1], BG[2]); continue; }
+      paint(fg, c, r / w, g / w, b / w);
+      const o = c * 3; fg[o + 3] = fg[o]; fg[o + 4] = fg[o + 1]; fg[o + 5] = fg[o + 2];
+      cp[c] = nearestEmoji(T, fg[o], fg[o + 1], fg[o + 2]); cp[c + 1] = WIDE_CONT;
+    }
   } else if (mode === 'word') {
     let chars = Array.from(S.wordText || '');
     if (!S.wordFillAll) chars = chars.filter(ch => !/\s/.test(ch));
@@ -1780,8 +1812,8 @@ function cellSize(S, scale) {
   return [cw, ch];
 }
 const chrCache = new Map();
-function chr(cp) { let s = chrCache.get(cp); if (s === undefined) { s = String.fromCodePoint(cp); chrCache.set(cp, s); } return s; }
-const isBlankCp = v => v === 32 || v === 0x2800 || v === 0x3000 || v === 0;
+function chr(cp) { if (cp === WIDE_CONT) return ''; let s = chrCache.get(cp); if (s === undefined) { s = String.fromCodePoint(cp); chrCache.set(cp, s); } return s; }
+const isBlankCp = v => v === 32 || v === 0x2800 || v === 0x3000 || v === 0 || v === WIDE_CONT;
 function groupsOf(res, skip) {
   const map = new Map(), n = res.cols * res.rows, fg = res.fg;
   if (res.uniform) {
@@ -1860,6 +1892,13 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       }
       ctx.fill();
     }
+  } else if (m === 'emoji') {   // an emoji spans its cell and the next one
+    ctx.font = Math.max(1, Math.min(2 * cw, ch) * 0.92) + 'px ' + EMOJI_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const cp = res.cp, ov = res.ov;
+    for (const [k, list] of groupsOf(res, c => isBlankCp(cp[c]) || (ov && ov[c]))) {
+      ctx.fillStyle = hex6(k);
+      for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw, Y(c) + ch / 2);
+    }
   } else {
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1869,7 +1908,7 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
-  if (shapes && res.ov) {   // captions and edited cells of a dot / block picture: drawn as characters
+  if ((shapes || m === 'emoji') && res.ov) {   // captions and edited cells of a dot / block / emoji picture: drawn as characters
     const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1)), cp = res.cp, ov = res.ov;
     ctx.font = fontPx + 'px ' + fontCss(S); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const [k, list] of groupsOf(res, c => !ov[c] || isBlankCp(cp[c]))) {
@@ -1930,6 +1969,7 @@ function appColour(pal, r, g, b) {
   let c = m.get(key);
   if (!c) {
     if (pal === 'discord') c = hexToRgb(DISCORD_CSS[discordCode(r, g, b)]);
+    else if (RETRO_PALETTES[pal]) c = retroColour(RETRO_PALETTES[pal], r, g, b);
     else {
       const P = pal === 'ansi256' ? ANSI256 : ANSI16; let bd = Infinity;
       for (const q of P) { const dr = r - q[0], dg = g - q[1], db = b - q[2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; c = q; } }
@@ -2019,9 +2059,9 @@ function svgBody(res, S, parts) {
     }
   }
   if (!shapes || res.ov) {
-    const ov = shapes ? res.ov : null;
-    const fontPx = Math.max(1, Math.min(cw / 0.6, ch / 1.1));
-    parts.push(`<g font-family="${fontCss(S).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
+    const ov = shapes ? res.ov : null, wide = m === 'emoji';
+    const fontPx = wide ? Math.min(2 * cw, ch) * 0.92 : Math.max(1, Math.min(cw / 0.6, ch / 1.1));
+    parts.push(`<g font-family="${(wide ? EMOJI_FONT : fontCss(S)).replace(/"/g, "'")}" font-size="${f(fontPx)}" text-anchor="middle" dominant-baseline="central" xml:space="preserve">`);
     for (let y = 0; y < rows; y++) {
       let xs = [], txt = '', k0 = -1;
       const flush = () => { if (txt) parts.push(`<text x="${xs.join(' ')}" y="${f(y * ch + ch / 2)}" fill="${hex6(k0)}">${escHTML(txt)}</text>`); xs = []; txt = ''; };
@@ -2029,7 +2069,7 @@ function svgBody(res, S, parts) {
         const c = y * cols + x; if (isBlankCp(cp[c]) || (ov && !ov[c])) continue;
         const o = c * 3, k = (fg[o] << 16) | (fg[o + 1] << 8) | fg[o + 2];
         if (k !== k0) { flush(); k0 = k; }
-        xs.push(f(x * cw + cw / 2)); txt += chr(cp[c]);
+        xs.push(f(x * cw + (wide && !(res.ov && res.ov[c]) ? cw : cw / 2))); txt += chr(cp[c]);
       }
       flush();
     }
@@ -2549,11 +2589,12 @@ function encodeBMP(img) {
 /* The conversion engine as worker source, built from the live functions and tables above (one source of truth).
    Inside a worker every source is new, so nothing is cached between messages (srcKey → null). */
 function engineSource() {
-  const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS };
+  const data = { EDGES_WASM, CHARSETS, MODES, FONTS, DEFAULTS, BRAILLE_BIT, BRAILLE_POS, QUAD_CHARS, HALF_CHARS, HALFTONE_RAMP, ANSI16, ANSI256, DISCORD_CSS, DISCORD_HUES, CONVERT_KEYS,
+    RETRO_PALETTES, WIDE_CONT, EMOJI_SETS, EMOJI_FONT };
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
-    applyOverlay, wrapCaption, captionRaster,
+    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -2570,7 +2611,7 @@ function engineSource() {
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
     'function withOverlay(r) { return r; }',
-    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r;',
+    'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------
@@ -5549,7 +5590,7 @@ async function selfTest() {
    machine and browser. Each group must match EQUIV_BASELINE; after an intended change of results, paste the
    new baseline the page prints into EQUIV_BASELINE.
    ===================================================================== */
-const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
+const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "retro/gameboy":"7c24f44e", "retro/cga":"17ebae84", "retro/c64":"ae9fdfa6", "retro/pico8":"de19d3b5", "retro/amber":"2c522933", "retro/green":"4b00455", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
 /* A test scene (sky gradient, a sun, a dark box, a thin diagonal, noise, a half transparent band) at any size. */
 function synthPixels(W, H, seed) {
   const d = new Uint8ClampedArray(W * H * 4);
@@ -5574,6 +5615,9 @@ function equivCases() {
   const out = [];
   for (const mode of modes) for (const c of colours) for (let vi = 0; vi < variants.length; vi++) for (const cols of [23, 64])
     out.push({ group: mode + '/' + (c.appPalette || c.colorMode), name: `${mode}/${c.appPalette || c.colorMode}/v${vi}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols }, c, variants[vi]) });
+  // retro palettes: one group each, over the modes that show colour best
+  for (const pal of Object.keys(RETRO_PALETTES)) for (const mode of ['braille', 'ascii', 'half', 'quad', 'halftone']) for (const vi of [0, 4, 12]) for (const cols of [23, 64])
+    out.push({ group: 'retro/' + pal, name: `retro/${pal}/${mode}/v${vi}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols, colorMode: 'app', appPalette: pal }, variants[vi]) });
   return out;
 }
 function equivInputs(St, sw, sh) {
@@ -6268,8 +6312,10 @@ async function uiTest() {
     reset();
     await demoImage(); await wait(50); renderNow();
     for (const t of UI_TESTS) {
+      const t0 = performance.now();
       try { await t(ok, { reset, wait, say }); }
       catch (e) { console.error(e); ok(t.name + ' threw', false, e && e.message || e); }
+      finally { const ms = performance.now() - t0; if (ms > 1000) say(`NOTE ${t.name} took ${(ms / 1000).toFixed(1)} s`); }
       reset();
     }
   } catch (e) { console.error(e); say('FAIL uiTest crashed: ' + (e && e.message || e)); }
@@ -6496,6 +6542,46 @@ UI_TESTS.push(async function captionControls(ok, { wait }) {
   ok('Caption field: undo works', S.captionTop === '' || S.captionStyle === 'plain');
 });
 
+UI_TESTS.push(async function retroPalettes(ok) {
+  const gb = RETRO_PALETTES.gameboy.cols, key = c => c.join();
+  ok('Retro: Game Boy maps by brightness (black → darkest, white → lightest)', key(appColour('gameboy', 0, 0, 0)) === key(gb[0]) && key(appColour('gameboy', 255, 255, 255)) === key(gb[3]));
+  ok('Retro: C64 red is the C64 red', key(appColour('c64', 140, 0, 0)) === '136,0,0');
+  const St = Object.assign({}, DEFAULTS, { mode: 'half', colorMode: 'app', appPalette: 'pico8', cols: 50 }), r = uiDemoRes(St);
+  const allowed = new Set(RETRO_PALETTES.pico8.cols.map(key)); let bad = 0;
+  for (let i = 0; i < r.fg.length; i += 3) { if (!allowed.has(r.fg[i] + ',' + r.fg[i + 1] + ',' + r.fg[i + 2])) bad++; if (!allowed.has(r.bgc[i] + ',' + r.bgc[i + 1] + ',' + r.bgc[i + 2])) bad++; }
+  ok('Retro: every pixel uses the palette', bad === 0, bad + ' outside');
+  ok('Retro: looks in the gallery', ['Game Boy', 'Commodore 64', 'Amber terminal'].every(n => $(`#looks .look[data-look="${n}"]`)));
+  ok('Retro: palettes in the colour menu', $$('[data-key="appPalette"] option').length >= 9);
+});
+
+UI_TESTS.push(async function emojiMosaic(ok) {
+  const St = Object.assign({}, DEFAULTS, { mode: 'emoji', colorMode: 'color', cols: 41, bg: '#ffffff' }), c = demoCanvas();
+  const T = emojiTable('blocks', '#ffffff');
+  ok('Emoji: colours measured for the set', T.cps.length >= 20, T.cps.length + ' emoji');
+  const r = convertRaw(c, c.width, c.height, St);
+  let pairs = 0, bad = 0;
+  for (let y = 0; y < r.rows; y++) for (let x = 0; x + 1 < r.cols; x += 2) {
+    const a = r.cp[y * r.cols + x], b = r.cp[y * r.cols + x + 1];
+    if (a === 32 && b === 32) continue;
+    if (T.cps.includes(a) && b === WIDE_CONT) pairs++; else bad++;
+  }
+  ok('Emoji: every emoji fills two columns', pairs > 200 && bad === 0, `${pairs} emoji, ${bad} bad cells`);
+  ok('Emoji: odd last column stays empty', r.cp[r.cols - 1] === 32);
+  const t = resultText(r), lines = t.split('\n');
+  ok('Emoji: text has no hidden marker characters', !t.includes(String.fromCodePoint(WIDE_CONT)) && lines.every(l => Array.from(l).length <= 21), Array.from(lines[0]).length + ' per line');
+  ok('Emoji: square cells (rows follow two columns per emoji)', Math.abs(r.rows - Math.round(41 * (640 / 960) / 2)) <= 1, r.cols + 'x' + r.rows);
+  const red = nearestEmoji(T, 220, 30, 30);
+  ok('Emoji: red picks a red emoji', [0x1f7e5, 0x1f534].includes(red), chr(red));
+  if (Pool.size()) {
+    const pre = convertInputs(c, c.width, c.height, St), w = await Pool.run('convertPre', { pre, sw: c.width, sh: c.height, St });
+    ok('Emoji: a worker gives the same mosaic', w.cp.every((v, i) => v === r.cp[i]));
+  }
+  const svg = resultSVG(r, St), html = resultHTMLInner(r), cv = document.createElement('canvas'); renderResult(r, St, cv, 1);
+  ok('Emoji: SVG and HTML have the emoji, picture is drawn', svg.includes(chr(r.cp.find(v => v > 0x2000 && v !== WIDE_CONT))) && !html.includes(String.fromCodePoint(WIDE_CONT)) && cv.width > 100);
+  const res2 = withOverlay(r, Object.assign({}, St, { captionTop: 'HI' }));
+  ok('Emoji: captions on an emoji mosaic', resultText(res2).includes('HI'));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -6693,6 +6779,64 @@ function initEditTools() {
     }
   }, true);
   updateEditUI();
+}
+/* =====================================================================
+   Retro palettes and the emoji mosaic (engine parts; also copied to the workers)
+   ===================================================================== */
+/* colours of old machines and monitors. tone: one hue in steps, picked by brightness (so shading survives) */
+const RETRO_PALETTES = {
+  gameboy: { name: 'Game Boy (4 greens)', tone: true, cols: [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]] },
+  cga: { name: 'CGA (black, cyan, magenta, white)', cols: [[0, 0, 0], [85, 255, 255], [255, 85, 255], [255, 255, 255]] },
+  c64: { name: 'Commodore 64 (16 colours)', cols: [[0, 0, 0], [255, 255, 255], [136, 0, 0], [170, 255, 238], [204, 68, 204], [0, 204, 85], [0, 0, 170], [238, 238, 119], [221, 136, 85], [102, 68, 0], [255, 119, 119], [51, 51, 51], [119, 119, 119], [170, 255, 102], [0, 136, 255], [187, 187, 187]] },
+  pico8: { name: 'PICO-8 (16 colours)', cols: [[0, 0, 0], [29, 43, 83], [126, 37, 83], [0, 135, 81], [171, 82, 54], [95, 87, 79], [194, 195, 199], [255, 241, 232], [255, 0, 77], [255, 163, 0], [255, 236, 39], [0, 228, 54], [41, 173, 255], [131, 118, 156], [255, 119, 168], [255, 204, 170]] },
+  amber: { name: 'Amber monitor', tone: true, cols: [[26, 13, 0], [92, 46, 0], [168, 92, 0], [255, 176, 0], [255, 214, 120]] },
+  green: { name: 'Green monitor', tone: true, cols: [[0, 22, 6], [0, 82, 26], [16, 158, 58], [51, 255, 102], [178, 255, 196]] },
+};
+/* nearest colour of a retro palette */
+function retroColour(P, r, g, b) {
+  const c = P.cols;
+  if (P.tone) { const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return c[Math.min(c.length - 1, Math.round(l * (c.length - 1)))]; }
+  let best = c[0], bd = Infinity;
+  for (const q of c) { const dr = r - q[0], dg = g - q[1], db = b - q[2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; best = q; } }
+  return best;
+}
+
+/* ---- emoji mosaic: each emoji is two columns wide (as in chat apps and terminals); the cell right of an emoji
+   holds WIDE_CONT, which every text format leaves out ---- */
+const WIDE_CONT = 0x10fffe;
+const EMOJI_SETS = {
+  blocks: '🟥🟧🟨🟩🟦🟪🟫⬛⬜🔴🟠🟡🟢🔵🟣🟤⚫⚪🧡💛💚💙💜🤎🖤🤍',
+  mixed: '🟥🟧🟨🟩🟦🟪🟫⬛⬜🔴🟠🟡🟢🔵🟣🟤⚫⚪🧡💛💚💙💜🤎🖤🤍💗🌑🌒🌓🌔🌕🌚🌝🌲🌳🌴🌵🌿🍀🍁🍂🌸🌺🌻🌼🌷🌹🍄🌊🔥💧⛄🌈🌙⭐🍎🍏🍊🍋🍌🍉🍇🍓🍒🍑🥝🥥🍆🥑🥦🥕🌽🍞🧀🍫🍪🍩🍰🐸🐷🐻🐼🐧🐙🦊🐝🎃💎🔮🧊😀😡🥶🤢👽💀👻☁',
+};
+const EMOJI_FONT = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif";
+/* the average colour of every emoji of the set as it looks on the background colour (measured once per set + background) */
+const emojiTables = new Map();
+function emojiTable(set, bg) {
+  const key = set + '|' + bg; let T = emojiTables.get(key); if (T) return T;
+  const list = Array.from(EMOJI_SETS[set] || EMOJI_SETS.blocks).filter(ch => ch.codePointAt(0) > 0x2000);
+  const Z = 24, c = newCanvas(Z * list.length, Z), g = c.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = bg; g.fillRect(0, 0, c.width, Z);
+  g.font = `${Math.round(Z * 0.86)}px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  list.forEach((ch, i) => g.fillText(ch, i * Z + Z / 2, Z / 2 + 1));
+  const d = g.getImageData(0, 0, c.width, Z).data, B = hexToRgb(bg), cps = [], rgb = [];
+  list.forEach((ch, i) => {
+    let r = 0, gg = 0, b = 0, changed = 0;
+    for (let y = 0; y < Z; y++) for (let x = i * Z; x < (i + 1) * Z; x++) {
+      const o = (y * c.width + x) * 4; r += d[o]; gg += d[o + 1]; b += d[o + 2];
+      if (d[o] !== B[0] || d[o + 1] !== B[1] || d[o + 2] !== B[2]) changed++;
+    }
+    if (changed < Z) return;   // not drawn by any font here
+    const n = Z * Z; cps.push(ch.codePointAt(0)); rgb.push(r / n, gg / n, b / n);
+  });
+  T = { cps, rgb };
+  if (emojiTables.size > 8) emojiTables.clear();
+  emojiTables.set(key, T);
+  return T;
+}
+function nearestEmoji(T, r, g, b) {
+  let bi = 0, bd = Infinity;
+  for (let i = 0, o = 0; i < T.cps.length; i++, o += 3) { const dr = r - T.rgb[o], dg = g - T.rgb[o + 1], db = b - T.rgb[o + 2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; bi = i; } }
+  return T.cps[bi];
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

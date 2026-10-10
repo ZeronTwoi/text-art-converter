@@ -79,6 +79,11 @@
         <div data-when="mode:edge">
           <div class="row"><label class="chk"><input type="checkbox" data-key="edgeFill"> Fill flat areas too</label></div>
         </div>
+        <div data-when="mode:emoji">
+          <div class="row"><label for="emojiSetSel">Emoji to use</label>
+            <select id="emojiSetSel" data-key="emojiSet"><option value="blocks">Squares, circles &amp; hearts (clean mosaic)</option><option value="mixed">Everything (fruit, plants, faces…)</option></select></div>
+          <p class="hint">Each emoji takes two columns, like in chat apps. The background colour decides how light emoji look.</p>
+        </div>
         <div data-when="mode:word">
           <div class="row"><label>Your text</label><textarea data-key="wordText" spellcheck="false"></textarea></div>
           <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
@@ -162,12 +167,15 @@
         <div class="choices" data-choice="colorMode">
           <button data-val="mono"><i class="sw sw-mono"></i><b>Single colour</b><small>one text colour</small></button>
           <button data-val="color"><i class="sw sw-orig"></i><b>Original colours</b><small>full colour, best for pictures, GIF &amp; video</small></button>
-          <button data-val="app"><i class="sw sw-app"></i><b>App colours</b><small>only colours a chat app or terminal can show</small></button>
+          <button data-val="app"><i class="sw sw-app"></i><b>App &amp; retro colours</b><small>only colours a chat app or terminal can show, or a retro palette (Game Boy, C64…)</small></button>
           <button data-val="gray"><i class="sw sw-gray"></i><b>Greyscale</b><small>shades of grey</small></button>
           <button data-val="gradient"><i class="sw sw-grad"></i><b>Gradient</b><small>two colours of your choice</small></button>
         </div>
         <div class="row" data-when="colorMode:app"><label>Colours available in</label>
-          <select data-key="appPalette"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></select>
+          <select data-key="appPalette">
+            <optgroup label="Chat apps &amp; terminals"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></optgroup>
+            <optgroup label="Retro"><option value="gameboy">Game Boy (4 greens)</option><option value="cga">CGA (black, cyan, magenta, white)</option><option value="c64">Commodore 64 (16 colours)</option><option value="pico8">PICO-8 (16 colours)</option><option value="amber">Amber monitor</option><option value="green">Green monitor</option></optgroup>
+          </select>
           <p class="hint">The preview shows exactly the colours your colour text copy will have. Picture and video exports use them too.</p></div>
         <div class="row colors">
           <label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label>
