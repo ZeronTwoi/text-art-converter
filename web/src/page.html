@@ -34,15 +34,15 @@
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
       </div>
     </div>
-    <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
-    <button class="btn icon" id="btnRedo" title="Redo (Ctrl+Y)" disabled>↷</button>
+    <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+    <button class="btn icon" id="btnRedo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↷</button>
     <label class="switch" title="Show every expert setting"><input type="checkbox" id="advToggle"><span></span>Advanced</label>
-    <button class="btn icon" id="btnHelp" title="How it works">?</button>
-    <button class="btn icon" id="btnTheme" title="Theme: auto / light / dark">◐</button>
+    <button class="btn icon" id="btnHelp" title="How it works" aria-label="Help: how it works">?</button>
+    <button class="btn icon" id="btnTheme" title="Theme: auto / light / dark" aria-label="Change the theme (auto, light, dark)">◐</button>
   </div>
 </header>
 
-<div class="layout">
+<div class="layout" role="main">
   <!-- ============ SETTINGS ============ -->
   <aside class="panel settings" id="settings" aria-label="Look and settings">
     <div class="sheethead"><i></i><b>Look &amp; settings</b><button class="btn icon sheetclose" aria-label="Close the settings">✕</button></div>
@@ -269,7 +269,7 @@
   </aside>
 
   <!-- ============ CENTER ============ -->
-  <main class="center">
+  <div class="center">
     <div class="viewbar">
       <div class="srcinfo" id="srcInfo">No file loaded</div>
       <div class="seg" id="viewSeg">
@@ -282,9 +282,9 @@
       </div>
       <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
       <div class="zoom">
-        <button class="btn" id="zoomOut" title="Zoom out (-)">−</button>
-        <span id="zoomLabel">Fit</span>
-        <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
+        <button class="btn" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
+        <span id="zoomLabel" aria-live="polite">Fit</span>
+        <button class="btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
       </div>
     </div>
@@ -345,9 +345,9 @@
       <div class="filmstrip seekonly" id="filmstrip"></div>
       <div class="ptrack seekonly"><div class="trimbar" id="trimBar" hidden></div><input type="range" id="seek" min="0" max="10000" step="1" value="0" aria-label="Seek"></div>
       <div class="pctrl">
-        <button class="btn seekonly" id="pStop" title="Back to start (Home)">⏮</button>
+        <button class="btn seekonly" id="pStop" title="Back to start (Home)" aria-label="Back to start">⏮</button>
         <button class="btn seekonly" id="pPrev" title="Previous frame (←)">◀ Frame</button>
-        <button class="btn primary playbtn" id="pPlay" title="Play / pause (Space)">▶</button>
+        <button class="btn primary playbtn" id="pPlay" title="Play / pause (Space)" aria-label="Play or pause">▶</button>
         <button class="btn seekonly" id="pNext" title="Next frame (→)">Frame ▶</button>
         <div class="pinfo seekonly"><span id="pTime" class="mono">0:00.00 / 0:00.00</span><span id="pFrame" class="mono muted"></span></div>
         <span class="spacer"></span>
@@ -357,7 +357,7 @@
           <span class="muted">Trim</span>
           <button class="btn" id="pIn" title="Exports start here (I)">Start here</button>
           <button class="btn" id="pOut" title="Exports end here (O)">End here</button>
-          <button class="btn" id="pClear" title="Use the whole clip">✕</button>
+          <button class="btn" id="pClear" title="Use the whole clip" aria-label="Clear the trim">✕</button>
         </div>
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
@@ -366,8 +366,8 @@
       <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
       <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
     </nav>
-    <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
-  </main>
+    <div class="statusbar"><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+  </div>
 
   <!-- ============ EXPORT ============ -->
   <aside class="panel export" id="exportPanel" aria-label="Share or save">

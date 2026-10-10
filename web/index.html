@@ -8,19 +8,22 @@
 :root{
   --bg:#0d0f14; --panel:#141821; --panel-2:#1b202c; --line:#272d3b; --text:#e7e9ee; --muted:#8c94a8;
   --accent:#6ee7b7; --accent-ink:#04261a; --accent-soft:rgba(110,231,183,.13); --danger:#f87171;
+  --accent-text:#6ee7b7; --warn:#f5b83d;
   --stage:#08090d; --shadow:0 12px 40px rgba(0,0,0,.45);
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
     --bg:#f2f3f6; --panel:#ffffff; --panel-2:#f1f3f7; --line:#dde1e9; --text:#1a1e28; --muted:#5e6679;
-    --accent:#0d9467; --accent-ink:#ffffff; --accent-soft:rgba(13,148,103,.12); --danger:#dc2626;
+    --accent:#0b7d57; --accent-ink:#ffffff; --accent-soft:rgba(11,125,87,.12); --danger:#dc2626;
+    --accent-text:#0a6b4b; --warn:#8a5a00;
     --stage:#e4e6ec; --shadow:0 12px 40px rgba(20,30,50,.18); color-scheme:light;
   }
 }
 :root[data-theme="light"]{
   --bg:#f2f3f6; --panel:#ffffff; --panel-2:#f1f3f7; --line:#dde1e9; --text:#1a1e28; --muted:#5e6679;
-  --accent:#0d9467; --accent-ink:#ffffff; --accent-soft:rgba(13,148,103,.12); --danger:#dc2626;
+  --accent:#0b7d57; --accent-ink:#ffffff; --accent-soft:rgba(11,125,87,.12); --danger:#dc2626;
+  --accent-text:#0a6b4b; --warn:#8a5a00;
   --stage:#e4e6ec; --shadow:0 12px 40px rgba(20,30,50,.18); color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -28,6 +31,9 @@
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--text);font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs button:focus-visible,.seg button:focus-visible{outline-offset:-2px}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition-duration:0s!important;animation-duration:0s!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
 .mono{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace}
 .muted{color:var(--muted)} .small{font-size:12px}
 
@@ -35,7 +41,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 .topbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
 .brand{font-weight:650;font-size:15px;display:flex;align-items:center;gap:8px;margin-right:auto;white-space:nowrap}
 .logo{font-size:22px;color:var(--accent);line-height:1}
-.tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:99px}
+.tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);background:var(--accent-soft);padding:2px 7px;border-radius:99px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer;white-space:nowrap;user-select:none;transition:border-color .12s,background .12s}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
@@ -84,7 +90,7 @@ body[data-kind="text"] .src-only{opacity:.4;pointer-events:none}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:0;background:var(--panel-2);padding:5px 10px;cursor:pointer;border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
-.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.seg button.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
 .zoom{display:inline-flex;align-items:center;gap:4px}
 .zoom button{padding:4px 9px}
 #zoomLabel{min-width:44px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -115,13 +121,13 @@ body[data-kind="text"] .src-only{opacity:.4;pointer-events:none}
 .phonenote{font:11px system-ui,sans-serif;color:#666;padding:6px 12px 10px;background:#f0f2f5}
 /* share panel */
 .verdict{border-radius:9px;padding:8px 10px;font-weight:650;margin:8px 0 6px;border:1px solid}
-.verdict.ok{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.5);color:var(--accent)}
-.verdict.warn{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.55);color:#d99a06}
+.verdict.ok{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.5);color:var(--accent-text)}
+.verdict.warn{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.55);color:var(--warn)}
 .verdict.bad{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.6);color:var(--danger)}
 .checks{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
 .checks li{display:grid;grid-template-columns:18px 1fr;gap:6px;font-size:12px;line-height:1.4}
 .checks li>i{font-style:normal;font-weight:700;text-align:center}
-.checks li.ok>i{color:var(--accent)} .checks li.info>i{color:var(--muted)} .checks li.warn>i{color:#d99a06} .checks li.bad>i{color:var(--danger)}
+.checks li.ok>i{color:var(--accent-text)} .checks li.info>i{color:var(--muted)} .checks li.warn>i{color:var(--warn)} .checks li.bad>i{color:var(--danger)}
 .fixall{margin:8px 0;display:flex;flex-direction:column;gap:5px}
 .fixall .btn{width:100%;padding:8px 10px;font-size:13.5px;white-space:normal;line-height:1.3}
 .xsec.share .xbtns .btn{white-space:normal;max-width:100%;text-align:center;line-height:1.3}
@@ -216,7 +222,8 @@ body.simple .adv{display:none!important}
 .menupop button:hover{background:var(--accent-soft)}
 .menupop hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 .switch{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--muted);font-weight:600;user-select:none}
-.switch input{display:none}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
 .switch span{width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;transition:.15s;flex:none}
 .switch span::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.15s}
 .switch input:checked+span{background:var(--accent)} .switch input:checked+span::after{left:17px}
@@ -264,7 +271,7 @@ body.simple .adv{display:none!important}
 .fthumb{flex:none;border:2px solid transparent;border-radius:7px;padding:0;background:var(--panel-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;overflow:hidden}
 .fthumb canvas{height:46px;width:auto;display:block}
 .fthumb i{font-style:normal;font-size:10px;color:var(--muted);line-height:1.4}
-.fthumb:hover{border-color:var(--line)} .fthumb.cur{border-color:var(--accent)} .fthumb.cur i{color:var(--accent);font-weight:700}
+.fthumb:hover{border-color:var(--line)} .fthumb.cur{border-color:var(--accent)} .fthumb.cur i{color:var(--accent-text);font-weight:700}
 .fthumb.out{opacity:.3}
 .pinfo{display:flex;flex-direction:column;line-height:1.25;margin-left:4px}
 .trimgroup{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:10px;padding:2px 2px 2px 9px}
@@ -286,7 +293,7 @@ dialog h4{margin:14px 0 6px}
 .btn .sz{font-size:10.5px;font-weight:500;opacity:.8}
 .btn .sz:empty{display:none}
 /* ===== gallery preview ===== */
-.linkbtn{border:0;background:none;padding:0;color:var(--accent);cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:2px}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent-text);cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:2px}
 .peekbadge{position:sticky;top:8px;left:0;margin:8px auto 0;width:max-content;max-width:calc(100% - 24px);z-index:6;background:var(--panel);border:1px solid var(--accent);color:var(--text);border-radius:99px;padding:4px 12px;font-size:12px;box-shadow:var(--shadow);pointer-events:none}
 dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .biglooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-height:calc(100vh - 190px);overflow:auto;padding:2px}
@@ -295,7 +302,7 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .editbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--accent-soft)}
 .editbar .echar{display:flex;align-items:center;gap:6px}
 #editChar{width:46px;text-align:center;font-size:17px;padding:2px 4px;border-radius:7px;border:1px solid var(--line);background:var(--panel)}
-.einfo{flex:1;min-width:180px;font-size:12px;color:var(--muted)} .einfo.warn{color:#d99a06;font-weight:600}
+.einfo{flex:1;min-width:180px;font-size:12px;color:var(--muted)} .einfo.warn{color:var(--warn);font-weight:600}
 .views.editing #outCanvas{cursor:cell;touch-action:none;outline:2px solid var(--accent);outline-offset:2px}
 .celltip{position:fixed;z-index:40;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 9px;box-shadow:var(--shadow);font-size:12px;display:flex;align-items:center;gap:8px;max-width:440px}
 .celltip b{font-size:20px;line-height:1.1;min-width:18px;text-align:center;background:#000;border-radius:4px;padding:1px 4px}
@@ -306,12 +313,12 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 .ramp{display:flex;gap:1px;overflow-x:auto;padding:5px 6px;border-radius:7px;border:1px solid var(--line);margin:4px 0 6px;font-size:16px;line-height:1.2;scrollbar-width:thin;white-space:nowrap}
 .ramp span{min-width:.62em;text-align:center;cursor:default}
 .tonehist{width:100%;height:46px;display:block;border-radius:7px;background:var(--panel);border:1px solid var(--line);margin-bottom:2px}
-#toneInfo.warn{color:#d99a06}
+#toneInfo.warn{color:var(--warn)}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
 .seg2 button+button{border-left:1px solid var(--line)}
-.seg2 button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.seg2 button.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
 /* ===== crop box & wipe ===== */
 .views.cropping #srcCanvas{outline:2px solid var(--accent);outline-offset:2px;touch-action:none;cursor:crosshair}
 .view-wipe #rawText{display:none!important}
@@ -391,15 +398,15 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
       </div>
     </div>
-    <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
-    <button class="btn icon" id="btnRedo" title="Redo (Ctrl+Y)" disabled>↷</button>
+    <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+    <button class="btn icon" id="btnRedo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↷</button>
     <label class="switch" title="Show every expert setting"><input type="checkbox" id="advToggle"><span></span>Advanced</label>
-    <button class="btn icon" id="btnHelp" title="How it works">?</button>
-    <button class="btn icon" id="btnTheme" title="Theme: auto / light / dark">◐</button>
+    <button class="btn icon" id="btnHelp" title="How it works" aria-label="Help: how it works">?</button>
+    <button class="btn icon" id="btnTheme" title="Theme: auto / light / dark" aria-label="Change the theme (auto, light, dark)">◐</button>
   </div>
 </header>
 
-<div class="layout">
+<div class="layout" role="main">
   <!-- ============ SETTINGS ============ -->
   <aside class="panel settings" id="settings" aria-label="Look and settings">
     <div class="sheethead"><i></i><b>Look &amp; settings</b><button class="btn icon sheetclose" aria-label="Close the settings">✕</button></div>
@@ -626,7 +633,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
   </aside>
 
   <!-- ============ CENTER ============ -->
-  <main class="center">
+  <div class="center">
     <div class="viewbar">
       <div class="srcinfo" id="srcInfo">No file loaded</div>
       <div class="seg" id="viewSeg">
@@ -639,9 +646,9 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
       </div>
       <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
       <div class="zoom">
-        <button class="btn" id="zoomOut" title="Zoom out (-)">−</button>
-        <span id="zoomLabel">Fit</span>
-        <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
+        <button class="btn" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
+        <span id="zoomLabel" aria-live="polite">Fit</span>
+        <button class="btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
       </div>
     </div>
@@ -702,9 +709,9 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
       <div class="filmstrip seekonly" id="filmstrip"></div>
       <div class="ptrack seekonly"><div class="trimbar" id="trimBar" hidden></div><input type="range" id="seek" min="0" max="10000" step="1" value="0" aria-label="Seek"></div>
       <div class="pctrl">
-        <button class="btn seekonly" id="pStop" title="Back to start (Home)">⏮</button>
+        <button class="btn seekonly" id="pStop" title="Back to start (Home)" aria-label="Back to start">⏮</button>
         <button class="btn seekonly" id="pPrev" title="Previous frame (←)">◀ Frame</button>
-        <button class="btn primary playbtn" id="pPlay" title="Play / pause (Space)">▶</button>
+        <button class="btn primary playbtn" id="pPlay" title="Play / pause (Space)" aria-label="Play or pause">▶</button>
         <button class="btn seekonly" id="pNext" title="Next frame (→)">Frame ▶</button>
         <div class="pinfo seekonly"><span id="pTime" class="mono">0:00.00 / 0:00.00</span><span id="pFrame" class="mono muted"></span></div>
         <span class="spacer"></span>
@@ -714,7 +721,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
           <span class="muted">Trim</span>
           <button class="btn" id="pIn" title="Exports start here (I)">Start here</button>
           <button class="btn" id="pOut" title="Exports end here (O)">End here</button>
-          <button class="btn" id="pClear" title="Use the whole clip">✕</button>
+          <button class="btn" id="pClear" title="Use the whole clip" aria-label="Clear the trim">✕</button>
         </div>
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
@@ -723,8 +730,8 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
       <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
       <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
     </nav>
-    <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
-  </main>
+    <div class="statusbar"><span id="stats" aria-live="off">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+  </div>
 
   <!-- ============ EXPORT ============ -->
   <aside class="panel export" id="exportPanel" aria-label="Share or save">
@@ -3191,6 +3198,7 @@ function showResult(res, t0) {
     applyZoom(); return;
   }
   App.res = res;
+  const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
   if (Edit.on || Edits.cells.size) updateEditUI();
   scheduleHistogram();
   drawPreview(res, S, out);
@@ -3957,7 +3965,7 @@ function showProgress(title, indeterminate) {
   $('#progCancel').hidden = !!indeterminate;
   $('#progress').hidden = false;
 }
-function setProgress(p, text) { $('#progBar').style.width = (clamp(p, 0, 1) * 100).toFixed(1) + '%'; if (text != null) $('#progText').textContent = text; }
+function setProgress(p, text) { const v = (clamp(p, 0, 1) * 100).toFixed(1); $('#progBar').style.width = v + '%'; $('#progBarWrap').setAttribute('aria-valuenow', Math.round(v)); if (text != null) $('#progText').textContent = text; }
 function hideProgress() { $('#progress').hidden = true; }
 const cancelled = () => { const e = new Error('cancelled'); e.cancelled = true; return e; };
 
@@ -4946,6 +4954,7 @@ function initUI() {
   initEffects();
   initGuides();
   initMobile();
+  initA11y();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
@@ -5085,7 +5094,7 @@ function openGallery() {
 }
 const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
 function setTab(t) {
-  $$('#leftTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $$('#leftTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); a11ySync(b); });
   $$('#settings .tab').forEach(sec => { sec.hidden = sec.dataset.tab !== t; });
   setStep(t === 'look' ? 2 : 3);
   try { localStorage.setItem('textArtStudio.tab', t); } catch (e) {}
@@ -6716,6 +6725,31 @@ UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
   applyZoom();
 });
 
+UI_TESTS.push(async function accessibility(ok) {
+  const nameOf = el => el.getAttribute('aria-label') || (el.getAttribute('aria-labelledby') && $('#' + el.getAttribute('aria-labelledby'))?.textContent) ||
+    (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)?.textContent) || el.closest('label')?.textContent || (el.tagName === 'BUTTON' ? el.textContent : '') || '';
+  const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  const unnamed = $$('input:not([type=hidden]):not([type=file]), select, textarea, button').filter(el => visible(el) && !nameOf(el).trim());
+  ok('Accessibility: every visible control has a name', unnamed.length === 0, unnamed.slice(0, 4).map(e => e.outerHTML.slice(0, 70)).join(' | '));
+  ok('Accessibility: toggles say whether they are on', $$('.mode').every(b => b.getAttribute('aria-pressed') === String(b.classList.contains('on'))) && $$('#viewSeg button').some(b => b.getAttribute('aria-pressed') === 'true'));
+  setTab('colour');
+  ok('Accessibility: tabs say which one is open', $('#tabbtn-colour').getAttribute('aria-selected') === 'true' && $('#tabbtn-look').getAttribute('aria-selected') === 'false' && $('#tabbtn-look').tabIndex === -1);
+  $('#tabbtn-colour').focus(); $('#leftTabs').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  ok('Accessibility: arrow keys move between tabs', $('#tabbtn-crop').getAttribute('aria-selected') === 'true' && document.activeElement === $('#tabbtn-crop'));
+  setTab('look');
+  ok('Accessibility: the Advanced switch can be reached by keyboard', getComputedStyle($('#advToggle')).display !== 'none');
+  const bad = [];
+  for (const theme of ['dark', 'light']) {
+    document.documentElement.dataset.theme = theme;
+    const v = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+    for (const [fg, bg] of [['--text', '--bg'], ['--text', '--panel'], ['--text', '--panel-2'], ['--muted', '--panel'], ['--muted', '--panel-2'], ['--accent-text', '--panel'], ['--accent-text', '--panel-2'], ['--accent-ink', '--accent'], ['--danger', '--panel'], ['--warn', '--panel'], ['--warn', '--panel-2']]) {
+      const r = contrastRatio(v(fg), v(bg)); if (r < 4.5) bad.push(`${theme} ${fg} on ${bg}: ${r.toFixed(2)}`);
+    }
+  }
+  document.documentElement.removeAttribute('data-theme');
+  ok('Accessibility: text contrast at least 4.5:1 in every theme', bad.length === 0, bad.join('; '));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -7266,6 +7300,64 @@ function initMobile() {
   window.matchMedia('(max-width: 820px)').addEventListener('change', () => { if (!isNarrow()) setSheet(null); });
   // double-click (mouse): fit ↔ 100 %
   $('#stage').addEventListener('dblclick', e => { if (!App.src || Edit.on || Crop.on || Mask.on || e.target.id === 'rawText') return; App.zoom = App.zoom ? 0 : 1; applyZoom(); });
+}
+/* =====================================================================
+   Accessibility: names for every control, toggles and tabs that say whether they are on, keyboard tabs,
+   the picture described for screen readers
+   ===================================================================== */
+const A11Y_TOGGLES = '.choices button[data-val], .mode, .look[data-look], #goalSeg button, #viewSeg button, .qseg button, #maskBrushes button, #maskHardness button, #editTools button, .seg2 button';
+/* the visible label of a control that is not linked to it (a label next to it in its .row) */
+function a11yNameControls(root = document) {
+  for (const el of $$('input, select, textarea', root)) {
+    if (el.type === 'hidden' || el.type === 'file') continue;
+    if (el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.closest('label')) continue;
+    if (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) continue;
+    const row = el.closest('.row'), lab = row && row.querySelector(':scope > label, :scope > .lbl');
+    let name = lab ? Array.from(lab.childNodes).filter(n => !(n.nodeType === 1 && (n.tagName === 'OUTPUT' || n.hidden))).map(n => n.textContent).join(' ').replace(/\s+/g, ' ').trim() : '';
+    if (!name) name = el.title || el.placeholder || '';
+    if (name) el.setAttribute('aria-label', name);
+  }
+}
+function a11ySync(el) {
+  if (el.matches('#leftTabs button')) { const on = el.classList.contains('on'); el.setAttribute('aria-selected', on); el.tabIndex = on ? 0 : -1; }
+  else if (el.matches('#steps .step')) { if (el.classList.contains('cur')) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); }
+  else if (el.matches(A11Y_TOGGLES)) el.setAttribute('aria-pressed', el.classList.contains('on'));
+}
+const a11yAll = root => { for (const el of $$(A11Y_TOGGLES + ', #leftTabs button, #steps .step', root)) a11ySync(el); };
+function initA11y() {
+  a11yNameControls(); a11yAll(document);
+  // tabs: arrow keys move between them
+  const tabs = $$('#leftTabs button');
+  tabs.forEach(b => {
+    const sec = $(`#settings .tab[data-tab="${b.dataset.tab}"]`);
+    sec.id = sec.id || 'tab-' + b.dataset.tab; b.id = b.id || 'tabbtn-' + b.dataset.tab;
+    sec.setAttribute('role', 'tabpanel'); sec.setAttribute('aria-labelledby', b.id); b.setAttribute('aria-controls', sec.id);
+  });
+  $('#leftTabs').addEventListener('keydown', e => {
+    const i = tabs.indexOf(document.activeElement); if (i < 0) return;
+    const j = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i + tabs.length - 1) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); tabs[j].focus(); setTab(tabs[j].dataset.tab);
+  });
+  // state changes (and controls built later: look cards, the export panel) keep their attributes up to date
+  new MutationObserver(ms => {
+    for (const m of ms) {
+      if (m.type === 'attributes') { if (m.target.matches) a11ySync(m.target); continue; }
+      for (const n of m.addedNodes) if (n.nodeType === 1) { a11yAll(n); if (n.matches(A11Y_TOGGLES)) a11ySync(n); a11yNameControls(n); }
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  const mb = $('#moreBtn'), pop = $('#morePop');
+  mb.setAttribute('aria-expanded', 'false'); mb.setAttribute('aria-controls', 'morePop');
+  new MutationObserver(() => mb.setAttribute('aria-expanded', String(!pop.hidden))).observe(pop, { attributes: true, attributeFilter: ['hidden'] });
+  pop.addEventListener('keydown', e => { if (e.key === 'Escape') { pop.hidden = true; mb.focus(); } });
+  for (const [id, label] of [['srcCanvas', 'The original picture'], ['outCanvas', 'The text art']]) { const c = $('#' + id); c.setAttribute('role', 'img'); c.setAttribute('aria-label', label); }
+  const pb = $('#progBarWrap'); pb.setAttribute('role', 'progressbar'); pb.setAttribute('aria-valuemin', '0'); pb.setAttribute('aria-valuemax', '100'); pb.setAttribute('aria-labelledby', 'progTitle');
+  $('#progress').setAttribute('role', 'dialog'); $('#progress').setAttribute('aria-modal', 'true'); $('#progress').setAttribute('aria-labelledby', 'progTitle');
+}
+/* WCAG contrast ratio of two colours (#rrggbb) */
+function contrastRatio(a, b) {
+  const L = h => { const [r, g, bb] = hexToRgb(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * bb; };
+  const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

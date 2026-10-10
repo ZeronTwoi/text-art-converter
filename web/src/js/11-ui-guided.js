@@ -129,7 +129,7 @@ function openGallery() {
 }
 const renderGallery = () => renderLookCards($$('#galleryGrid .look'), { cols: 100, fontSize: 5 }, renderGallery);
 function setTab(t) {
-  $$('#leftTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $$('#leftTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); a11ySync(b); });
   $$('#settings .tab').forEach(sec => { sec.hidden = sec.dataset.tab !== t; });
   setStep(t === 'look' ? 2 : 3);
   try { localStorage.setItem('textArtStudio.tab', t); } catch (e) {}

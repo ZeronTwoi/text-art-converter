@@ -362,6 +362,31 @@ UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
   applyZoom();
 });
 
+UI_TESTS.push(async function accessibility(ok) {
+  const nameOf = el => el.getAttribute('aria-label') || (el.getAttribute('aria-labelledby') && $('#' + el.getAttribute('aria-labelledby'))?.textContent) ||
+    (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)?.textContent) || el.closest('label')?.textContent || (el.tagName === 'BUTTON' ? el.textContent : '') || '';
+  const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  const unnamed = $$('input:not([type=hidden]):not([type=file]), select, textarea, button').filter(el => visible(el) && !nameOf(el).trim());
+  ok('Accessibility: every visible control has a name', unnamed.length === 0, unnamed.slice(0, 4).map(e => e.outerHTML.slice(0, 70)).join(' | '));
+  ok('Accessibility: toggles say whether they are on', $$('.mode').every(b => b.getAttribute('aria-pressed') === String(b.classList.contains('on'))) && $$('#viewSeg button').some(b => b.getAttribute('aria-pressed') === 'true'));
+  setTab('colour');
+  ok('Accessibility: tabs say which one is open', $('#tabbtn-colour').getAttribute('aria-selected') === 'true' && $('#tabbtn-look').getAttribute('aria-selected') === 'false' && $('#tabbtn-look').tabIndex === -1);
+  $('#tabbtn-colour').focus(); $('#leftTabs').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  ok('Accessibility: arrow keys move between tabs', $('#tabbtn-crop').getAttribute('aria-selected') === 'true' && document.activeElement === $('#tabbtn-crop'));
+  setTab('look');
+  ok('Accessibility: the Advanced switch can be reached by keyboard', getComputedStyle($('#advToggle')).display !== 'none');
+  const bad = [];
+  for (const theme of ['dark', 'light']) {
+    document.documentElement.dataset.theme = theme;
+    const v = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+    for (const [fg, bg] of [['--text', '--bg'], ['--text', '--panel'], ['--text', '--panel-2'], ['--muted', '--panel'], ['--muted', '--panel-2'], ['--accent-text', '--panel'], ['--accent-text', '--panel-2'], ['--accent-ink', '--accent'], ['--danger', '--panel'], ['--warn', '--panel'], ['--warn', '--panel-2']]) {
+      const r = contrastRatio(v(fg), v(bg)); if (r < 4.5) bad.push(`${theme} ${fg} on ${bg}: ${r.toFixed(2)}`);
+    }
+  }
+  document.documentElement.removeAttribute('data-theme');
+  ok('Accessibility: text contrast at least 4.5:1 in every theme', bad.length === 0, bad.join('; '));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

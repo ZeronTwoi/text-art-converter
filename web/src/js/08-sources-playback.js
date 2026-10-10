@@ -433,6 +433,7 @@ function showResult(res, t0) {
     applyZoom(); return;
   }
   App.res = res;
+  const label = `The text art: ${res.cols} × ${res.rows} characters`; if (out._label !== label) { out._label = label; out.setAttribute('aria-label', label); }
   if (Edit.on || Edits.cells.size) updateEditUI();
   scheduleHistogram();
   drawPreview(res, S, out);
