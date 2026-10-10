@@ -345,6 +345,19 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
 .ramprow label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
 .ramprow input{width:100%;min-width:0;padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
 .ramprow select{width:100%;padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
+/* your palette */
+.palette{border:1px dashed var(--line);border-radius:10px;padding:8px}
+.palhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.swatches{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.swatch{position:relative;width:26px;height:26px;border-radius:6px;border:1px solid var(--line);display:inline-block;cursor:pointer}
+.swatch input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.swatch i{position:absolute;right:-5px;top:-6px;width:15px;height:15px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:8px;font-style:normal;display:grid;place-items:center;opacity:0}
+.swatch:hover i,.swatch:focus-within i{opacity:1}
+.swatch.add{background:var(--panel-2);color:var(--muted);font-size:16px;line-height:1;padding:0}
+.palacts{flex-wrap:wrap;margin:4px 0}
+.palette .palacts select{width:auto;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
+.palacts .btn{flex:none}
+@media (hover:none){.swatch i{opacity:1}}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -591,9 +604,24 @@ body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
         <div class="row" data-when="colorMode:app"><label>Colours available in</label>
           <select data-key="appPalette">
             <optgroup label="Chat apps &amp; terminals"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></optgroup>
+            <optgroup label="Yours"><option value="custom">Your palette (take from the picture, paste or load)</option></optgroup>
             <optgroup label="Retro"><option value="gameboy">Game Boy (4 greens)</option><option value="cga">CGA (black, cyan, magenta, white)</option><option value="c64">Commodore 64 (16 colours)</option><option value="pico8">PICO-8 (16 colours)</option><option value="amber">Amber monitor</option><option value="green">Green monitor</option></optgroup>
           </select>
           <p class="hint">The preview shows exactly the colours your colour text copy will have. Picture and video exports use them too.</p></div>
+        <div class="row palette" data-when="colorMode:app;appPalette:custom">
+          <div class="palhead"><b>Your palette</b> <span class="muted small" id="palCount"></span></div>
+          <div class="swatches" id="palSwatches"></div>
+          <div class="inline palacts">
+            <button class="btn" id="palFromPic" title="The main colours of the picture">Take from picture</button>
+            <select id="palN" aria-label="How many colours"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option><option>32</option></select>
+          </div>
+          <div class="inline palacts">
+            <button class="btn" id="palPaste" title="Paste hex colours, e.g. a palette from lospec.com">Paste colours</button>
+            <label class="btn" for="palFile" title="A .hex, .gpl or .txt palette file">Load file…</label><input type="file" id="palFile" accept=".hex,.gpl,.txt,text/plain" hidden>
+            <button class="btn" id="palCopy" title="Copy the palette as hex codes">Copy</button>
+          </div>
+          <label class="chk"><input type="checkbox" data-key="customPaletteTone"> Shade by brightness (for one-hue palettes)</label>
+        </div>
         <div class="row colors">
           <label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label>
           <label><input type="color" data-key="bg"> Background</label>
@@ -1026,7 +1054,7 @@ const DEFAULTS = {
   renderStyle: 'shapes', dotShape: 'circle', dotSize: 0.85, fontFamily: 'mono', customFont: '', margin: 0, textGradient: 'vertical',
   rotate: 0, flipH: false, flipV: false, cropL: 0, cropR: 0, cropT: 0, cropB: 0,
   platform: 'discord', shareOptimize: false, shareTarget: 'phone', shareSplit: false, shareColor: false, shareTheme: 'auto', calib: {},
-  appPalette: 'discord', exportGoal: 'chat',
+  appPalette: 'discord', exportGoal: 'chat', customPalette: '#1a1c2c #5d275d #b13e53 #ef7d57 #ffcd75 #a7f070 #38b764 #257179 #29366f #3b5dc9 #41a6f6 #73eff7 #f4f4f4 #94b0c2 #566c86 #333c57', customPaletteTone: false,
   captionTop: '', captionBottom: '', captionStyle: 'plain', captionBox: true, captionColor: '#ffffff',
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1,
 };
@@ -1705,7 +1733,7 @@ function convertCore(src, sw, sh, S, sk, pre) {
     for (let i = 0; i < N; i++) { const v = clamp(0.5 + (L[i] - mean[i]) / (2.2 * sd[i] + 0.06) * 0.5, 0, 1); L[i] += (v - L[i]) * k; }
   }
   const FG = hexToRgb(S.fg), BG = hexToRgb(S.bg), GA = hexToRgb(S.gradA), GB = hexToRgb(S.gradB);
-  const CM = S.colorMode;
+  const CM = S.colorMode, PAL = paletteKey(S);
   // "ink" = how much character should be drawn. Bright pixels get ink on a dark background and vice versa.
   const inkFromLum = CM === 'mono' ? lumRGB(BG) <= lumRGB(FG) : lumRGB(BG) < 0.5;
   const ink = scratchBuf('ink', Float32Array, N);
@@ -1765,7 +1793,7 @@ function convertCore(src, sw, sh, S, sk, pre) {
     if (CM === 'color') { arr[o] = r; arr[o + 1] = g; arr[o + 2] = b; }
     else if (CM === 'gray') { const l = 0.299 * r + 0.587 * g + 0.114 * b; arr[o] = arr[o + 1] = arr[o + 2] = l; }
     else if (CM === 'gradient') { const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255; arr[o] = GA[0] + (GB[0] - GA[0]) * l; arr[o + 1] = GA[1] + (GB[1] - GA[1]) * l; arr[o + 2] = GA[2] + (GB[2] - GA[2]) * l; }
-    else if (CM === 'app') { const c = appColour(S.appPalette, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
+    else if (CM === 'app') { const c = appColour(PAL, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
     else { arr[o] = FG[0]; arr[o + 1] = FG[1]; arr[o + 2] = FG[2]; }
   }
   const needColor = CM !== 'mono';
@@ -2107,6 +2135,7 @@ function appColour(pal, r, g, b) {
   if (!c) {
     if (pal === 'discord') c = hexToRgb(DISCORD_CSS[discordCode(r, g, b)]);
     else if (RETRO_PALETTES[pal]) c = retroColour(RETRO_PALETTES[pal], r, g, b);
+    else if (pal.startsWith('custom')) c = retroColour(customPal(pal), r, g, b);
     else {
       const P = pal === 'ansi256' ? ANSI256 : ANSI16; let bd = Infinity;
       for (const q of P) { const dr = r - q[0], dg = g - q[1], db = b - q[2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; c = q; } }
@@ -2739,7 +2768,7 @@ function engineSource() {
   const arrows = { clamp, lumRGB, hex6, fontCss, transformSig, resultBytes, isBlankCp, outlineAmount, convertSig, u32le, webpSize };
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
-    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText,
+    applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
     appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   return [
@@ -2757,7 +2786,7 @@ function engineSource() {
     'function maskPixels() { return null; }',
     'function withOverlay(r) { return r; }',
     'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
-    'let pixelGlyphs = null;',
+    'let pixelGlyphs = null; const customPals = new Map();',
   ].join('\n');
 }
 /* ---------------- worker pool ----------------
@@ -4831,7 +4860,7 @@ function onSettingsChanged() {
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
-  updateRampStrip(); scheduleHistogram(); scheduleSessionSave(); markVersions();
+  updateRampStrip(); scheduleHistogram(); scheduleSessionSave(); markVersions(); buildPaletteUI();
 }
 function onControl(el) {
   const key = el.dataset.key; let v;
@@ -5069,6 +5098,7 @@ function initUI() {
   initPWA();
   initVersions();
   initRamps();
+  initPalettes();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5771,7 +5801,7 @@ async function selfTest() {
    machine and browser. Each group must match EQUIV_BASELINE; after an intended change of results, paste the
    new baseline the page prints into EQUIV_BASELINE.
    ===================================================================== */
-const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "retro/gameboy":"7c24f44e", "retro/cga":"17ebae84", "retro/c64":"ae9fdfa6", "retro/pico8":"de19d3b5", "retro/amber":"2c522933", "retro/green":"4b00455", "glyph/pixel":"224cc5a0", "ascii/pixel-sorted":"13012a49", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
+const EQUIV_BASELINE = {"braille/mono":"80ed5cd4", "braille/color":"90b47959", "braille/gray":"aa9af11d", "braille/gradient":"26cc3fa7", "braille/discord":"b9fb4d13", "braille/ansi16":"59261307", "braille/ansi256":"2a8a28cf", "ascii/mono":"d8131a4", "ascii/color":"c375ad97", "ascii/gray":"9cd65da6", "ascii/gradient":"307094ea", "ascii/discord":"10624337", "ascii/ansi16":"a25c65", "ascii/ansi256":"edf5d1bc", "edge/mono":"5cff6fc9", "edge/color":"30aaf650", "edge/gray":"81fb68f7", "edge/gradient":"675226b2", "edge/discord":"7ef20048", "edge/ansi16":"c77be3d9", "edge/ansi256":"884760d6", "half/mono":"2c295a3a", "half/color":"fce77fa", "half/gray":"2c00f749", "half/gradient":"963107ed", "half/discord":"6d408fc3", "half/ansi16":"354fc0ea", "half/ansi256":"d106164d", "quad/mono":"15451cf7", "quad/color":"27c636c5", "quad/gray":"2066e61e", "quad/gradient":"33be9f30", "quad/discord":"1d233686", "quad/ansi16":"666999b8", "quad/ansi256":"68f63470", "halftone/mono":"5591b69b", "halftone/color":"8102d88d", "halftone/gray":"e8de1014", "halftone/gradient":"c03a83d4", "halftone/discord":"c5a4d9fd", "halftone/ansi16":"ad76ceec", "halftone/ansi256":"983285a9", "word/mono":"52f4e5e0", "word/color":"165c8a2c", "word/gray":"8707ae73", "word/gradient":"f9723950", "word/discord":"82365a1f", "word/ansi16":"91ad0ea6", "word/ansi256":"90b71004", "retro/gameboy":"7c24f44e", "retro/cga":"17ebae84", "retro/c64":"ae9fdfa6", "retro/pico8":"de19d3b5", "retro/amber":"2c522933", "retro/green":"4b00455", "glyph/pixel":"224cc5a0", "ascii/pixel-sorted":"13012a49", "custom-palette":"f151afaf", "share":"d017e1ab", "gif":"51bbf52e", "crc":"8e0979c"};
 /* A test scene (sky gradient, a sun, a dark box, a thin diagonal, noise, a half transparent band) at any size. */
 function synthPixels(W, H, seed) {
   const d = new Uint8ClampedArray(W * H * 4);
@@ -5801,6 +5831,9 @@ function equivCases() {
     out.push({ group: 'glyph/pixel', name: `glyph/pixel/${JSON.stringify(v)}/${cols}`, St: Object.assign({}, DEFAULTS, { mode: 'glyph', fontFamily: 'pixel', cols }, v) });
   for (const cs of ['detailed', 'standard', 'blocks']) for (const cols of [23, 64])
     out.push({ group: 'ascii/pixel-sorted', name: `ascii/pixel-sorted/${cs}/${cols}`, St: Object.assign({}, DEFAULTS, { mode: 'ascii', fontFamily: 'pixel', sortRamp: true, charset: cs, cols }) });
+  // your own palette (nearest colour, and shaded by brightness)
+  for (const tone of [false, true]) for (const mode of ['braille', 'half', 'ascii']) for (const cols of [23, 64])
+    out.push({ group: 'custom-palette', name: `custom/${tone}/${mode}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols, colorMode: 'app', appPalette: 'custom', customPaletteTone: tone, customPalette: '#000 #1d2b53 #7e2553 #ff004d #ffa300 #fff1e8' }) });
   // retro palettes: one group each, over the modes that show colour best
   for (const pal of Object.keys(RETRO_PALETTES)) for (const mode of ['braille', 'ascii', 'half', 'quad', 'halftone']) for (const vi of [0, 4, 12]) for (const cols of [23, 64])
     out.push({ group: 'retro/' + pal, name: `retro/${pal}/${mode}/v${vi}/${cols}`, St: Object.assign({}, DEFAULTS, { mode, cols, colorMode: 'app', appPalette: pal }, variants[vi]) });
@@ -6118,7 +6151,7 @@ function ansiResult(a, S) {
   if (hasBg) res.bgc = new Uint8ClampedArray(n * 3);
   const put = (arr, o, r, g, b) => {
     if (CM === 'gray') { const l = 0.299 * r + 0.587 * g + 0.114 * b; arr[o] = arr[o + 1] = arr[o + 2] = l; }
-    else if (CM === 'app') { const c = appColour(S.appPalette, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
+    else if (CM === 'app') { const c = appColour(paletteKey(S), r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
     else { arr[o] = r; arr[o + 1] = g; arr[o + 2] = b; }
   };
   for (let i = 0; i < n; i++) {
@@ -7070,6 +7103,26 @@ UI_TESTS.push(async function pixelFont(ok) {
     const m = convertCore(null, c.width, c.height, Sg, null, pre);
     ok('Pixel font: Shape style is identical on a worker', w.cp.every((v, i) => v === m.cp[i]));
   }
+});
+
+UI_TESTS.push(async function paletteTools(ok, { wait }) {
+  const p = parsePaletteText('GIMP Palette\nName: test\n#\n 26  28  44\tink\n93 39 93\n#b13e53, ef7d57 #FFF abc');
+  ok('Palette: reads .gpl lines and hex codes', p.length === 6 && p[0].join() === '26,28,44' && p[4].join() === '255,255,255' && p[5].join() === '170,187,204', JSON.stringify(p));
+  await demoImage(); await wait(30);
+  $('#palN').value = '8'; $('#palFromPic').click(); renderNow();
+  const cols = parsePaletteText(S.customPalette);
+  ok('Palette: taken from the picture', S.colorMode === 'app' && S.appPalette === 'custom' && cols.length === 8);
+  const allowed = new Set(cols.map(c => c.join())); let bad = 0; const f = App.res.fg; for (let i = 0; i < f.length; i += 3) if (!allowed.has(f[i] + ',' + f[i + 1] + ',' + f[i + 2])) bad++;
+  ok('Palette: the picture uses only its colours', bad === 0 && !App.res.uniform, bad + ' outside');
+  ok('Palette: swatches shown', $$('#palSwatches .swatch:not(.add)').length === 8 && !$('#palSwatches').closest('[data-when]').hidden);
+  $('#palSwatches .swatch.add').click();
+  ok('Palette: add a colour', parsePaletteText(S.customPalette).length === 9);
+  $('#palSwatches .swatch i').click();
+  ok('Palette: remove a colour', parsePaletteText(S.customPalette).length === 8);
+  applySettings({ customPaletteTone: true }); renderNow();
+  ok('Palette: shade by brightness', appColour(paletteKey(S), 0, 0, 0).join() === parsePaletteText(S.customPalette)[0].join());
+  const { meta } = await projectParts(false);
+  ok('Palette: kept in projects', meta.settings.customPalette === S.customPalette);
 });
 
 UI_TESTS.push(async function captions(ok) {
@@ -8208,6 +8261,84 @@ function drawPixelText(ctx, res, S, cw, ch, X, Y, skip) {
     ctx.font = Math.max(1, Math.min(cw / 0.6, ch / 1.1)) + 'px ' + FONTS.mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const c of missing) { const o = c * 3; ctx.fillStyle = hex6((res.fg[o] << 16) | (res.fg[o + 1] << 8) | res.fg[o + 2]); ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2); }
   }
+}
+/* =====================================================================
+   Your own palette: take it from the picture, paste hex colours (e.g. from lospec.com), load .hex / .gpl,
+   edit single colours. Used by "App & retro colours" like the built-in palettes.
+   ===================================================================== */
+/* the palette name appColour understands for settings S */
+function paletteKey(S) { return S.appPalette === 'custom' ? (S.customPaletteTone ? 'custom~:' : 'custom:') + S.customPalette : S.appPalette; }
+const customPals = new Map();
+function customPal(key) {
+  let P = customPals.get(key);
+  if (!P) {
+    const tone = key.startsWith('custom~:'), cols = parsePaletteText(key.slice(key.indexOf(':') + 1));
+    if (!cols.length) cols.push([0, 0, 0], [255, 255, 255]);
+    if (tone) cols.sort((a, b) => (0.299 * a[0] + 0.587 * a[1] + 0.114 * a[2]) - (0.299 * b[0] + 0.587 * b[1] + 0.114 * b[2]));
+    P = { tone, cols };
+    if (customPals.size > 16) customPals.clear();
+    customPals.set(key, P);
+  }
+  return P;
+}
+/* colours in any common form: hex (#abc, #aabbcc, aabbcc), GIMP .gpl lines ("R G B name"); at most 256, no repeats */
+function parsePaletteText(text) {
+  const out = [], seen = new Set(), add = (r, g, b) => { const k = (r << 16) | (g << 8) | b; if (!seen.has(k) && out.length < 256) { seen.add(k); out.push([r, g, b]); } };
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const gpl = /^\s*(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(\s|$)/.exec(line);
+    if (gpl) { add(+gpl[1] & 255, +gpl[2] & 255, +gpl[3] & 255); continue; }
+    if (/^\s*(GIMP|Name:|Columns:|#\s)/i.test(line)) continue;
+    for (const m of line.matchAll(/#?\b([0-9a-f]{6}|[0-9a-f]{3})\b/gi)) {
+      let h = m[1]; if (h.length === 3) h = h.replace(/./g, c => c + c);
+      const n = parseInt(h, 16); add(n >> 16, (n >> 8) & 255, n & 255);
+    }
+  }
+  return out;
+}
+const paletteText = cols => cols.map(c => hex6((c[0] << 16) | (c[1] << 8) | c[2])).join(' ');
+/* the main colours of the current picture (median cut) */
+function paletteFromPicture(n) {
+  const d = App.src && App.src.kind !== 'text' ? currentDrawable() : null; if (!d) return null;
+  const k = Math.min(1, 200 / Math.max(d[1], d[2])), w = Math.max(1, Math.round(d[1] * k)), h = Math.max(1, Math.round(d[2] * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently: true });
+  drawTransformed(g, d[0], d[1], d[2], w, h, S);
+  const H = rgbaHistogram(g.getImageData(0, 0, w, h).data, true), P = paletteFromHistogram(H.cnt, H.sr, H.sg, H.sb, n, false), cols = [];
+  for (let i = 0; i < P.n; i++) { const o = (P.off + i) * 3; cols.push([P.pal[o], P.pal[o + 1], P.pal[o + 2]]); }
+  return cols.sort((a, b) => (0.299 * a[0] + 0.587 * a[1] + 0.114 * a[2]) - (0.299 * b[0] + 0.587 * b[1] + 0.114 * b[2]));
+}
+function setCustomPalette(cols, msg) {
+  if (!cols || !cols.length) return toast('No colours found', 'error');
+  App.look = null; markLooks();
+  applySettings({ colorMode: 'app', appPalette: 'custom', customPalette: paletteText(cols) });
+  if (msg) toast(msg);
+}
+function buildPaletteUI() {
+  const box = $('#palSwatches'); if (!box) return;
+  const cols = parsePaletteText(S.customPalette), key = S.customPalette;
+  if (box._key === key) return; box._key = key; box.textContent = '';
+  cols.forEach((c, i) => {
+    const s = document.createElement('span'), hx = hex6((c[0] << 16) | (c[1] << 8) | c[2]);
+    s.className = 'swatch'; s.style.background = hx; s.title = hx + ' (click to change, ✕ removes)';
+    s.innerHTML = `<input type="color" value="${hx}" aria-label="Colour ${i + 1}: ${hx}"><i role="button" aria-label="Remove ${hx}">✕</i>`;
+    s.querySelector('input').addEventListener('change', e => { const n = cols.slice(); n[i] = hexToRgb(e.target.value); setCustomPalette(n); });
+    s.querySelector('i').addEventListener('click', e => { e.preventDefault(); if (cols.length <= 2) return toast('A palette needs at least two colours'); setCustomPalette(cols.filter((_, j) => j !== i)); });
+    box.appendChild(s);
+  });
+  const add = document.createElement('button'); add.className = 'swatch add'; add.textContent = '+'; add.title = 'Add a colour';
+  add.addEventListener('click', () => setCustomPalette(cols.concat([[128, 128, 128]])));
+  box.appendChild(add);
+  $('#palCount').textContent = cols.length + ' colours';
+}
+function initPalettes() {
+  $('#palFromPic').addEventListener('click', () => { const n = +$('#palN').value || 8, cols = paletteFromPicture(n); if (!cols) return toast('Open a picture first'); setCustomPalette(cols, `${cols.length} colours taken from the picture`); });
+  $('#palPaste').addEventListener('click', async () => {
+    let text = ''; try { text = await navigator.clipboard.readText(); } catch (e) {}
+    if (!text) text = prompt('Paste colours (hex codes like #1a1c2c, e.g. from lospec.com):') || '';
+    const cols = parsePaletteText(text); setCustomPalette(cols, cols.length ? `${cols.length} colours pasted` : '');
+  });
+  $('#palFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const cols = parsePaletteText(await f.text()); setCustomPalette(cols, `${cols.length} colours from ${f.name}`); });
+  $('#palCopy').addEventListener('click', () => copyOrShow(S.customPalette, 'Palette copied as hex codes'));
+  buildPaletteUI();
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

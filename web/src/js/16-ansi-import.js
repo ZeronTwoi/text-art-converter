@@ -115,7 +115,7 @@ function ansiResult(a, S) {
   if (hasBg) res.bgc = new Uint8ClampedArray(n * 3);
   const put = (arr, o, r, g, b) => {
     if (CM === 'gray') { const l = 0.299 * r + 0.587 * g + 0.114 * b; arr[o] = arr[o + 1] = arr[o + 2] = l; }
-    else if (CM === 'app') { const c = appColour(S.appPalette, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
+    else if (CM === 'app') { const c = appColour(paletteKey(S), r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
     else { arr[o] = r; arr[o + 1] = g; arr[o + 2] = b; }
   };
   for (let i = 0; i < n; i++) {

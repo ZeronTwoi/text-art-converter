@@ -379,7 +379,7 @@ function convertCore(src, sw, sh, S, sk, pre) {
     for (let i = 0; i < N; i++) { const v = clamp(0.5 + (L[i] - mean[i]) / (2.2 * sd[i] + 0.06) * 0.5, 0, 1); L[i] += (v - L[i]) * k; }
   }
   const FG = hexToRgb(S.fg), BG = hexToRgb(S.bg), GA = hexToRgb(S.gradA), GB = hexToRgb(S.gradB);
-  const CM = S.colorMode;
+  const CM = S.colorMode, PAL = paletteKey(S);
   // "ink" = how much character should be drawn. Bright pixels get ink on a dark background and vice versa.
   const inkFromLum = CM === 'mono' ? lumRGB(BG) <= lumRGB(FG) : lumRGB(BG) < 0.5;
   const ink = scratchBuf('ink', Float32Array, N);
@@ -439,7 +439,7 @@ function convertCore(src, sw, sh, S, sk, pre) {
     if (CM === 'color') { arr[o] = r; arr[o + 1] = g; arr[o + 2] = b; }
     else if (CM === 'gray') { const l = 0.299 * r + 0.587 * g + 0.114 * b; arr[o] = arr[o + 1] = arr[o + 2] = l; }
     else if (CM === 'gradient') { const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255; arr[o] = GA[0] + (GB[0] - GA[0]) * l; arr[o + 1] = GA[1] + (GB[1] - GA[1]) * l; arr[o + 2] = GA[2] + (GB[2] - GA[2]) * l; }
-    else if (CM === 'app') { const c = appColour(S.appPalette, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
+    else if (CM === 'app') { const c = appColour(PAL, r, g, b); arr[o] = c[0]; arr[o + 1] = c[1]; arr[o + 2] = c[2]; }
     else { arr[o] = FG[0]; arr[o + 1] = FG[1]; arr[o + 2] = FG[2]; }
   }
   const needColor = CM !== 'mono';

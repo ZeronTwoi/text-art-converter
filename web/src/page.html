@@ -198,9 +198,24 @@
         <div class="row" data-when="colorMode:app"><label>Colours available in</label>
           <select data-key="appPalette">
             <optgroup label="Chat apps &amp; terminals"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></optgroup>
+            <optgroup label="Yours"><option value="custom">Your palette (take from the picture, paste or load)</option></optgroup>
             <optgroup label="Retro"><option value="gameboy">Game Boy (4 greens)</option><option value="cga">CGA (black, cyan, magenta, white)</option><option value="c64">Commodore 64 (16 colours)</option><option value="pico8">PICO-8 (16 colours)</option><option value="amber">Amber monitor</option><option value="green">Green monitor</option></optgroup>
           </select>
           <p class="hint">The preview shows exactly the colours your colour text copy will have. Picture and video exports use them too.</p></div>
+        <div class="row palette" data-when="colorMode:app;appPalette:custom">
+          <div class="palhead"><b>Your palette</b> <span class="muted small" id="palCount"></span></div>
+          <div class="swatches" id="palSwatches"></div>
+          <div class="inline palacts">
+            <button class="btn" id="palFromPic" title="The main colours of the picture">Take from picture</button>
+            <select id="palN" aria-label="How many colours"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option><option>32</option></select>
+          </div>
+          <div class="inline palacts">
+            <button class="btn" id="palPaste" title="Paste hex colours, e.g. a palette from lospec.com">Paste colours</button>
+            <label class="btn" for="palFile" title="A .hex, .gpl or .txt palette file">Load file…</label><input type="file" id="palFile" accept=".hex,.gpl,.txt,text/plain" hidden>
+            <button class="btn" id="palCopy" title="Copy the palette as hex codes">Copy</button>
+          </div>
+          <label class="chk"><input type="checkbox" data-key="customPaletteTone"> Shade by brightness (for one-hue palettes)</label>
+        </div>
         <div class="row colors">
           <label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label>
           <label><input type="color" data-key="bg"> Background</label>

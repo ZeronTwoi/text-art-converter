@@ -565,6 +565,26 @@ UI_TESTS.push(async function pixelFont(ok) {
   }
 });
 
+UI_TESTS.push(async function paletteTools(ok, { wait }) {
+  const p = parsePaletteText('GIMP Palette\nName: test\n#\n 26  28  44\tink\n93 39 93\n#b13e53, ef7d57 #FFF abc');
+  ok('Palette: reads .gpl lines and hex codes', p.length === 6 && p[0].join() === '26,28,44' && p[4].join() === '255,255,255' && p[5].join() === '170,187,204', JSON.stringify(p));
+  await demoImage(); await wait(30);
+  $('#palN').value = '8'; $('#palFromPic').click(); renderNow();
+  const cols = parsePaletteText(S.customPalette);
+  ok('Palette: taken from the picture', S.colorMode === 'app' && S.appPalette === 'custom' && cols.length === 8);
+  const allowed = new Set(cols.map(c => c.join())); let bad = 0; const f = App.res.fg; for (let i = 0; i < f.length; i += 3) if (!allowed.has(f[i] + ',' + f[i + 1] + ',' + f[i + 2])) bad++;
+  ok('Palette: the picture uses only its colours', bad === 0 && !App.res.uniform, bad + ' outside');
+  ok('Palette: swatches shown', $$('#palSwatches .swatch:not(.add)').length === 8 && !$('#palSwatches').closest('[data-when]').hidden);
+  $('#palSwatches .swatch.add').click();
+  ok('Palette: add a colour', parsePaletteText(S.customPalette).length === 9);
+  $('#palSwatches .swatch i').click();
+  ok('Palette: remove a colour', parsePaletteText(S.customPalette).length === 8);
+  applySettings({ customPaletteTone: true }); renderNow();
+  ok('Palette: shade by brightness', appColour(paletteKey(S), 0, 0, 0).join() === parsePaletteText(S.customPalette)[0].join());
+  const { meta } = await projectParts(false);
+  ok('Palette: kept in projects', meta.settings.customPalette === S.customPalette);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

@@ -170,6 +170,7 @@ function appColour(pal, r, g, b) {
   if (!c) {
     if (pal === 'discord') c = hexToRgb(DISCORD_CSS[discordCode(r, g, b)]);
     else if (RETRO_PALETTES[pal]) c = retroColour(RETRO_PALETTES[pal], r, g, b);
+    else if (pal.startsWith('custom')) c = retroColour(customPal(pal), r, g, b);
     else {
       const P = pal === 'ansi256' ? ANSI256 : ANSI16; let bd = Infinity;
       for (const q of P) { const dr = r - q[0], dg = g - q[1], db = b - q[2], d = 2 * dr * dr + 4 * dg * dg + 3 * db * db; if (d < bd) { bd = d; c = q; } }
