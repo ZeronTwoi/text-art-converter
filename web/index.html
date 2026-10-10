@@ -317,6 +317,8 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 .ramp span{min-width:.62em;text-align:center;cursor:default}
 .tonehist{width:100%;height:46px;display:block;border-radius:7px;background:var(--panel);border:1px solid var(--line);margin-bottom:2px}
 #toneInfo.warn{color:var(--warn)}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;text-align:left;border:1px solid var(--accent);background:var(--accent-soft);border-radius:12px;padding:10px 12px;margin:-10px 0 18px}
+.resume .acts{margin:0}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -399,6 +401,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <hr>
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
+        <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
       </div>
     </div>
@@ -674,6 +677,10 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
       <div class="peekbadge" id="peekBadge" hidden></div>
       <div class="empty" id="empty">
         <div class="drop">
+          <div class="resume" id="resumeBox" hidden>
+            <div><b>Continue where you left off?</b><br><span class="muted small"><span id="resumeName"></span> · <span id="resumeWhen"></span></span></div>
+            <div class="acts"><button class="btn primary" id="resumeGo">Continue</button><button class="btn" id="resumeNo" title="Forget it and start with a new picture">Start fresh</button></div>
+          </div>
           <div class="big">⣿⣷⣄ @#%</div>
           <h2>Turn any picture, GIF or video into text art</h2>
           <ol class="howto">
@@ -776,6 +783,8 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
     <li><b>Emoji</b> and <b>App &amp; retro colours</b> (Game Boy, C64, amber…) are in the Look and Colour tabs. Coloured <b>ANSI art</b> (.ans) opens like any file.</li>
     <li>On a phone: the buttons at the bottom open the settings; pinch to zoom, swipe between Result and Original.</li>
   </ul>
+  <h4>Continue later</h4>
+  <p class="muted small" style="margin:0">Your last picture and everything you did to it is kept in this browser (on this computer only), so the start screen can offer to continue. <i>More → Forget my last picture</i> removes it.</p>
   <h4>Projects</h4>
   <p class="muted small" style="margin:0">More → <i>Save project</i> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) keeps the picture with every setting, the crop, mask, hand edits and captions in one <b>.textart</b> file. Open it with <i>Open file…</i> (or drop it here) to continue later, or send it to someone.</p>
   <h4>Keyboard</h4>
@@ -3052,7 +3061,7 @@ function setSource(s) {
   else if (s.kind === 'anim' || s.kind === 'webcam') setPlaying(true);
   if (s.kind !== 'image' && s.kind !== 'text') setTimeout(() => Pool.size(), 0);   // start the workers before playback needs them
   App.look = null; markLooks(); scheduleLooks(); buildFilmstrip(); setStep(2);
-  updateEffectsUI();
+  updateEffectsUI(); $('#resumeBox').hidden = true; scheduleSessionSave();
 }
 function updateSrcInfo() {
   const s = App.src; if (!s) { $('#srcInfo').textContent = 'No file loaded'; return; }
@@ -3106,6 +3115,7 @@ function setIn() { if (!duration()) return; App.tin = curTime(); if (App.tout !=
 function setOut() { if (!duration()) return; App.tout = curTime(); if (App.tin != null && App.tin >= App.tout) App.tin = null; updateTrimBar(); toast('Trim end ' + fmtTime(App.tout)); }
 function clearTrim() { App.tin = App.tout = null; updateTrimBar(); }
 function updateTrimBar() {
+  scheduleSessionSave();
   const bar = $('#trimBar'), d = duration();
   if (!d || (App.tin == null && App.tout == null)) { bar.hidden = true; return; }
   const [a, b] = trimRange();
@@ -4757,7 +4767,7 @@ function onSettingsChanged() {
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
-  updateRampStrip(); scheduleHistogram();
+  updateRampStrip(); scheduleHistogram(); scheduleSessionSave();
 }
 function onControl(el) {
   const key = el.dataset.key; let v;
@@ -4993,6 +5003,7 @@ function initUI() {
   initMobile();
   initA11y();
   initPWA();
+  initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
@@ -6217,7 +6228,7 @@ function maskStrokeStart() {
 }
 function maskStrokeEnd() { updateMaskUI(); }
 /* new paint takes effect: once per display frame (and before anything that must see it) */
-function maskFlush() { if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; } }
+function maskFlush() { if (Mask.pending) { Mask.pending = false; Mask.ver++; Mask.cache.clear(); App.dirty = true; scheduleSessionSave(); } }
 function maskHistReset() { MaskHist.undo = []; MaskHist.redo = []; }
 function maskStep(back) {
   const from = back ? MaskHist.undo : MaskHist.redo, to = back ? MaskHist.redo : MaskHist.undo;
@@ -6295,10 +6306,12 @@ const b64ToTyped = (b, Type) => { const u = base64ToBytes(b); return new Type(u.
 
 /* ---- project: the source, every setting, crop / turn, trim, mask, hand edits and captions in one .textart (ZIP) ---- */
 const PROJECT_SKIP = new Set(['calib']);   // device-specific
-async function projectBlob() {
+/* the project of the open source: meta (project.json) and its files. Source files may come as a Blob (blob), so a
+   big video is not copied; withSource false leaves the source file out (the session keeps it separately). */
+async function projectParts(withSource = true) {
   const s = App.src; if (!s) throw new Error('nothing is open');
   maskFlush();
-  const enc = new TextEncoder(), files = [], settings = {};
+  const files = [], settings = {};
   for (const k in DEFAULTS) if (!PROJECT_SKIP.has(k)) settings[k] = S[k];
   const meta = { format: 'textart', version: 1, app: 'Text Art Studio', saved: new Date().toISOString(), settings, look: App.look || null, view: App.view,
     trim: { in: App.tin, out: App.tout }, time: curTime() };
@@ -6310,18 +6323,18 @@ async function projectBlob() {
   } else if (s.effect) {   // an animation made from a still picture: the picture and the effect
     src.effect = { kind: s.effect.kind, opts: s.effect.opts, file: 'source' + (s.effect.ext || '.png') };
     src.mime = s.effect.mime || 'image/png';
-    files.push({ name: src.effect.file, data: s.effect.bytes });
+    if (withSource) files.push({ name: src.effect.file, data: s.effect.bytes, source: true });
   } else if (s.file) {
     const ext = ((s.file.name || s.name || '').match(/\.[A-Za-z0-9]{1,5}$/) || [''])[0].toLowerCase();
     src.file = 'source' + ext; src.mime = s.mime || s.file.type || '';
-    files.push({ name: src.file, data: new Uint8Array(await s.file.arrayBuffer()) });
+    if (withSource) files.push({ name: src.file, blob: s.file, source: true });
   } else if (s.kind === 'anim' && s.name === 'demo-loop.gif') src.demo = 'anim';
   else {   // no file behind it (demo picture, webcam, generated): the current frame as a PNG
     const d = currentDrawable(); if (!d) throw new Error('the picture is not ready yet');
     const c = document.createElement('canvas'); c.width = d[1]; c.height = d[2]; c.getContext('2d').drawImage(d[0], 0, 0, d[1], d[2]);
     Object.assign(src, { kind: 'image', file: 'source.png', mime: 'image/png' });
     if (s.kind === 'webcam') src.name = 'webcam.png';
-    files.push({ name: 'source.png', data: await pngOf(c) });
+    if (withSource) files.push({ name: 'source.png', data: await pngOf(c), source: true });
   }
   if (Mask.canvas && Mask.src === s && Mask.ver) {   // raw pixels (exact; the ZIP compresses them), not a PNG (alpha would round)
     const m = Mask.canvas, px = m.getContext('2d').getImageData(0, 0, m.width, m.height).data;
@@ -6329,8 +6342,12 @@ async function projectBlob() {
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
-  files.unshift({ name: 'project.json', data: enc.encode(JSON.stringify(meta, null, 1)) });
-  return makeZipAsync(files);
+  return { meta, files };
+}
+async function projectBlob() {
+  const { meta, files } = await projectParts(true);
+  for (const f of files) if (f.blob) f.data = new Uint8Array(await f.blob.arrayBuffer());
+  return makeZipAsync([{ name: 'project.json', data: new TextEncoder().encode(JSON.stringify(meta, null, 1)) }, ...files]);
 }
 async function saveProject() {
   if (!App.src) return toast('Open a picture first');
@@ -6352,6 +6369,12 @@ async function openProject(file) {
     meta = JSON.parse(new TextDecoder().decode(pj));
     if (meta.format !== 'textart' || !meta.source) throw new Error('this is not a Text Art Studio project');
   } catch (e) { toast('Could not open the project: ' + e.message, 'error'); return false; }
+  const ok = await openProjectParts(meta, name => z.get(name));
+  if (ok) toast('Project opened: ' + (file.name || meta.source.name));
+  return ok;
+}
+/* opens a project from its meta and get(name) → the bytes (or Blob) of one of its files */
+async function openProjectParts(meta, get) {
   const src = meta.source, before = App.src;
   // the settings first, so the source opens with its own look
   const st = {}; for (const k in meta.settings || {}) if (k in DEFAULTS && !PROJECT_SKIP.has(k) && typeof meta.settings[k] === typeof DEFAULTS[k]) st[k] = meta.settings[k];
@@ -6359,10 +6382,10 @@ async function openProject(file) {
     if (src.kind === 'text') {
       const a = src.ansi && { cols: src.ansi.cols, rows: src.ansi.rows, cp: b64ToTyped(src.ansi.cp, Uint32Array), fg: b64ToTyped(src.ansi.fg, Int32Array), bg: b64ToTyped(src.ansi.bg, Int32Array) };
       setTextSource(src.text, src.name, a || null);
-    } else if (src.effect && z.get(src.effect.file)) {
-      await makeEffectAnim(src.effect.kind, src.effect.opts, new File([z.get(src.effect.file)], src.name, { type: src.mime || 'image/png' }), true);
+    } else if (src.effect && get(src.effect.file)) {
+      await makeEffectAnim(src.effect.kind, src.effect.opts, new File([get(src.effect.file)], src.name, { type: src.mime || 'image/png' }), true);
     } else if (src.demo === 'anim') await demoAnim();
-    else if (src.file && z.get(src.file)) await openFile(new File([z.get(src.file)], src.name, { type: src.mime || '' }));
+    else if (src.file && get(src.file)) await openFile(new File([get(src.file)], src.name, { type: src.mime || '' }));
     else throw new Error('the picture is missing from the project');
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
@@ -6375,9 +6398,9 @@ async function openProject(file) {
     for (const [i, cp, rgb] of meta.edits.cells) Edits.cells.set(i | 0, { cp: cp >>> 0, rgb: rgb < 0 ? null : rgb | 0 });
     Edits.ver++;
   }
-  if (meta.mask && z.get(meta.mask.file) && App.src.kind !== 'text') {
+  if (meta.mask && get(meta.mask.file) && App.src.kind !== 'text') {
     try {
-      const m = maskEnsure(), g = m.canvas.getContext('2d'), raw = z.get(meta.mask.file), w = meta.mask.w | 0, h = meta.mask.h | 0;
+      const m = maskEnsure(), g = m.canvas.getContext('2d'), raw = get(meta.mask.file), w = meta.mask.w | 0, h = meta.mask.h | 0;
       if (raw.length !== w * h * 4) throw new Error('mask size');
       const img = new ImageData(new Uint8ClampedArray(raw.buffer, raw.byteOffset, raw.length), w, h);
       if (w === m.canvas.width && h === m.canvas.height) g.putImageData(img, 0, 0);
@@ -6389,7 +6412,6 @@ async function openProject(file) {
   if (meta.time > 0 && duration()) seekTo(meta.time);
   if (meta.view && ['out', 'split', 'wipe', 'src', 'text', 'platform'].includes(meta.view)) setView(meta.view);
   App.dirty = true;
-  toast('Project opened: ' + (file.name || src.name));
   return true;
 }
 function initProjects() {
@@ -6837,6 +6859,24 @@ UI_TESTS.push(async function sameResultEverywhere(ok) {
   opened.close();
 });
 
+UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
+  await openFile(new File([await canvasToBlob(demoCanvas(), 'image/png')], 'beach.png', { type: 'image/png' })); await wait(30);
+  applySettings({ mode: 'quad', cols: 66, colorMode: 'color', captionBottom: 'hello' }); renderNow();
+  const r0 = App.res, Edit0 = r0.cols; Edits.cols = r0.cols; Edits.rows = r0.rows; Edits.cells.set(7, { cp: 0x40, rgb: null }); Edits.ver++;
+  App.dirty = true; renderNow(); const text0 = resultText(App.res);
+  await sessionSave();
+  applySettings({ cols: 30, captionBottom: '' }); await sessionSave();   // a later change: settings only, the picture is not stored again
+  applySettings({ cols: 66, captionBottom: 'hello' }); Edits.cells.set(7, { cp: 0x40, rgb: null }); Edits.ver++; await sessionSave();
+  const saved = await sessionLoad();
+  ok('Session: the last picture is kept in the browser', !!saved && saved.state.meta.source.name === 'beach.png' && !!saved.source);
+  reset(); await demoAnim(); await wait(30);
+  await sessionResume(saved); App.dirty = true; renderNow();
+  ok('Session: Continue brings back the picture, settings and edits', App.src.name === 'beach.png' && S.mode === 'quad' && S.cols === 66 && Edits.cells.size === 1 && resultText(App.res) === text0);
+  await sessionForget(true);
+  ok('Session: Forget removes it', !(await sessionLoad()));
+  ok('Session: offered on the start screen', !!$('#resumeBox') && $('#resumeBox').hidden);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -6969,7 +7009,7 @@ function updateEditUI() {
     `${n} character${n > 1 ? 's' : ''} edited. Edits stay on every frame and in every export.`;
   $('#editInfo').classList.toggle('warn', !!(n && res && !editsMatch(res)));
 }
-function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); }
+function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); scheduleSessionSave(); }
 function editsSnapshot() { Edits.undo.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) }); if (Edits.undo.length > 60) Edits.undo.shift(); Edits.redo = []; }
 function editsStep(back) {
   const from = back ? Edits.undo : Edits.redo, to = back ? Edits.redo : Edits.undo;
@@ -7493,6 +7533,92 @@ function initPWA() {
   $('#btnInstall').addEventListener('click', async () => { const p = App.installPrompt; if (!p) return; p.prompt(); try { await p.userChoice; } catch (e) {} App.installPrompt = null; $('#btnInstall').hidden = true; });
   // files opened with the installed app ("Open with…")
   if ('launchQueue' in window) window.launchQueue.setConsumer(async params => { if (params.files && params.files.length) openFile(await params.files[0].getFile()); });
+}
+/* =====================================================================
+   Continue where you left off: the open picture with everything done to it is kept in this browser
+   (IndexedDB). The picture is stored once per picture; settings, edits, mask and trim a moment after
+   each change. On the next visit the start screen offers to continue. More → Forget removes it.
+   ===================================================================== */
+const SESSION_MAX_BYTES = 400e6;   // bigger sources (long videos) are not kept
+const Session = { timer: 0, srcId: 0, saving: false, again: false, off: false };
+const sessionIds = new WeakMap(); let sessionIdNext = 1;
+function sessionDB() {
+  if (sessionDB.p) return sessionDB.p;
+  sessionDB.p = new Promise((res, rej) => {
+    if (typeof indexedDB === 'undefined') return rej(new Error('no IndexedDB'));
+    const r = indexedDB.open('textArtStudio', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  sessionDB.p.catch(() => {});
+  return sessionDB.p;
+}
+async function idb(mode, fn) {
+  const db = await sessionDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', mode), st = tx.objectStore('kv'), out = fn(st);
+    tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  });
+}
+function scheduleSessionSave(ms = 1200) {
+  if (Session.off || !App.src || App.src.kind === 'webcam' || /#(selftest|equiv|uitest|bench|exp)/.test(location.hash)) return;
+  clearTimeout(Session.timer); Session.timer = setTimeout(sessionSave, ms);
+}
+async function sessionSave() {
+  if (Session.saving) { Session.again = true; return; }
+  const s = App.src; if (!s || s.kind === 'webcam' || App.exporting || (s.kind === 'anim' && s.complete === false)) { if (s) scheduleSessionSave(2000); return; }
+  Session.saving = true;
+  try {
+    let id = sessionIds.get(s); if (!id) { id = Date.now() + '-' + sessionIdNext++; sessionIds.set(s, id); }
+    const { meta, files } = await projectParts(Session.srcId !== id);
+    const state = { meta, srcId: id, savedAt: Date.now(), files: {} };
+    let source = null, size = 0;
+    for (const f of files) {
+      if (f.source) { source = source || { srcId: id, files: {} }; source.files[f.name] = f.blob || f.data; size += (f.blob || f.data).size || (f.blob || f.data).length; }
+      else state.files[f.name] = f.data;
+    }
+    if (size > SESSION_MAX_BYTES) { await idb('readwrite', st => { st.delete('state'); st.delete('source'); }); Session.srcId = id; return; }
+    await idb('readwrite', st => { if (source) st.put(source, 'source'); st.put(state, 'state'); });
+    if (source) Session.srcId = id;
+  } catch (e) { console.warn('session not saved:', e && e.message); }
+  finally { Session.saving = false; if (Session.again) { Session.again = false; scheduleSessionSave(300); } }
+}
+async function sessionLoad() {
+  try {
+    const [state, source] = await Promise.all([idb('readonly', st => st.get('state')), idb('readonly', st => st.get('source'))]);
+    if (!state || !state.meta) return null;
+    if (state.meta.source.kind !== 'text' && !state.meta.source.demo && (!source || source.srcId !== state.srcId)) return null;
+    return { state, source };
+  } catch (e) { return null; }
+}
+async function sessionForget(quiet) {
+  clearTimeout(Session.timer); Session.srcId = 0;
+  try { await idb('readwrite', st => { st.delete('state'); st.delete('source'); }); } catch (e) {}
+  $('#resumeBox').hidden = true;
+  if (!quiet) toast('Forgotten: this browser no longer keeps your last picture');
+}
+async function sessionResume(saved) {
+  const { state, source } = saved, files = Object.assign({}, source ? source.files : {}, state.files);
+  $('#resumeBox').hidden = true;
+  showProgress('Opening your last picture', true);
+  try {
+    const ok = await openProjectParts(state.meta, name => files[name]);
+    if (ok) { sessionIds.set(App.src, state.srcId); Session.srcId = state.srcId; toast('Welcome back: everything is as you left it'); }
+  } finally { hideProgress(); }
+}
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString(); };
+async function initSession() {
+  $('#btnForget').addEventListener('click', () => sessionForget(false));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
+  if (location.hash && location.hash !== '#') return;   // tests and demos start clean
+  const saved = await sessionLoad();
+  if (!saved || App.src) return;
+  const m = saved.state.meta, box = $('#resumeBox');
+  $('#resumeName').textContent = m.source.name || 'your picture';
+  $('#resumeWhen').textContent = ago(saved.state.savedAt);
+  box.hidden = false;
+  $('#resumeGo').onclick = () => sessionResume(saved);
+  $('#resumeNo').onclick = () => sessionForget(true);
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

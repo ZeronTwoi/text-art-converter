@@ -62,7 +62,7 @@ function updateEditUI() {
     `${n} character${n > 1 ? 's' : ''} edited. Edits stay on every frame and in every export.`;
   $('#editInfo').classList.toggle('warn', !!(n && res && !editsMatch(res)));
 }
-function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); }
+function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); scheduleSessionSave(); }
 function editsSnapshot() { Edits.undo.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) }); if (Edits.undo.length > 60) Edits.undo.shift(); Edits.redo = []; }
 function editsStep(back) {
   const from = back ? Edits.undo : Edits.redo, to = back ? Edits.redo : Edits.undo;

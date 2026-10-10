@@ -267,7 +267,7 @@ function setSource(s) {
   else if (s.kind === 'anim' || s.kind === 'webcam') setPlaying(true);
   if (s.kind !== 'image' && s.kind !== 'text') setTimeout(() => Pool.size(), 0);   // start the workers before playback needs them
   App.look = null; markLooks(); scheduleLooks(); buildFilmstrip(); setStep(2);
-  updateEffectsUI();
+  updateEffectsUI(); $('#resumeBox').hidden = true; scheduleSessionSave();
 }
 function updateSrcInfo() {
   const s = App.src; if (!s) { $('#srcInfo').textContent = 'No file loaded'; return; }
@@ -321,6 +321,7 @@ function setIn() { if (!duration()) return; App.tin = curTime(); if (App.tout !=
 function setOut() { if (!duration()) return; App.tout = curTime(); if (App.tin != null && App.tin >= App.tout) App.tin = null; updateTrimBar(); toast('Trim end ' + fmtTime(App.tout)); }
 function clearTrim() { App.tin = App.tout = null; updateTrimBar(); }
 function updateTrimBar() {
+  scheduleSessionSave();
   const bar = $('#trimBar'), d = duration();
   if (!d || (App.tin == null && App.tout == null)) { bar.hidden = true; return; }
   const [a, b] = trimRange();

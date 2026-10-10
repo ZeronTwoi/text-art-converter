@@ -52,10 +52,12 @@ const b64ToTyped = (b, Type) => { const u = base64ToBytes(b); return new Type(u.
 
 /* ---- project: the source, every setting, crop / turn, trim, mask, hand edits and captions in one .textart (ZIP) ---- */
 const PROJECT_SKIP = new Set(['calib']);   // device-specific
-async function projectBlob() {
+/* the project of the open source: meta (project.json) and its files. Source files may come as a Blob (blob), so a
+   big video is not copied; withSource false leaves the source file out (the session keeps it separately). */
+async function projectParts(withSource = true) {
   const s = App.src; if (!s) throw new Error('nothing is open');
   maskFlush();
-  const enc = new TextEncoder(), files = [], settings = {};
+  const files = [], settings = {};
   for (const k in DEFAULTS) if (!PROJECT_SKIP.has(k)) settings[k] = S[k];
   const meta = { format: 'textart', version: 1, app: 'Text Art Studio', saved: new Date().toISOString(), settings, look: App.look || null, view: App.view,
     trim: { in: App.tin, out: App.tout }, time: curTime() };
@@ -67,18 +69,18 @@ async function projectBlob() {
   } else if (s.effect) {   // an animation made from a still picture: the picture and the effect
     src.effect = { kind: s.effect.kind, opts: s.effect.opts, file: 'source' + (s.effect.ext || '.png') };
     src.mime = s.effect.mime || 'image/png';
-    files.push({ name: src.effect.file, data: s.effect.bytes });
+    if (withSource) files.push({ name: src.effect.file, data: s.effect.bytes, source: true });
   } else if (s.file) {
     const ext = ((s.file.name || s.name || '').match(/\.[A-Za-z0-9]{1,5}$/) || [''])[0].toLowerCase();
     src.file = 'source' + ext; src.mime = s.mime || s.file.type || '';
-    files.push({ name: src.file, data: new Uint8Array(await s.file.arrayBuffer()) });
+    if (withSource) files.push({ name: src.file, blob: s.file, source: true });
   } else if (s.kind === 'anim' && s.name === 'demo-loop.gif') src.demo = 'anim';
   else {   // no file behind it (demo picture, webcam, generated): the current frame as a PNG
     const d = currentDrawable(); if (!d) throw new Error('the picture is not ready yet');
     const c = document.createElement('canvas'); c.width = d[1]; c.height = d[2]; c.getContext('2d').drawImage(d[0], 0, 0, d[1], d[2]);
     Object.assign(src, { kind: 'image', file: 'source.png', mime: 'image/png' });
     if (s.kind === 'webcam') src.name = 'webcam.png';
-    files.push({ name: 'source.png', data: await pngOf(c) });
+    if (withSource) files.push({ name: 'source.png', data: await pngOf(c), source: true });
   }
   if (Mask.canvas && Mask.src === s && Mask.ver) {   // raw pixels (exact; the ZIP compresses them), not a PNG (alpha would round)
     const m = Mask.canvas, px = m.getContext('2d').getImageData(0, 0, m.width, m.height).data;
@@ -86,8 +88,12 @@ async function projectBlob() {
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
-  files.unshift({ name: 'project.json', data: enc.encode(JSON.stringify(meta, null, 1)) });
-  return makeZipAsync(files);
+  return { meta, files };
+}
+async function projectBlob() {
+  const { meta, files } = await projectParts(true);
+  for (const f of files) if (f.blob) f.data = new Uint8Array(await f.blob.arrayBuffer());
+  return makeZipAsync([{ name: 'project.json', data: new TextEncoder().encode(JSON.stringify(meta, null, 1)) }, ...files]);
 }
 async function saveProject() {
   if (!App.src) return toast('Open a picture first');
@@ -109,6 +115,12 @@ async function openProject(file) {
     meta = JSON.parse(new TextDecoder().decode(pj));
     if (meta.format !== 'textart' || !meta.source) throw new Error('this is not a Text Art Studio project');
   } catch (e) { toast('Could not open the project: ' + e.message, 'error'); return false; }
+  const ok = await openProjectParts(meta, name => z.get(name));
+  if (ok) toast('Project opened: ' + (file.name || meta.source.name));
+  return ok;
+}
+/* opens a project from its meta and get(name) → the bytes (or Blob) of one of its files */
+async function openProjectParts(meta, get) {
   const src = meta.source, before = App.src;
   // the settings first, so the source opens with its own look
   const st = {}; for (const k in meta.settings || {}) if (k in DEFAULTS && !PROJECT_SKIP.has(k) && typeof meta.settings[k] === typeof DEFAULTS[k]) st[k] = meta.settings[k];
@@ -116,10 +128,10 @@ async function openProject(file) {
     if (src.kind === 'text') {
       const a = src.ansi && { cols: src.ansi.cols, rows: src.ansi.rows, cp: b64ToTyped(src.ansi.cp, Uint32Array), fg: b64ToTyped(src.ansi.fg, Int32Array), bg: b64ToTyped(src.ansi.bg, Int32Array) };
       setTextSource(src.text, src.name, a || null);
-    } else if (src.effect && z.get(src.effect.file)) {
-      await makeEffectAnim(src.effect.kind, src.effect.opts, new File([z.get(src.effect.file)], src.name, { type: src.mime || 'image/png' }), true);
+    } else if (src.effect && get(src.effect.file)) {
+      await makeEffectAnim(src.effect.kind, src.effect.opts, new File([get(src.effect.file)], src.name, { type: src.mime || 'image/png' }), true);
     } else if (src.demo === 'anim') await demoAnim();
-    else if (src.file && z.get(src.file)) await openFile(new File([z.get(src.file)], src.name, { type: src.mime || '' }));
+    else if (src.file && get(src.file)) await openFile(new File([get(src.file)], src.name, { type: src.mime || '' }));
     else throw new Error('the picture is missing from the project');
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
@@ -132,9 +144,9 @@ async function openProject(file) {
     for (const [i, cp, rgb] of meta.edits.cells) Edits.cells.set(i | 0, { cp: cp >>> 0, rgb: rgb < 0 ? null : rgb | 0 });
     Edits.ver++;
   }
-  if (meta.mask && z.get(meta.mask.file) && App.src.kind !== 'text') {
+  if (meta.mask && get(meta.mask.file) && App.src.kind !== 'text') {
     try {
-      const m = maskEnsure(), g = m.canvas.getContext('2d'), raw = z.get(meta.mask.file), w = meta.mask.w | 0, h = meta.mask.h | 0;
+      const m = maskEnsure(), g = m.canvas.getContext('2d'), raw = get(meta.mask.file), w = meta.mask.w | 0, h = meta.mask.h | 0;
       if (raw.length !== w * h * 4) throw new Error('mask size');
       const img = new ImageData(new Uint8ClampedArray(raw.buffer, raw.byteOffset, raw.length), w, h);
       if (w === m.canvas.width && h === m.canvas.height) g.putImageData(img, 0, 0);
@@ -146,7 +158,6 @@ async function openProject(file) {
   if (meta.time > 0 && duration()) seekTo(meta.time);
   if (meta.view && ['out', 'split', 'wipe', 'src', 'text', 'platform'].includes(meta.view)) setView(meta.view);
   App.dirty = true;
-  toast('Project opened: ' + (file.name || src.name));
   return true;
 }
 function initProjects() {

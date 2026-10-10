@@ -436,6 +436,24 @@ UI_TESTS.push(async function sameResultEverywhere(ok) {
   opened.close();
 });
 
+UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
+  await openFile(new File([await canvasToBlob(demoCanvas(), 'image/png')], 'beach.png', { type: 'image/png' })); await wait(30);
+  applySettings({ mode: 'quad', cols: 66, colorMode: 'color', captionBottom: 'hello' }); renderNow();
+  const r0 = App.res, Edit0 = r0.cols; Edits.cols = r0.cols; Edits.rows = r0.rows; Edits.cells.set(7, { cp: 0x40, rgb: null }); Edits.ver++;
+  App.dirty = true; renderNow(); const text0 = resultText(App.res);
+  await sessionSave();
+  applySettings({ cols: 30, captionBottom: '' }); await sessionSave();   // a later change: settings only, the picture is not stored again
+  applySettings({ cols: 66, captionBottom: 'hello' }); Edits.cells.set(7, { cp: 0x40, rgb: null }); Edits.ver++; await sessionSave();
+  const saved = await sessionLoad();
+  ok('Session: the last picture is kept in the browser', !!saved && saved.state.meta.source.name === 'beach.png' && !!saved.source);
+  reset(); await demoAnim(); await wait(30);
+  await sessionResume(saved); App.dirty = true; renderNow();
+  ok('Session: Continue brings back the picture, settings and edits', App.src.name === 'beach.png' && S.mode === 'quad' && S.cols === 66 && Edits.cells.size === 1 && resultText(App.res) === text0);
+  await sessionForget(true);
+  ok('Session: Forget removes it', !(await sessionLoad()));
+  ok('Session: offered on the start screen', !!$('#resumeBox') && $('#resumeBox').hidden);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

@@ -109,6 +109,13 @@ try {
       await send('Page.reload', {}, sessionId);
       check('offline cache controls the page', await until("!!navigator.serviceWorker.controller"));
       check('every app file cached', await ev("caches.keys().then(ks => caches.open(ks.find(k => k.startsWith('textart-')))).then(c => c.keys()).then(k => k.length >= 7)"));
+      // continue where you left off: a picture opened, the page closed and opened again
+      await ev("demoImage().then(() => { applySettings({ mode: 'ascii', cols: 77 }); return sessionSave(); })");
+      await send('Page.reload', {}, sessionId);
+      check('after a reload the start screen offers to continue', await until("!!document.getElementById('resumeBox') && !document.getElementById('resumeBox').hidden"));
+      await ev("document.getElementById('resumeGo').click()");
+      check('Continue opens the last picture with its settings', await until("!!App.src && App.src.name === 'demo-sunset.png' && S.mode === 'ascii' && S.cols === 77"));
+      await ev("sessionForget(true)");
       await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 }, sessionId);
       await send('Page.reload', {}, sessionId);
       check('opens with the network off', await until("typeof App === 'object' && document.readyState === 'complete' && !!document.getElementById('empty')"));
