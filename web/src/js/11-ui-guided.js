@@ -103,6 +103,35 @@ function buildLooks() {
   add.innerHTML = '<b>+</b><span>Save current look</span>'; add.addEventListener('click', openLookDialog);
   el.appendChild(add);
 }
+/* ---- one slider that re-balances the chosen look between airy and full. It always varies from the
+   settings as they stood when it was first moved (the base); any other settings change re-bases it,
+   so repeated moves never pile up. ---- */
+const VARY_KEYS = ['threshold', 'fill', 'gamma', 'bgFade', 'localContrast'];
+const Vary = { base: null, v: 0.5, applying: false };
+function varyApply(v) {
+  if (!Vary.base) Vary.base = Object.fromEntries(VARY_KEYS.map(k => [k, S[k]]));
+  Vary.v = v;
+  const d = (v - 0.5) * 2, b = Vary.base;   // −1 airy … 0 the look itself … +1 full
+  Vary.applying = true;
+  try {
+    applySettings({
+      threshold: clamp(b.threshold - 0.3 * d, 0.05, 0.95),
+      fill: clamp(b.fill + 0.55 * d, 0, 1),
+      gamma: clamp(b.gamma * (1 - 0.35 * d), 0.2, 3),
+      bgFade: clamp(b.bgFade + (d < 0 ? 0.45 * -d : 0), 0, 1),
+      localContrast: clamp(b.localContrast + 0.2 * d, 0, 1),
+    });
+  } finally { Vary.applying = false; }
+  varySync();
+}
+function varyReset() { Vary.base = null; Vary.v = 0.5; varySync(); }
+function varySync() {
+  const s = $('#varySlider'), o = $('#varyOut'); if (!s) return;
+  s.value = String(Vary.v);
+  const d = Math.round((Vary.v - 0.5) * 200);
+  o.textContent = d ? (d > 0 ? '+' : '') + d + '%' : '';
+}
+function initVary() { $('#varySlider').addEventListener('input', () => varyApply(parseFloat($('#varySlider').value))); varySync(); }
 let looksTimer = 0, looksSig = '';
 function scheduleLooks() { clearTimeout(looksTimer); looksTimer = setTimeout(() => { renderLooks(); renderVersionThumbs(); if ($('#galleryDialog').open) renderGallery(); }, 200); }
 const renderLooks = () => renderLookCards($$('#looks .look[data-look]').filter(c => c.offsetParent), { cols: 56, fontSize: 4 }, renderLooks);

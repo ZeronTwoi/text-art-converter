@@ -31,7 +31,8 @@ function updateModeButtons() {
 }
 function onSettingsChanged() {
   UndoHistory.changed();
-  updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
+  if (!Vary.applying) varyReset();   // any outside change re-bases the look slider
+  updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); updateLayerUI(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
   updateRampStrip(); scheduleHistogram(); scheduleSessionSave(); markVersions(); buildPaletteUI();
@@ -284,6 +285,7 @@ function initUI() {
   initDesigner();
   initLookShare();
   initLayers();
+  initVary();
   initLiveLooks();
   initSession();
   buildExportPanel();

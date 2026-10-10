@@ -84,6 +84,9 @@ function toolList() {
   add('Copy as text', 'Share panel', 'clipboard plain', needSrc(actCopyText));
   add('Copy with colours (Word, email)', 'Share panel', 'rich html clipboard', needSrc(actCopyHTML));
   add('Copy ANSI (terminal colours)', 'Share panel', 'terminal escape', needSrc(actCopyANSI));
+  add('Fit a size limit (smaller files)', 'Share panel', 'size limit discord compress megabyte smaller fit mb', needSrc(() => showExport('save', 'fitLimit')));
+  add('Re-balance the look (one slider)', 'Look tab', 'density lighter fuller variation slider balance airy', () => showControl($('#varySlider'), 'look'));
+  add('Back up my settings & looks', 'More menu', 'backup restore settings palettes file', () => $('#moreBtn').click());
   add('Save .txt / .html / .ans / .svg', 'Share panel', 'text file svg html', needSrc(() => showExport('text', '.txt')));
   add('Copy as code (JavaScript, Python, C#)', 'Share panel', 'string program developer json', needSrc(() => showExport('text', 'codeLang')));
   add('Copy a link to this art', 'Share panel', 'url link share', needSrc(actCopyLink));
@@ -96,6 +99,11 @@ function toolList() {
   add('Take the tour again', 'Help', 'tour guide intro first steps', startTour);
   add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
   add("What's new", 'Top bar', 'news changes features', openWhatsNew);
+  add('About this app (version)', 'Help', 'about version build info number', async () => {
+    let v = 'Build ' + BUILD_INFO;
+    try { if (window.desktopHost && window.desktopHost.version) v = 'Desktop app ' + await window.desktopHost.version() + ' · ' + v.toLowerCase(); } catch (e) {}
+    toast(v);
+  });
   if (App.installPrompt) add('Install as an app', 'More', 'offline pwa desktop', () => $('#btnInstall').click());
   return T;
 }
@@ -131,14 +139,18 @@ function runFind(i) {
   setTimeout(() => { try { t.run(); } catch (e) { console.error(e); } }, 30);
 }
 /* ---- what's new: once for people who used an earlier version ---- */
-const WHATS_NEW_ID = '2026-10b';
+const WHATS_NEW_ID = '2026-10c';
 const WAS_HERE_BEFORE = (() => { try { return !!localStorage.getItem('textArtStudio.seenHelp'); } catch (e) { return false; } })();   // read before start-up marks it
 const WHATS_NEW = [
-  ['Interface in 7 languages', 'Language (English, Türkçe, Deutsch, Español, Русский, 日本語, 中文)'], ['Full screen and OBS view', 'Full screen / OBS view'],
+  ['Desktop app for Windows and Linux', 'About this app (version)'],
+  ['Fit a size limit (Discord, e-mail)', 'Fit a size limit (smaller files)'],
+  ['One slider to re-balance a look', 'Re-balance the look (one slider)'],
+  ['Sharp picture on top (logo, watermark)', 'Picture on top (logo, watermark, frame)'],
+  ['Changes over time with their own start and end', 'Change over time (fade in, ramps)'],
+  ['Back up your settings and looks', 'Back up my settings & looks'],
+  ['Interface in 7 languages', 'Language (English, Türkçe, Deutsch, Español, Русский, 日本語, 中文)'],
   ['Before → after video', 'Before → after video (picture turns into the art)'], ['Print and posters', 'Print or poster (A4, A3, PDF)'],
-  ['Plotter and laser SVG', 'Plotter / laser SVG (lines only)'], ['Design your own characters', 'Design your own characters'],
-  ['Reverse, boomerang, speed, smooth loop', 'Reverse, boomerang, speed, smooth loop'], ['Share looks as a link or file', 'Share a look (link or .textlook file)'],
-  ['A picture on top (logo, watermark)', 'Picture on top (logo, watermark, frame)'], ['Look pictures play along with GIFs and videos', 'Look pictures play along (on / off)'],
+  ['Look pictures play along with GIFs and videos', 'Look pictures play along (on / off)'],
   ['Customize the screen', 'Customize the screen (hide parts)'],
 ];
 function openWhatsNew() {

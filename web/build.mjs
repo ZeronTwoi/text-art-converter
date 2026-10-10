@@ -55,7 +55,9 @@ const langs = existsSync(join(src, 'i18n')) ? Object.fromEntries(readdirSync(joi
 const langKeys = [...new Set(Object.values(langs).flatMap(Object.keys))].sort();
 const packed = v => deflateRawSync(Buffer.from(JSON.stringify(v)), { level: 9 }).toString('base64');
 const langData = l => l === 'KEYS' ? packed(langKeys) : langs[l] ? packed(langKeys.map(k => langs[l][k] ?? null)) : '';
-const appScript = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM_BASE64@@', wasm).replace(/'@@LANG_(\w+)@@'/g, (_, l) => `'${langData(l)}'`);
+let appScript = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM_BASE64@@', wasm).replace(/'@@LANG_(\w+)@@'/g, (_, l) => `'${langData(l)}'`);
+// a build stamp (shown by "About this app" in the find tool); from the sources only, so the build stays reproducible
+appScript = appScript.replace('@@BUILD@@', createHash('sha256').update(appScript).digest('hex').slice(0, 8));
 const testScript = appScript + testParts.map(f => read(src, 'tests', f)).join('');
 const page = read(src, 'page.html'), styles = read(src, 'styles.css');
 const pageWith = script => page.replace('@@STYLES@@\n', () => styles).replace('@@SCRIPTS@@\n', () => script);

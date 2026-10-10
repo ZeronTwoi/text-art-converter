@@ -41,6 +41,11 @@ function initPWA() {
     const arrived = files => { const f = files && files[0]; if (f) openFile(new File([f.data], f.name, { type: f.type || '' })); };
     window.desktopHost.onOpenedFiles(arrived);
     window.desktopHost.takeOpenedFiles().then(arrived);
+    // a newer release exists (checked only when the app starts, only if the user said yes): a small ⚠ in the top bar
+    if (window.desktopHost.onUpdateAvailable) window.desktopHost.onUpdateAvailable(() => {
+      const b = $('#updateBadge'); b.hidden = false;
+      b.addEventListener('click', () => { b.hidden = true; window.desktopHost.openUpdate(); });
+    });
   }
   if (!servedOnWeb()) return;   // a file on disk: nothing to install, nothing to cache
   const link = document.createElement('link'); link.rel = 'manifest'; link.href = 'manifest.webmanifest'; document.head.appendChild(link);

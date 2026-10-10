@@ -251,7 +251,7 @@ function setSource(s) {
     v.addEventListener('play', () => { if (App.src === s) App.playing = true; });
     v.addEventListener('pause', () => { if (App.src === s) App.playing = false; });
     v.addEventListener('seeked', () => { if (App.src === s) App.dirty = true; });
-    v.addEventListener('loadeddata', () => { if (App.src === s) App.dirty = true; });
+    v.addEventListener('loadeddata', () => { if (App.src === s) { App.dirty = true; scheduleLooks(); } });   // the look cards show the first frame as soon as it can be drawn
     v.addEventListener('ended', () => {
       if (App.src !== s || App.exporting) return;
       if (App.loop) { v.currentTime = trimRange()[0]; v.play().catch(() => {}); }
@@ -268,7 +268,7 @@ function setSource(s) {
   else if (s.kind === 'anim' || s.kind === 'webcam') setPlaying(true);
   if (s.kind !== 'image' && s.kind !== 'text') setTimeout(() => Pool.size(), 0);   // start the workers before playback needs them
   App.look = null; markLooks(); scheduleLooks(); buildFilmstrip(); setStep(2);
-  updateEffectsUI(); $('#resumeBox').hidden = true; scheduleSessionSave();
+  updateEffectsUI(); updateLayerUI(); $('#resumeBox').hidden = true; scheduleSessionSave();
 }
 function updateSrcInfo() {
   const s = App.src; if (!s) { $('#srcInfo').textContent = 'No file loaded'; return; }

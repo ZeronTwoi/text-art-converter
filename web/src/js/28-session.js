@@ -73,6 +73,7 @@ async function sessionResume(saved) {
 const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString(); };
 async function initSession() {
   $('#btnForget').addEventListener('click', () => sessionForget(false));
+  initBackup();
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
   if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
   if (location.hash.startsWith('#present')) return;   // full screen / OBS: opened by initPresent
@@ -85,4 +86,30 @@ async function initSession() {
   box.hidden = false;
   $('#resumeGo').onclick = () => sessionResume(saved);
   $('#resumeNo').onclick = () => sessionForget(true);
+}
+/* ---- backup: your settings, looks and palettes as one small file (the open picture is not inside; projects are) ---- */
+function initBackup() {
+  $('#btnBackup').addEventListener('click', () => {
+    const data = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('textArtStudio.')) data[k] = localStorage.getItem(k); } }
+    catch (e) { toast('Browser storage is unavailable', 'error'); return; }
+    const out = { app: 'text-art-studio', kind: 'backup', saved: new Date().toISOString(), data };
+    download(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), 'text-art-studio-backup.json');
+    toast('Backup saved. It brings back your settings, looks and palettes on any computer');
+  });
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.hidden = true; document.body.appendChild(inp);
+  inp.addEventListener('change', async () => {
+    const f = inp.files[0]; inp.value = '';
+    if (!f) return;
+    try {
+      const b = JSON.parse(await f.text());
+      if (!b || b.kind !== 'backup' || !b.data || typeof b.data !== 'object') throw new Error('not a backup of this app');
+      if (!confirm('Replace the settings, looks and palettes of this browser with the backup from ' + (b.saved ? b.saved.slice(0, 10) : '?') + '?')) return;
+      let n = 0;
+      for (const [k, v] of Object.entries(b.data)) if (k.startsWith('textArtStudio.') && typeof v === 'string') { localStorage.setItem(k, v); n++; }
+      if (!n) throw new Error('the file holds nothing to restore');
+      location.reload();   // start again with the restored settings
+    } catch (e) { toast('Could not restore: ' + e.message, 'error'); }
+  });
+  $('#btnRestore').addEventListener('click', () => inp.click());
 }

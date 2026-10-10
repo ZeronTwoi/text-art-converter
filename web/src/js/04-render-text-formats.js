@@ -48,6 +48,19 @@ function renderBackground(res, S, canvas, scale, opts) {
   }
   return { ctx, cw, ch };
 }
+/* the "picture on top" in its Sharp style: the picture itself, drawn over the characters (every
+   source kind, including text art). The bitmap comes from sharpLayerBmp(): the open layer here,
+   the job's own copy on a worker. */
+function drawSharpLayer(ctx, W, H, S) {
+  const b = S.layerOn && S.layerStyle === 'sharp' && S.layerOpacity > 0 ? sharpLayerBmp() : null;
+  if (!b) return;
+  const w = W * S.layerSize, h = w * b.height / b.width;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = S.layerOpacity; ctx.globalCompositeOperation = S.layerBlend;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(b, S.layerX * W - w / 2, S.layerY * H - h / 2, w, h);
+  ctx.restore();
+}
 function renderResult(res, S, canvas, scale = 1, opts = {}) {
   const { ctx, cw, ch } = renderBackground(res, S, canvas, scale, opts), { cols } = res;
   const m = res.mode, shapes = S.renderStyle === 'shapes' && MODES[m] && MODES[m].shapes;
@@ -118,6 +131,7 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
       for (const c of list) ctx.fillText(chr(cp[c]), X(c) + cw / 2, Y(c) + ch / 2);
     }
   }
+  drawSharpLayer(ctx, canvas.width, canvas.height, S);
   return canvas;
 }
 
@@ -127,7 +141,7 @@ function renderResult(res, S, canvas, scale = 1, opts = {}) {
 const PreviewCache = { map: new Map(), bytes: 0, max: 256e6 };
 function previewCacheClear() { for (const e of PreviewCache.map.values()) e.bmp.close(); PreviewCache.map.clear(); PreviewCache.bytes = 0; }
 function drawPreview(res, S, canvas) {
-  const sig = objId(res) + '|' + RENDER_KEYS.map(k => S[k]).join('|');
+  const sig = objId(res) + '|' + RENDER_KEYS.map(k => S[k]).join('|') + (S.layerOn && S.layerStyle === 'sharp' && Layer.bmp ? '|SL' + Layer.id : '');
   if (canvas._sig === sig) return canvas;   // this picture is already there
   const hit = PreviewCache.map.get(sig);
   if (hit) {

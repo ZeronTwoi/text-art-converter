@@ -5,7 +5,9 @@
    ===================================================================== */
 const Layer = { bmp: null, png: null, name: '', id: 0 };
 const LAYER_MAX = 1024;
-function layerActive(S) { return !!(Layer.bmp && S.layerOn && S.layerOpacity > 0); }
+/* 'chars' mixes the picture in before the conversion; 'sharp' draws it crisp over the characters (drawSharpLayer) */
+function layerActive(S) { return !!(Layer.bmp && S.layerOn && S.layerOpacity > 0 && S.layerStyle !== 'sharp'); }
+function sharpLayerBmp() { return Layer.bmp; }   // on a worker the job's own copy stands in (engineSource)
 function layerSig(S) { return layerActive(S) ? `|L${Layer.id},${S.layerX},${S.layerY},${S.layerSize},${S.layerOpacity},${S.layerBlend}` : ''; }
 /* draws the layer over a picture that drawTransformed drew (an sw × sh source on a W × H canvas) */
 function drawLayer(ctx, sw, sh, W, H, S) {
@@ -45,6 +47,10 @@ function updateLayerUI() {
   $('#layerOpts').hidden = !on; $('#layerRemove').hidden = !on;
   $('#layerPick').textContent = on ? 'Change picture…' : '＋ Choose a picture…';
   $('#layerName').textContent = on ? Layer.name : '';
+  const hint = $('#layerHint'), text = App.src && App.src.kind === 'text';
+  hint.hidden = !on || !(text || S.layerStyle === 'sharp');
+  if (!hint.hidden) hint.textContent = text && S.layerStyle !== 'sharp' ? 'Text art keeps its characters. Choose the Sharp style to show the picture.'
+    : 'The sharp picture appears in saved pictures and videos, not in copied text or SVG.';
 }
 /* projects */
 function layerProjectFiles(meta, files) { if (Layer.bmp && Layer.png) { meta.layer = { file: 'layer.png', name: Layer.name }; files.push({ name: 'layer.png', data: Layer.png }); } }

@@ -250,7 +250,7 @@ function engineSource() {
   const fns = [hexToRgb, newCanvas, scratchBuf, cropRect, normRot, gridFor, stepCanvas, drawTransformed, bayerMatrix, hashNoise, quantizeGrid,
     getGlyphTable, glyphOrder, getRamp, glyphChars, sobel, hiFactor, hiPixels, samplePixels, wasmEdges, edgeGradients, outlineMap, dirCharCp, localStats, backgroundMask, memoKey, maskFor, convert, convertRaw, convertCore,
     applyOverlay, wrapCaption, captionRaster, retroColour, emojiTable, nearestEmoji, pixelGlyph, pixelCharRects, drawPixelText, paletteKey, customPal, parsePaletteText,
-    appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
+    appColour, discordCode, pictureSize, cellSize, chr, groupsOf, renderBackground, drawSharpLayer, renderResult, resultText, quantizeRGBA, paletteFromHistogram, rgbaHistogram, nearestLut, mapNearest, ditherToPalette,
     lzwEncode, gifFrameInto, gifFrameBytes, gifJobBytes, zlibDeflate, pngFiltered, apngJobBytes, webpStill, webpJobBytes, clearEngineCaches];
   // functions are copied by their source text: an arrow function here would lose its name in the worker
   for (const f of fns) if (typeof f !== 'function' || !/^(async\s+)?function[\s*]/.test(f.toString())) throw new Error(`engineSource: "${f && f.name}" must be a function declaration (arrows go in the arrows list)`);
@@ -269,6 +269,9 @@ function engineSource() {
     'function maskPixels() { return null; }',
     'function drawLayer() {}',
     'function layerSig() { return ""; }',
+    // the sharp "picture on top": each job brings the picture once; decoded here, cached by its id
+    'let SHARP_BMP = null, SHARP_ID = 0, SHARP_LAYER = null;',
+    'function sharpLayerBmp() { return SHARP_LAYER; }',
     'function withOverlay(r) { return r; }',
     'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
     'let pixelGlyphs = null; const customPals = new Map();',
@@ -291,6 +294,7 @@ onmessage = async e => {
   const { id, op, a } = e.data;
   try {
     let r, tr = [];
+    if (a && a.layer) { if (SHARP_ID !== a.layer.id) { SHARP_BMP = await createImageBitmap(new Blob([a.layer.png])); SHARP_ID = a.layer.id; } SHARP_LAYER = SHARP_BMP; } else SHARP_LAYER = null;
     if (op === 'gif') { r = gifJobBytes(a); tr = [r.buffer]; }
     else if (op === 'apng') { r = await apngJobBytes(a); tr = [r.data.buffer]; }
     else if (op === 'webp') { r = await webpJobBytes(a); tr = [r.bits.buffer].concat(r.alph ? [r.alph.buffer] : []); }
@@ -338,6 +342,8 @@ onmessage = async e => {
       const ws = this.size() ? init().filter(w => w.busy < 1e9) : [];
       if (!ws.length) return Promise.reject(new Error('no workers'));
       const w = ws.reduce((b, x) => x.busy < b.busy ? x : b), id = ++seq;
+      // the sharp "picture on top" travels with the job (drawn by renderResult on the worker too)
+      if (a && typeof a === 'object' && a.layer === undefined && Layer.bmp && Layer.png) a.layer = { id: Layer.id, png: Layer.png };
       w.busy++;
       return new Promise((res, rej) => { jobs.set(id, { res, rej, w }); w.postMessage({ id, op, a }, transfer || []); });
     },

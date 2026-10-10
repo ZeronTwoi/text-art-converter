@@ -22,6 +22,7 @@
     <button class="step" data-step="4" title="Copy to a chat app or save a file"><b>4</b><span>Share / save</span></button>
   </nav>
   <div class="topacts">
+    <button class="btn" id="updateBadge" hidden title="A newer version of the app is out. Click to open the download page" aria-label="A newer version of the app is out">⚠</button>
     <button class="btn findbtn" id="btnFind" title="Find any tool or setting by name (Ctrl+K)" aria-label="Find a tool"><span aria-hidden="true">🔍</span><b>Find a tool</b><kbd>Ctrl K</kbd></button>
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
     <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart,.textlook">
@@ -41,6 +42,8 @@
         <label class="menulang"><span>🌐 Language</span><select id="langSel" translate="no" aria-label="Language"></select></label>
         <button id="btnCustomize" title="Hide the parts of the screen you do not use">⚙ Customize the screen…</button>
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
+        <button id="btnBackup" title="Saves your settings, looks and palettes as one small file (not the open picture)">🧳 Back up my settings…</button>
+        <button id="btnRestore" title="Brings back the settings, looks and palettes of a backup file">📥 Restore a backup…</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
         <div class="menulabel">Help</div>
         <button id="btnNews">✨ What's new</button>
@@ -70,6 +73,7 @@
       <h3 class="h">Quick looks <span>point at one to preview, click to apply · <button class="linkbtn" id="galleryOpen" title="All looks at a bigger size">⊞ Bigger previews</button><span class="anim-only"> · <button class="linkbtn" id="liveLooks" aria-pressed="true" title="The look pictures play along with your GIF or video (turns itself off if it is too slow)">▶ Play along: on</button></span></span></h3>
       <div class="looks" id="looks"></div>
       <button class="btn wide moreLooks" id="moreLooks" aria-expanded="false">Show all looks ▾</button>
+      <div class="row" id="varyRow" title="One slider that re-balances the look between airy and full (shading, threshold, light) without changing the width. Middle: the look as designed"><label>Lighter ↔ fuller <output id="varyOut"></output></label><input type="range" id="varySlider" min="0" max="1" step="0.01" value="0.5" aria-label="Re-balance the look between airy and full"></div>
       <h3 class="h">Drawn with <span>the kind of characters</span></h3>
       <div class="modes" id="modes"></div>
       <div class="hint" id="modeHint"></div>
@@ -297,6 +301,8 @@
             <div class="row"><label>Opacity <output data-out="layerOpacity" data-pct></output></label><input type="range" data-key="layerOpacity" min="0" max="1" step="0.01"></div>
             <div class="row"><label>Blend</label><select data-key="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply (darken)</option><option value="screen">Screen (lighten)</option><option value="overlay">Overlay</option><option value="difference">Difference</option></select></div>
           </div>
+          <div class="row"><label>Style</label><select data-key="layerStyle"><option value="chars">As characters</option><option value="sharp">Sharp (drawn on top)</option></select></div>
+          <p class="muted small" id="layerHint" hidden></p>
         </div>
       </details>
       <details class="group fold" data-fold="mask" style="margin-top:10px">

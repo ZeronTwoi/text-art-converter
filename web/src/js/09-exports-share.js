@@ -467,18 +467,26 @@ function updatePlatformView() {
   });
   const plain = t => t.replace(/\u001b\[[0-9;]*m/g, '');
   const inner = Math.max(120, (chat.clientWidth ? chat.clientWidth - 24 : (desk ? 680 : 340)) - 20 - (code ? 12 : 0) - 4);
+  const g = (updatePlatformView.ctx = updatePlatformView.ctx || document.createElement('canvas').getContext('2d'));
+  g.font = `100px ${family}`;
+  const lines = parts.flatMap(t => plain(t).split('\n'));
   let px = 13;
   if (tc) {
-    const g = (updatePlatformView.ctx = updatePlatformView.ctx || document.createElement('canvas').getContext('2d'));
-    g.font = `100px ${family}`;
-    const lines = parts.flatMap(t => plain(t).split('\n'));
     if (res.cols <= tc) px = inner * 100 / Math.max(1, ...lines.map(l => g.measureText(l).width)) * 0.99;   // fits: widest real line just fits
     else { const longest = lines.reduce((a, l) => l.length > a.length ? l : a, ''); px = inner * 100 / Math.max(1, g.measureText(longest).width / Math.max(1, Array.from(longest).length) * tc); }   // too wide: show the wrapping
     px = clamp(px, 4, 28);
   }
+  // line height so a cell is as tall relative to its width as the conversion assumed (charAspect),
+  // measured on this picture's own characters: then this view's proportions match the app's views
+  let lh = 1.25;
+  if (mono) {
+    const sample = lines.find(l => l.trim().length > 3) || 'MMMM';
+    const adv = g.measureText(sample).width / Math.max(1, Array.from(sample).length) / 100;
+    lh = clamp(adv * ((App.shareSettings || S).charAspect || 2), 0.8, 3);
+  }
   for (const t of parts) {
     const bubble = document.createElement('div'); bubble.className = 'bubble' + (code ? ' code' : '') + (colour || chatTheme(P) === 'dark' ? ' dark' : '');
-    const pre = document.createElement('pre'); pre.style.font = `${px.toFixed(2)}px/1.25 ${family}`;
+    const pre = document.createElement('pre'); pre.style.font = `${px.toFixed(2)}px/${lh.toFixed(3)} ${family}`;
     if (colour) {   // render the Discord colours
       let col = DISCORD_CSS[37];
       for (const tok of t.split(/(\u001b\[[0-9;]*m)/)) {
@@ -1332,8 +1340,16 @@ function buildExportPanel() {
     qs.insertAdjacentHTML('beforeend', `<div class="qseg" id="qualitySeg">${Object.entries(QUALITY).map(([k, q]) => `<button data-q="${k}"><b>${q.name}</b><small>${q.note}</small></button>`).join('')}</div>
       <p class="muted small" id="qualityCustom" hidden style="margin:4px 0 0">Custom settings (changed by hand).</p>
       <div class="sizeinfo" id="sizeInfoBox">…</div>
-      <p class="muted small" style="margin:6px 0 0">Sizes are shown on each button below. Fewer characters (Adjust → Width) also makes files smaller.</p>`);
+      <p class="muted small" style="margin:6px 0 0">Sizes are shown on each button below. Fewer characters (Adjust → Width) also makes files smaller.</p>
+      <div class="row" style="margin-top:6px"><label title="Lowers colours, frames and size until the export fits the chosen limit">Fit a size limit</label>
+        <div class="inline"><select id="fitLimit" aria-label="Size limit"><option value="">No limit</option><option value="10">10 MB (Discord)</option><option value="8">8 MB</option><option value="25">25 MB (e-mail)</option><option value="custom">Custom…</option></select><input type="number" id="fitMB" min="0.2" step="0.5" value="5" hidden aria-label="Size limit (MB)" style="width:64px"><button class="btn" id="fitGo" disabled>Fit now</button></div></div>
+      <p class="muted small" id="fitNote" hidden style="margin:4px 0 0"></p>
+      <canvas id="fitPreview" hidden title="Roughly how the compressed GIF will look (its colours)" style="max-width:100%;border-radius:8px;margin-top:4px"></canvas>`);
     $$('#qualitySeg button', qs).forEach(b => b.addEventListener('click', () => applyQuality(b.dataset.q)));
+    const fitSel = qs.querySelector('#fitLimit'), fitMB = qs.querySelector('#fitMB'), fitGo = qs.querySelector('#fitGo');
+    const fitArm = () => { fitMB.hidden = fitSel.value !== 'custom'; fitGo.disabled = !fitBudgetBytes(); };
+    fitSel.addEventListener('change', fitArm); fitMB.addEventListener('input', fitArm);
+    fitGo.addEventListener('click', fitToLimit);
   }
   const im = section(animated ? 'Picture of this frame' : 'Picture', ''); im.dataset.goal = 'save';
   IMG_FORMATS.forEach((f, i) => btn(im, f.label, () => saveImage(f), { primary: i === 0, est: f.ext }));

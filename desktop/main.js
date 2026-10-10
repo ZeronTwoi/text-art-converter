@@ -4,12 +4,14 @@
 // a double-click or a second start, allows the camera, opens outside links in the
 // system browser — and nothing more: the page itself is unchanged and self-contained.
 'use strict';
-const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, screen, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 
 const APP_ID = 'io.github.lightervoids.text-art-studio';
+const RELEASES_API = 'https://api.github.com/repos/ZeroCopOne/ImageTo_Text_TextImage/releases/latest';
+const RELEASES_PAGE = 'https://github.com/ZeroCopOne/ImageTo_Text_TextImage/releases/latest';
 const webDir = app.isPackaged ? path.join(process.resourcesPath, 'web') : path.join(__dirname, '..', 'web');
 
 // app:// behaves like https:// (a "standard", secure scheme), so storage works and persists
@@ -78,6 +80,51 @@ function windowState() {
   return { width: 1280, height: 840 };
 }
 
+/* ---- new versions: asked once, then only the release tag is fetched, only at start ---- */
+const updateFile = () => path.join(app.getPath('userData'), 'update-check.json');
+const readJson = (f, fallback) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return fallback; } };
+const newerThan = (tag, mine) => {
+  const p = s => (/(\d+)\.(\d+)\.(\d+)/.exec(String(s)) || []).slice(1, 4).map(Number);
+  const a = p(tag), b = p(mine);
+  return a.length === 3 && b.length === 3 && (a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) > 0;
+};
+async function updateCheck(win) {
+  let cfg = readJson(updateFile(), null);
+  if (!cfg) {
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question', buttons: ['Yes, tell me', 'No, never ask again'], defaultId: 0, cancelId: 1,
+      message: 'Tell you when a new version is out?',
+      detail: 'At every start the app would fetch only the latest version number from GitHub. Nothing about you or your pictures is sent. When a newer version exists, a small ⚠ appears in the top bar.',
+    });
+    cfg = { enabled: response === 0 };
+    try { fs.writeFileSync(updateFile(), JSON.stringify(cfg)); } catch (e) {}
+  }
+  if (!cfg.enabled) return;
+  try {
+    const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(RELEASES_API, { signal: ctrl.signal, headers: { accept: 'application/vnd.github+json' } });
+    clearTimeout(to);
+    if (!r.ok) return;
+    const tag = (await r.json()).tag_name || '';
+    if (newerThan(tag, app.getVersion()) && !win.isDestroyed()) win.webContents.send('update-available', { tag });
+  } catch (e) {}   // offline or rate-limited: quietly nothing
+}
+ipcMain.handle('update:open', () => shell.openExternal(RELEASES_PAGE));
+ipcMain.handle('app:version', () => app.getVersion());
+
+/* ---- page zoom on Ctrl+ / Ctrl- / Ctrl0, kept for the next start ---- */
+function handleKeys(win, input) {
+  const zooms = { '+': 0.5, '=': 0.5, '-': -0.5 };
+  if (input.control && !input.alt && input.key in zooms) {
+    const wc = win.webContents;
+    wc.setZoomLevel(Math.max(-3, Math.min(3, wc.getZoomLevel() + zooms[input.key])));
+    return true;
+  }
+  if (input.control && !input.alt && input.key === '0') { win.webContents.setZoomLevel(0); return true; }
+  if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) { win.webContents.toggleDevTools(); return true; }
+  return false;
+}
+
 function start() {
   // only the page itself (and, in a source checkout, its test page); the page needs no other files
   protocol.handle('app', async req => {
@@ -104,8 +151,9 @@ function start() {
   });
   Menu.setApplicationMenu(null);   // the page is the whole interface
   if (s.maximized) win.maximize();
-  win.once('ready-to-show', () => win.show());
-  win.on('close', () => { try { fs.writeFileSync(stateFile(), JSON.stringify({ ...win.getNormalBounds(), maximized: win.isMaximized() })); } catch (e) {} });
+  if (typeof s.zoom === 'number') win.webContents.on('did-finish-load', () => win.webContents.setZoomLevel(s.zoom));
+  win.once('ready-to-show', () => { win.show(); if (!smokeData) setTimeout(() => win && !win.isDestroyed() && updateCheck(win), 1500); });
+  win.on('close', () => { try { fs.writeFileSync(stateFile(), JSON.stringify({ ...win.getNormalBounds(), maximized: win.isMaximized(), zoom: win.webContents.getZoomLevel() })); } catch (e) {} });
   win.on('closed', () => { win = null; });
 
   // links to the outside open in the system browser; the window never leaves the page
@@ -113,11 +161,19 @@ function start() {
   win.webContents.on('will-navigate', (e, url) => {
     if (!url.startsWith('app://app/')) { e.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url); }
   });
-  // F12 or Ctrl+Shift+I: the developer tools (there is no menu to reach them)
+  // zoom keys and F12 (there is no menu to reach these)
   win.webContents.on('before-input-event', (e, input) => {
-    if (input.type === 'keyDown' && (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i'))) {
-      win.webContents.toggleDevTools(); e.preventDefault();
-    }
+    if (input.type === 'keyDown' && handleKeys(win, input)) e.preventDefault();
+  });
+  // if the page ever crashes, offer to reload it (the session auto-saves, so little is lost)
+  win.webContents.on('render-process-gone', async (e, details) => {
+    if (details.reason === 'clean-exit' || !win || win.isDestroyed()) return;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'error', buttons: ['Reload', 'Close'], defaultId: 0, cancelId: 1,
+      message: 'The page stopped unexpectedly (' + details.reason + ').',
+      detail: 'Reload to continue. The last auto-saved state of your picture is offered again on the start screen.',
+    });
+    if (response === 0) win.webContents.reload(); else win.close();
   });
 
   win.loadURL('app://app/index.html');

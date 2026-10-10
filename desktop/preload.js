@@ -6,4 +6,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('desktopHost', {
   takeOpenedFiles: () => ipcRenderer.invoke('open-files:take'),                   // files from this start
   onOpenedFiles: cb => ipcRenderer.on('open-files', (e, files) => cb(files)),     // files from a later start
+  onUpdateAvailable: cb => ipcRenderer.on('update-available', (e, info) => cb(info)),   // a newer release exists
+  openUpdate: () => ipcRenderer.invoke('update:open'),                            // open the download page outside
+  version: () => ipcRenderer.invoke('app:version'),
 });
