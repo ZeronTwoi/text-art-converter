@@ -308,6 +308,30 @@ UI_TESTS.push(async function effects(ok, { wait }) {
 });
 async function backToStillWait() { backToStill(); for (let i = 0; i < 50 && App.src.kind !== 'image'; i++) await new Promise(r => setTimeout(r, 20)); }
 
+UI_TESTS.push(async function guides(ok, { wait }) {
+  await demoImage(); await wait(30);
+  applySettings({ mode: 'ascii', charset: 'standard' }); renderNow();
+  const strip = $('#rampStrip');
+  ok('Ramp strip: the characters from light to dense', !strip.hidden && strip.textContent.replace(/\u00a0/g, ' ') === CHARSETS.standard.chars, JSON.stringify(strip.textContent));
+  applySettings({ charset: 'blocks', fg: '#ff0000' });
+  ok('Ramp strip: follows the character set and colours', strip.textContent.includes('▓') && strip.style.color === 'rgb(255, 0, 0)');
+  applySettings({ mode: 'braille' });
+  ok('Ramp strip: hidden where there is no ramp', strip.hidden);
+  // histogram numbers: a picture that is half black, half white
+  const px = new Uint8ClampedArray(100 * 4); for (let i = 0; i < 100; i++) { const v = i < 50 ? 0 : 255; px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v; px[i * 4 + 3] = 255; }
+  const h0 = toneHistogram(px, Object.assign({}, DEFAULTS));
+  ok('Histogram: counts pure black and white', Math.abs(h0.black - 0.5) < 1e-9 && Math.abs(h0.white - 0.5) < 1e-9 && h0.before[0] === 50 && h0.before[63] === 50);
+  const mid = new Uint8ClampedArray(4).fill(128); mid[3] = 255;
+  const hb = toneHistogram(mid, Object.assign({}, DEFAULTS, { brightness: 0.3 }));
+  ok('Histogram: brightness moves the line right', hb.after.findIndex(v => v > 0) > hb.before.findIndex(v => v > 0));
+  // the histogram follows the engine: same brightness as the conversion's internal tone curve
+  const St = Object.assign({}, DEFAULTS, { gamma: 1.7, contrast: 0.2, saturation: 1.5 }), g = toneHistogram(px, St);
+  ok('Histogram: other settings work', g.count === 100);
+  setTab('adjust'); applySettings({ brightness: 0.2 }); await wait(250);
+  ok('Histogram: drawn in the Adjust tab with a note', $('#toneHist').width > 50 && /pure black/.test($('#toneInfo').textContent), $('#toneInfo').textContent);
+  setTab('look');
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

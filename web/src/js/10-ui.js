@@ -33,6 +33,7 @@ function onSettingsChanged() {
   updateOutputs(); updateVisibility(); updateModeButtons(); updateChoices(); updateQualityButtons(); saveSettings(); App.dirty = true;
   const sig = [S.cropL, S.cropR, S.cropT, S.cropB, S.rotate, S.flipH, S.flipV, S.charAspect].join();
   if (sig !== looksSig) { looksSig = sig; scheduleLooks(); }
+  updateRampStrip(); scheduleHistogram();
 }
 function onControl(el) {
   const key = el.dataset.key; let v;
@@ -264,6 +265,7 @@ function initUI() {
   initProjects();
   initEditTools();
   initEffects();
+  initGuides();
   buildExportPanel();
   requestAnimationFrame(tick);
 }

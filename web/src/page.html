@@ -63,6 +63,7 @@
         <div data-when="mode:ascii,edge">
           <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span></label>
             <select id="charsetSel" data-key="charset"></select></div>
+          <div class="ramp" id="rampStrip" role="img"></div>
           <div class="row" data-when="charset:custom"><label>Your characters (light → dense)</label>
             <input type="text" data-key="customChars" spellcheck="false" class="mono"></div>
           <div class="row adv"><label class="chk"><input type="checkbox" data-key="sortRamp"> Sort them by how much ink each one has</label></div>
@@ -126,6 +127,8 @@
       </div>
       <div class="group">
         <h3 class="h">Light</h3>
+        <canvas class="tonehist" id="toneHist" role="img" aria-label="Brightness histogram of the picture, before and after the light settings" title="Brightness of the picture, dark (left) to light (right). Grey bars: the picture. Line: after your light settings. Dashed: the threshold of dot styles."></canvas>
+        <div class="hint" id="toneInfo"></div>
         <div class="row"><label>Brightness <output data-out="brightness"></output></label><input type="range" data-key="brightness" min="-1" max="1" step="0.01"></div>
         <div class="row"><label>Contrast <output data-out="contrast"></output></label><input type="range" data-key="contrast" min="-1" max="0.95" step="0.01"></div>
         <div class="pair adv">

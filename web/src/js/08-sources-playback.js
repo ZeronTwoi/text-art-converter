@@ -434,6 +434,7 @@ function showResult(res, t0) {
   }
   App.res = res;
   if (Edit.on || Edits.cells.size) updateEditUI();
+  scheduleHistogram();
   drawPreview(res, S, out);
   if (App.view === 'src' || App.view === 'split' || App.view === 'wipe') drawSourceView();
   if (App.view === 'text') updateRawText();

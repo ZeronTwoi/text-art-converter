@@ -295,6 +295,11 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .cellinfo{flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .row input[type=color]{width:100%;height:28px}
 body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
+/* guides: character ramp, brightness histogram */
+.ramp{display:flex;gap:1px;overflow-x:auto;padding:5px 6px;border-radius:7px;border:1px solid var(--line);margin:4px 0 6px;font-size:16px;line-height:1.2;scrollbar-width:thin;white-space:nowrap}
+.ramp span{min-width:.62em;text-align:center;cursor:default}
+.tonehist{width:100%;height:46px;display:block;border-radius:7px;background:var(--panel);border:1px solid var(--line);margin-bottom:2px}
+#toneInfo.warn{color:#d99a06}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
