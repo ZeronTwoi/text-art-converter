@@ -330,8 +330,14 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 .ver:hover .vdel,.ver:focus-visible .vdel{opacity:1}
 .ver.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .versions #verAdd{padding:4px 8px}
-.versions.empty .vlabel{display:none}
+.versions.none .vlabel{display:none}
 @media (hover:none){.ver .vdel{opacity:1}}
+/* editor cursor and selection */
+.ecursor,.esel{position:absolute;pointer-events:none;z-index:3}
+.ecursor{border:2px solid var(--accent);box-shadow:0 0 0 1px #000;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{border-color:transparent;box-shadow:none}}
+.esel{border:1.5px dashed #fff;outline:1.5px dashed #000;outline-offset:-3px;background:rgba(110,231,183,.12)}
+.editsel{display:inline-flex;gap:4px;flex-wrap:wrap}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -666,7 +672,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
       </div>
       <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
-      <div class="versions empty" id="versions" role="group" aria-label="Versions of your settings">
+      <div class="versions none" id="versions" role="group" aria-label="Versions of your settings">
         <span class="vlabel">Versions</span><span id="verList" class="verlist"></span>
         <button class="btn" id="verAdd" title="Keep the current settings as a version (A–D). Try other settings, then click the version to come back or compare">+ Keep</button>
       </div>
@@ -682,11 +688,17 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <button data-tool="paint" title="Put the character there (drag to paint)">✎ Brush</button>
         <button data-tool="pick" title="Take a character and its colour from the picture">⌖ Pick</button>
         <button data-tool="erase" title="Back to the original character">⌫ Erase</button>
+        <button data-tool="type" title="Click where to start, then type text">T Type</button>
+        <button data-tool="select" title="Select a box of characters to copy, move, delete or fill">⬚ Select</button>
+        <button data-tool="fill" title="Fill an area of one character with the brush">◩ Fill</button>
       </div>
       <label class="echar" title="Type any character (or press a key while editing)">Character <input id="editChar" class="mono" spellcheck="false" autocomplete="off"></label>
       <input type="color" id="editColor" aria-label="Brush colour" title="Colour of the new characters">
       <label class="chk" title="New characters keep the colour of the cell they replace"><input type="checkbox" id="editKeep"> Keep colours</label>
       <button class="btn icon" id="editUndo" title="Undo (Ctrl+Z)" aria-label="Undo edit">↶</button><button class="btn icon" id="editRedo" title="Redo (Ctrl+Y)" aria-label="Redo edit">↷</button>
+      <span class="editsel" id="editSelActs" hidden>
+        <button class="btn" id="editCopy" title="Copy (Ctrl+C)">Copy</button><button class="btn" id="editCut" title="Cut (Ctrl+X)">Cut</button><button class="btn" id="editPaste" title="Paste (Ctrl+V)">Paste</button><button class="btn" id="editDel" title="Empty the box (Delete)">Delete</button><button class="btn" id="editFillSel" title="Fill the box with the brush character">Fill box</button>
+      </span>
       <button class="btn" id="editClear">Clear edits</button>
       <span class="einfo" id="editInfo" role="status"></span>
       <button class="btn primary" id="editDone">Done</button>
@@ -725,6 +737,7 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
       <div class="views view-out" id="views" hidden>
         <canvas id="srcCanvas"></canvas>
         <canvas id="outCanvas"></canvas>
+        <div id="editCursor" class="ecursor" hidden></div><div id="editSel" class="esel" hidden></div>
         <div id="wipeBar" class="wipebar" role="slider" tabindex="0" aria-label="Wipe: original on the left, result on the right" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><i></i></div>
         <pre id="rawText"></pre>
         <div id="platformView"><div class="phone" id="phone">
@@ -3356,7 +3369,7 @@ function applyZoom() {
   }
   out.style.imageRendering = App.zoom >= 2 ? 'pixelated' : 'auto';
   setText('zoomLabel', App.zoom ? Math.round(App.zoom * 100) + '%' : 'Fit');
-  placeWipe();
+  placeWipe(); if (typeof placeEditOverlay === 'function') placeEditOverlay();
 }
 function currentScaleForZoom() {
   const out = $('#outCanvas'), r = out.getBoundingClientRect();
@@ -6693,6 +6706,45 @@ UI_TESTS.push(async function editing(ok, { wait }) {
   editsClear();
 });
 
+UI_TESTS.push(async function editorMore(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 60 }); renderNow(); editsClear();
+  const out = $('#outCanvas'), at = (fx, fy) => { const b = out.getBoundingClientRect(); return cellAt({ clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }); };
+  const key = k => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  setEditMode(true); Edit.tool = 'type'; updateEditUI();
+  uiDrag(out, [0.1, 0.5], [0.1, 0.5], 1); const c0 = at(0.1, 0.5);
+  for (const k of 'Hi there') key(k); key('Enter'); key('A'); key('B'); key('Backspace'); renderNow();
+  const row = y => uiRow(App.res, y);
+  ok('Type: text goes in at the cursor', row(c0.y).slice(c0.x, c0.x + 8) === 'Hi there', JSON.stringify(row(c0.y).slice(c0.x, c0.x + 8)));
+  ok('Type: Enter goes to the next line, Backspace removes a letter', row(c0.y + 1)[c0.x] === 'A' && !Edits.cells.has((c0.y + 1) * App.res.cols + c0.x + 1));
+  ok('Type: overlay cursor shown', !$('#editCursor').hidden);
+  editsStep(true); renderNow();
+  ok('Type: a burst of typing is one undo step', !row(c0.y).includes('Hi there'), Edits.cells.size + ' left');
+  editsClear(); editsChanged(); renderNow();
+  Edit.tool = 'select'; updateEditUI();
+  const s0 = at(0.2, 0.2), s1 = at(0.4, 0.3);
+  uiDrag(out, [0.2, 0.2], [0.4, 0.3]);
+  const r = selNorm(Edit.sel);
+  ok('Select: drag makes a box', r && r.x0 === s0.x && r.y1 === s1.y && !$('#editSel').hidden);
+  const before = []; for (let y = r.y0; y <= r.y1; y++) before.push(row(y).slice(r.x0, r.x1 + 1));
+  Edit.cp = 0x23; selFill(); renderNow();
+  ok('Select: fill the box', row(r.y0).slice(r.x0, r.x1 + 1) === '#'.repeat(r.x1 - r.x0 + 1));
+  editsStep(true); renderNow();
+  key('ArrowRight'); key('ArrowRight'); renderNow();
+  let moved = true; for (let y = r.y0; y <= r.y1; y++) if (row(y).slice(r.x0 + 2, r.x1 + 3) !== before[y - r.y0]) moved = false;
+  ok('Select: arrow keys move the box', moved && row(r.y0).slice(r.x0, r.x0 + 2).trim() === '');
+  selCopy(false); Edit.sel = null; Edit.cursor = { x: 0, y: 0, x0: 0 }; editPaste(null); renderNow();
+  ok('Select: copy and paste', row(0).slice(0, r.x1 - r.x0 + 1) === before[0]);
+  ok('Select: copied text on the clipboard object', Edit.clip.text.split('\n')[0] === before[0]);
+  editsClear(); editsChanged(); renderNow();
+  Edit.sel = { ax: 2, ay: 2, bx: 8, by: 6 }; selClear(true); renderNow();   // an empty 7 × 5 area
+  Edit.tool = 'fill'; Edit.cp = 0x2a; updateEditUI();
+  const cv = $('#outCanvas'), bb = cv.getBoundingClientRect(), [cw, chh] = cellSize(S, 1), k = bb.width / cv.width;
+  uiPointer(cv, 'pointerdown', (5.5 * cw * k) / bb.width, (4.5 * chh * k) / bb.height); uiPointer(cv, 'pointerup', 0, 0, $('#stage')); renderNow();
+  let filled = 0; for (let y = 2; y <= 6; y++) for (let x = 2; x <= 8; x++) if (App.res.cp[y * App.res.cols + x] === 0x2a) filled++;
+  ok('Fill: the empty area becomes the brush', filled === 35, filled + ' of 35');
+  setEditMode(false); editsClear();
+});
+
 UI_TESTS.push(async function captionControls(ok, { wait }) {
   await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 70 }); renderNow();
   const top = $('#capTop'); top.value = 'SUMMER 2026'; top.dispatchEvent(new Event('input', { bubbles: true })); renderNow();
@@ -6909,6 +6961,8 @@ UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
 UI_TESTS.push(async function versions(ok, { wait }) {
   Versions.list = []; buildVersions();
   await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 80 }); renderNow();
+  const vb = $('#versions').getBoundingClientRect();
+  ok('Versions: the strip sits in the view bar (no style clash)', vb.height < 60 && vb.width < 600, `${vb.width | 0}×${vb.height | 0}`);
   $('#verAdd').click();
   applySettings({ mode: 'ascii', charset: 'detailed', colorMode: 'color' }); renderNow();
   $('#verAdd').click();
@@ -7043,7 +7097,7 @@ STAGE_TOOLS.push({
 });
 
 /* ---- editing single characters ---- */
-const Edit = { on: false, tool: 'paint', cp: 0x23, rgb: 0xffffff, keep: true, last: null, prevView: null };
+const Edit = { on: false, tool: 'paint', cp: 0x23, rgb: 0xffffff, keep: true, last: null, prevView: null, cursor: null, sel: null, clip: null, lastKind: null, lastT: 0, selDrag: null };
 function editsMatch(res) { return !Edits.cells.size || (Edits.cols === res.cols && Edits.rows === res.rows); }
 function setEditMode(on) {
   Edit.on = !!on && !!App.src;
@@ -7057,11 +7111,12 @@ function updateEditUI() {
   const ci = $('#editChar'); if (document.activeElement !== ci) ci.value = chr(Edit.cp);
   $('#editColor').value = hex6(Edit.rgb); $('#editKeep').checked = Edit.keep;
   $('#editUndo').disabled = !Edits.undo.length; $('#editRedo').disabled = !Edits.redo.length;
-  const res = App.res, n = Edits.cells.size;
-  $('#editInfo').textContent = !n ? 'Click or drag on the picture to put the character there.' :
-    res && !editsMatch(res) ? `Your ${n} edits are hidden: they were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them.` :
-    `${n} character${n > 1 ? 's' : ''} edited. Edits stay on every frame and in every export.`;
-  $('#editInfo').classList.toggle('warn', !!(n && res && !editsMatch(res)));
+  const res = App.res, n = Edits.cells.size, hidden = n && res && !editsMatch(res);
+  $('#editInfo').textContent = hidden ? `Your ${n} edits are hidden: they were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them.` :
+    EDIT_TIPS[Edit.tool] + (n ? ` · ${n} edited` : '');
+  $('#editInfo').classList.toggle('warn', !!hidden);
+  $('#editSelActs').hidden = Edit.tool !== 'select';
+  placeEditOverlay();
 }
 function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); scheduleSessionSave(); }
 function editsSnapshot() { Edits.undo.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) }); if (Edits.undo.length > 60) Edits.undo.shift(); Edits.redo = []; }
@@ -7076,6 +7131,7 @@ function editsStep(back) {
 function editCell(c) {
   const res = App.res; if (!res) return;
   if (Edit.tool === 'pick') {
+    const res = freshRes();
     Edit.cp = res.cp[c.i] || 32; Edit.rgb = cellRGB(res, c.i); Edit.tool = 'paint'; updateEditUI();
     toast(`Brush: ${cpName(Edit.cp)} in ${hex6(Edit.rgb)}`); return;
   }
@@ -7089,12 +7145,27 @@ STAGE_TOOLS.push({
     if (!Edit.on || e.target.id !== 'outCanvas' || e.button !== 0) return false;
     const res = App.res; if (!res) return false;
     if (!editsMatch(res)) { toast(`Your edits were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them to edit at this one`, 'error'); return true; }
+    if (Edit.tool === 'select') {
+      const c = cellAtClamped(e), r = selNorm(Edit.sel);
+      if (r && c.x >= r.x0 && c.x <= r.x1 && c.y >= r.y0 && c.y <= r.y1) Edit.selDrag = { move: true, from: c, dx: 0, dy: 0 };
+      else { Edit.sel = { ax: c.x, ay: c.y, bx: c.x, by: c.y }; Edit.selDrag = { move: false }; }
+      placeEditOverlay(); return true;
+    }
     const c = cellAt(e); if (!c) return true;
+    if (Edit.tool === 'type') { Edit.cursor = { x: c.x, y: c.y, x0: c.x }; Edit.lastKind = null; placeEditOverlay(); return true; }
+    if (Edit.tool === 'fill') { floodFill(c); return true; }
     if (Edit.tool !== 'pick') { editsSnapshot(); if (!Edits.cells.size) { Edits.cols = res.cols; Edits.rows = res.rows; } }
     Edit.last = c; editCell(c);
     return true;
   },
   move(e) {
+    if (Edit.on && Edit.selDrag) {
+      const c = cellAtClamped(e), D = Edit.selDrag; if (!c) return;
+      if (!D.move) { Edit.sel.bx = c.x; Edit.sel.by = c.y; placeEditOverlay(); return; }
+      const r = selNorm(Edit.sel), res = App.res;   // preview the move: the box follows, inside the picture
+      D.dx = clamp(c.x - D.from.x, -r.x0, res.cols - 1 - r.x1); D.dy = clamp(c.y - D.from.y, -r.y0, res.rows - 1 - r.y1);
+      Object.assign($('#editSel').style, cellBoxCss(r.x0 + D.dx, r.y0 + D.dy, r.x1 + D.dx, r.y1 + D.dy)); return;
+    }
     if (!Edit.on || !Edit.last || Edit.tool === 'pick') return;
     const c = cellAt(e); if (!c || c.i === Edit.last.i) return;
     // every cell on the way, so fast drags leave no gaps
@@ -7102,7 +7173,11 @@ STAGE_TOOLS.push({
     for (let k = 1; k <= n; k++) { const x = Math.round(a.x + (c.x - a.x) * k / n), y = Math.round(a.y + (c.y - a.y) * k / n); editCell({ x, y, i: y * App.res.cols + x }); }
     Edit.last = c;
   },
-  up() { Edit.last = null; updateEditUI(); },
+  up() {
+    const D = Edit.selDrag; Edit.selDrag = null;
+    if (D && D.move) selMoveBy(D.dx, D.dy);
+    Edit.last = null; updateEditUI();
+  },
 });
 function initEditTools() {
   $('#editBtn').addEventListener('click', () => setEditMode(!Edit.on));
@@ -7115,6 +7190,19 @@ function initEditTools() {
   $('#editKeep').addEventListener('change', e => { Edit.keep = e.target.checked; });
   $('#editUndo').addEventListener('click', () => editsStep(true));
   $('#editRedo').addEventListener('click', () => editsStep(false));
+  $('#editCopy').addEventListener('click', () => selCopy(false));
+  $('#editCut').addEventListener('click', () => selCopy(true));
+  $('#editPaste').addEventListener('click', () => editPaste(null));
+  $('#editDel').addEventListener('click', () => selClear());
+  $('#editFillSel').addEventListener('click', selFill);
+  // Ctrl+V while editing: what was copied here, or text from elsewhere, goes into the picture
+  window.addEventListener('paste', e => {
+    if (!Edit.on || (e.target.closest && e.target.closest('input,textarea'))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const t = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (Edit.clip && (!t || t === Edit.clip.text)) editPaste(null); else if (t) editPaste(t);
+  }, true);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => placeEditOverlay()).observe($('#outCanvas'));
   $('#editClear').addEventListener('click', () => { if (!Edits.cells.size) return; editsSnapshot(); Edits.cells.clear(); editsChanged(); toast('Edits cleared (Undo brings them back)'); });
   $('#stage').addEventListener('pointerleave', () => { $('#cellTip').hidden = true; });
   window.addEventListener('keydown', e => {
@@ -7123,6 +7211,15 @@ function initEditTools() {
     const k = (e.key || '').toLowerCase();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y')) { e.preventDefault(); e.stopImmediatePropagation(); editsStep(k === 'z' && !e.shiftKey); return; }
     if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setEditMode(false); return; }
+    const stop = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+    if (Edit.tool === 'type' && Edit.cursor && !(e.ctrlKey || e.metaKey)) { if (typeKey(e)) stop(); return; }
+    if (Edit.tool === 'select') {
+      if ((e.ctrlKey || e.metaKey) && k === 'c') { stop(); selCopy(false); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'x') { stop(); selCopy(true); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'a' && App.res) { stop(); Edit.sel = { ax: 0, ay: 0, bx: App.res.cols - 1, by: App.res.rows - 1 }; placeEditOverlay(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') { stop(); selClear(); return; }
+      if (e.key.startsWith('Arrow') && Edit.sel) { stop(); selMoveBy(e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0, e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0); return; }
+    }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && Array.from(e.key).length === 1 && e.key !== ' ') {   // type a character: it becomes the brush
       e.preventDefault(); e.stopImmediatePropagation(); Edit.cp = e.key.codePointAt(0); Edit.tool = 'paint'; updateEditUI();
     }
@@ -7709,7 +7806,7 @@ function buildVersions() {
     b.addEventListener('pointerleave', () => endPeek());
     box.appendChild(b);
   }
-  $('#versions').classList.toggle('empty', !Versions.list.length);
+  $('#versions').classList.toggle('none', !Versions.list.length);
   markVersions(); renderVersionThumbs();
 }
 /* each version's small picture: the current frame in that version */
@@ -7733,6 +7830,147 @@ function initVersions() {
   });
   buildVersions();
 }
+/* =====================================================================
+   More editing: type text at a cursor, select a box of cells (copy, cut, paste, move, delete, fill),
+   flood fill an area of one character
+   ===================================================================== */
+const blankCp = () => S.mode === 'braille' && S.brailleBlank !== 'space' ? 0x2800 : 32;
+const isBlankLike = cp => cp === 32 || cp === 0x2800 || cp === 0 || cp === 0x3000;
+/* one undo step for a burst of the same action (typing letter after letter is one step) */
+function editsSnapshotGroup(kind) {
+  const now = performance.now();
+  if (Edit.lastKind !== kind || now - Edit.lastT > 1500) editsSnapshot();
+  Edit.lastKind = kind; Edit.lastT = now;
+}
+function editPut(x, y, cp, rgb) {
+  const res = App.res; if (!res || x < 0 || y < 0 || x >= res.cols || y >= res.rows) return false;
+  if (!Edits.cells.size) { Edits.cols = res.cols; Edits.rows = res.rows; }
+  Edits.cells.set(y * res.cols + x, { cp, rgb });
+  return true;
+}
+const brushRgb = () => Edit.keep ? null : Edit.rgb;
+/* the picture as it is now, edits included (operations can come faster than the screen is redrawn) */
+function freshRes() { try { const r = computeCurrent(); if (r) { App.res = r; return r; } } catch (e) { console.warn(e); } return App.res; }
+/* the cell under the pointer, kept inside the picture (for dragging boxes past the edge) */
+function cellAtClamped(e) {
+  const out = $('#outCanvas'), res = App.res; if (!res) return null;
+  const b = out.getBoundingClientRect(), k = out.width / b.width, [cw, ch] = cellSize(S, 1), [, , mx, my] = pictureSize(0, 0, S, 1);
+  const x = clamp(Math.floor(((e.clientX - b.left) * k - mx) / cw), 0, res.cols - 1), y = clamp(Math.floor(((e.clientY - b.top) * k - my) / ch), 0, res.rows - 1);
+  return { x, y, i: y * res.cols + x };
+}
+/* ---- typing ---- */
+function typeText(text) {
+  const res = App.res, c = Edit.cursor; if (!res || !c) return;
+  if (!editsMatch(res)) return toast(`Your edits were made at ${Edits.cols} × ${Edits.rows} characters`, 'error');
+  editsSnapshotGroup('type');
+  for (const ch of Array.from(text.replace(/\r\n?/g, '\n'))) {
+    if (ch === '\n') { c.x = c.x0; c.y = Math.min(res.rows - 1, c.y + 1); continue; }
+    if (ch === '\t') continue;
+    editPut(c.x, c.y, ch === ' ' ? blankCp() : ch.codePointAt(0), brushRgb());
+    if (c.x < res.cols - 1) c.x++;
+  }
+  editsChanged(); placeEditOverlay();
+}
+function typeKey(e) {
+  const res = App.res, c = Edit.cursor; if (!res || !c) return false;
+  const k = e.key;
+  if (k === 'Enter') { c.x = c.x0; c.y = Math.min(res.rows - 1, c.y + 1); }
+  else if (k === 'ArrowLeft') c.x = Math.max(0, c.x - 1);
+  else if (k === 'ArrowRight') c.x = Math.min(res.cols - 1, c.x + 1);
+  else if (k === 'ArrowUp') c.y = Math.max(0, c.y - 1);
+  else if (k === 'ArrowDown') c.y = Math.min(res.rows - 1, c.y + 1);
+  else if (k === 'Home') c.x = c.x0;
+  else if (k === 'Backspace' || k === 'Delete') {   // back to the picture's own character there
+    if (k === 'Backspace') { if (c.x === 0) return true; c.x--; }
+    editsSnapshotGroup('type');
+    if (Edits.cells.delete(c.y * res.cols + c.x)) editsChanged();
+  } else if (Array.from(k).length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { typeText(k); return true; }
+  else return false;
+  placeEditOverlay(); return true;
+}
+/* ---- selection ---- */
+const selNorm = s => s && { x0: Math.min(s.ax, s.bx), y0: Math.min(s.ay, s.by), x1: Math.max(s.ax, s.bx), y1: Math.max(s.ay, s.by) };
+function selCells(r, fn) { for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) fn(x, y); }
+function selCopy(cut) {
+  const r = selNorm(Edit.sel), res = freshRes(); if (!r || !res) return;
+  const cells = [], lines = [];
+  for (let y = r.y0; y <= r.y1; y++) { let line = ''; for (let x = r.x0; x <= r.x1; x++) { const i = y * res.cols + x, cp = res.cp[i] || 32; cells.push({ cp, rgb: cellRGB(res, i) }); line += chr(cp); } lines.push(line); }
+  Edit.clip = { w: r.x1 - r.x0 + 1, h: r.y1 - r.y0 + 1, cells, text: lines.join('\n') };
+  copyText(Edit.clip.text);
+  if (cut) selClear(true);
+  toast(`${cut ? 'Cut' : 'Copied'} ${Edit.clip.w} × ${Edit.clip.h} characters. Paste with Ctrl+V`);
+  updateEditUI();
+}
+function selClear(quiet) {
+  const r = selNorm(Edit.sel); if (!r || !editsMatch(App.res)) return;
+  editsSnapshot(); const b = blankCp(); selCells(r, (x, y) => editPut(x, y, b, null)); editsChanged();
+  if (!quiet) toast('Cleared');
+}
+function selFill() {
+  const r = selNorm(Edit.sel); if (!r || !editsMatch(App.res)) return;
+  editsSnapshot(); selCells(r, (x, y) => editPut(x, y, Edit.cp, brushRgb())); editsChanged();
+}
+/* paste the copied cells at the cursor / selection corner (or text from the system clipboard) */
+function editPaste(text) {
+  const res = App.res; if (!res || !editsMatch(res)) return;
+  const at = Edit.sel ? selNorm(Edit.sel) : Edit.cursor ? { x0: Edit.cursor.x, y0: Edit.cursor.y } : { x0: 0, y0: 0 };
+  if (text != null && (!Edit.clip || text !== Edit.clip.text)) {   // plain text: typed in at that place
+    Edit.cursor = { x: at.x0, y: at.y0, x0: at.x0 }; Edit.lastKind = null; typeText(text); return;
+  }
+  const C = Edit.clip; if (!C) return toast('Nothing copied yet');
+  editsSnapshot();
+  for (let y = 0; y < C.h; y++) for (let x = 0; x < C.w; x++) { const c = C.cells[y * C.w + x]; editPut(at.x0 + x, at.y0 + y, c.cp, c.rgb); }
+  Edit.sel = { ax: at.x0, ay: at.y0, bx: Math.min(res.cols - 1, at.x0 + C.w - 1), by: Math.min(res.rows - 1, at.y0 + C.h - 1) };
+  editsChanged(); placeEditOverlay();
+}
+/* moves the selected cells by (dx, dy): the old place becomes empty */
+function selMoveBy(dx, dy) {
+  const r = selNorm(Edit.sel), res = freshRes(); if (!r || (!dx && !dy)) return;
+  dx = clamp(dx, -r.x0, res.cols - 1 - r.x1); dy = clamp(dy, -r.y0, res.rows - 1 - r.y1); if (!dx && !dy) return;
+  const cells = []; selCells(r, (x, y) => { const i = y * res.cols + x; cells.push({ x, y, cp: res.cp[i] || 32, rgb: cellRGB(res, i) }); });
+  editsSnapshot(); const b = blankCp();
+  for (const c of cells) editPut(c.x, c.y, b, null);
+  for (const c of cells) editPut(c.x + dx, c.y + dy, c.cp, c.rgb);
+  Edit.sel = { ax: r.x0 + dx, ay: r.y0 + dy, bx: r.x1 + dx, by: r.y1 + dy };
+  editsChanged(); placeEditOverlay();
+}
+/* ---- flood fill: the connected area of the clicked character becomes the brush ---- */
+function floodFill(c) {
+  const res = freshRes(); if (!res || !editsMatch(res)) return;
+  const { cols, rows } = res, key = i => { const cp = res.cp[i] || 32; return isBlankLike(cp) ? -1 : cp; }, want = key(c.i);
+  const seen = new Uint8Array(cols * rows), stack = [c.i]; let n = 0;
+  editsSnapshot();
+  while (stack.length && n < 250000) {
+    const i = stack.pop(); if (seen[i] || key(i) !== want) continue;
+    seen[i] = 1; n++;
+    const x = i % cols, y = (i / cols) | 0; editPut(x, y, Edit.cp, brushRgb());
+    if (x > 0) stack.push(i - 1); if (x < cols - 1) stack.push(i + 1); if (y > 0) stack.push(i - cols); if (y < rows - 1) stack.push(i + cols);
+  }
+  editsChanged(); toast(`Filled ${n} characters`);
+}
+/* ---- the cursor and the selection box over the picture ---- */
+function cellBoxCss(x0, y0, x1, y1) {
+  const out = $('#outCanvas'), k = out.offsetWidth / Math.max(1, out.width), [cw, ch] = cellSize(S, 1), [, , mx, my] = pictureSize(0, 0, S, 1);
+  return { left: out.offsetLeft + (mx + x0 * cw) * k + 'px', top: out.offsetTop + (my + y0 * ch) * k + 'px', width: (x1 - x0 + 1) * cw * k + 'px', height: (y1 - y0 + 1) * ch * k + 'px' };
+}
+function placeEditOverlay() {
+  const cur = $('#editCursor'), sel = $('#editSel'), on = Edit.on && App.view === 'out' && !!App.res;
+  const c = on && Edit.tool === 'type' && Edit.cursor, r = on && Edit.tool === 'select' && selNorm(Edit.sel);
+  cur.hidden = !c; sel.hidden = !r;
+  if (c) Object.assign(cur.style, cellBoxCss(c.x, c.y, c.x, c.y));
+  if (r) Object.assign(sel.style, cellBoxCss(r.x0, r.y0, r.x1, r.y1));
+  const any = !!selNorm(Edit.sel);
+  for (const id of ['editCopy', 'editCut', 'editDel', 'editFillSel']) $('#' + id).disabled = !any;
+  $('#editPaste').disabled = !Edit.clip;
+}
+const EDIT_TIPS = {
+  paint: 'Brush: click or drag to put the character there.',
+  pick: 'Pick: click a character in the picture to use it (and its colour) as the brush.',
+  erase: 'Erase: drag over edited characters to bring the picture back.',
+  type: 'Type: click where to start, then type. Enter = next line, Backspace = undo a letter, Ctrl+V pastes text.',
+  select: 'Select: drag a box. Drag inside it to move it. Ctrl+C / X / V, Delete, or Fill with the brush.',
+  fill: 'Fill: click an area of one character (or of empty space) to fill all of it with the brush.',
+};
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)
    ===================================================================== */

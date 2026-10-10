@@ -320,8 +320,14 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 .ver:hover .vdel,.ver:focus-visible .vdel{opacity:1}
 .ver.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .versions #verAdd{padding:4px 8px}
-.versions.empty .vlabel{display:none}
+.versions.none .vlabel{display:none}
 @media (hover:none){.ver .vdel{opacity:1}}
+/* editor cursor and selection */
+.ecursor,.esel{position:absolute;pointer-events:none;z-index:3}
+.ecursor{border:2px solid var(--accent);box-shadow:0 0 0 1px #000;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{border-color:transparent;box-shadow:none}}
+.esel{border:1.5px dashed #fff;outline:1.5px dashed #000;outline-offset:-3px;background:rgba(110,231,183,.12)}
+.editsel{display:inline-flex;gap:4px;flex-wrap:wrap}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}

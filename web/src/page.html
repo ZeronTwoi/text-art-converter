@@ -286,7 +286,7 @@
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
       </div>
       <button class="btn" id="editBtn" aria-pressed="false" title="Edit single characters: click or paint on the result">✎ Edit</button>
-      <div class="versions empty" id="versions" role="group" aria-label="Versions of your settings">
+      <div class="versions none" id="versions" role="group" aria-label="Versions of your settings">
         <span class="vlabel">Versions</span><span id="verList" class="verlist"></span>
         <button class="btn" id="verAdd" title="Keep the current settings as a version (A–D). Try other settings, then click the version to come back or compare">+ Keep</button>
       </div>
@@ -302,11 +302,17 @@
         <button data-tool="paint" title="Put the character there (drag to paint)">✎ Brush</button>
         <button data-tool="pick" title="Take a character and its colour from the picture">⌖ Pick</button>
         <button data-tool="erase" title="Back to the original character">⌫ Erase</button>
+        <button data-tool="type" title="Click where to start, then type text">T Type</button>
+        <button data-tool="select" title="Select a box of characters to copy, move, delete or fill">⬚ Select</button>
+        <button data-tool="fill" title="Fill an area of one character with the brush">◩ Fill</button>
       </div>
       <label class="echar" title="Type any character (or press a key while editing)">Character <input id="editChar" class="mono" spellcheck="false" autocomplete="off"></label>
       <input type="color" id="editColor" aria-label="Brush colour" title="Colour of the new characters">
       <label class="chk" title="New characters keep the colour of the cell they replace"><input type="checkbox" id="editKeep"> Keep colours</label>
       <button class="btn icon" id="editUndo" title="Undo (Ctrl+Z)" aria-label="Undo edit">↶</button><button class="btn icon" id="editRedo" title="Redo (Ctrl+Y)" aria-label="Redo edit">↷</button>
+      <span class="editsel" id="editSelActs" hidden>
+        <button class="btn" id="editCopy" title="Copy (Ctrl+C)">Copy</button><button class="btn" id="editCut" title="Cut (Ctrl+X)">Cut</button><button class="btn" id="editPaste" title="Paste (Ctrl+V)">Paste</button><button class="btn" id="editDel" title="Empty the box (Delete)">Delete</button><button class="btn" id="editFillSel" title="Fill the box with the brush character">Fill box</button>
+      </span>
       <button class="btn" id="editClear">Clear edits</button>
       <span class="einfo" id="editInfo" role="status"></span>
       <button class="btn primary" id="editDone">Done</button>
@@ -345,6 +351,7 @@
       <div class="views view-out" id="views" hidden>
         <canvas id="srcCanvas"></canvas>
         <canvas id="outCanvas"></canvas>
+        <div id="editCursor" class="ecursor" hidden></div><div id="editSel" class="esel" hidden></div>
         <div id="wipeBar" class="wipebar" role="slider" tabindex="0" aria-label="Wipe: original on the left, result on the right" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><i></i></div>
         <pre id="rawText"></pre>
         <div id="platformView"><div class="phone" id="phone">

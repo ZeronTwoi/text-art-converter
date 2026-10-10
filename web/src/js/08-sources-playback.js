@@ -544,7 +544,7 @@ function applyZoom() {
   }
   out.style.imageRendering = App.zoom >= 2 ? 'pixelated' : 'auto';
   setText('zoomLabel', App.zoom ? Math.round(App.zoom * 100) + '%' : 'Fit');
-  placeWipe();
+  placeWipe(); if (typeof placeEditOverlay === 'function') placeEditOverlay();
 }
 function currentScaleForZoom() {
   const out = $('#outCanvas'), r = out.getBoundingClientRect();

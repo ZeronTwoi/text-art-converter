@@ -42,7 +42,7 @@ STAGE_TOOLS.push({
 });
 
 /* ---- editing single characters ---- */
-const Edit = { on: false, tool: 'paint', cp: 0x23, rgb: 0xffffff, keep: true, last: null, prevView: null };
+const Edit = { on: false, tool: 'paint', cp: 0x23, rgb: 0xffffff, keep: true, last: null, prevView: null, cursor: null, sel: null, clip: null, lastKind: null, lastT: 0, selDrag: null };
 function editsMatch(res) { return !Edits.cells.size || (Edits.cols === res.cols && Edits.rows === res.rows); }
 function setEditMode(on) {
   Edit.on = !!on && !!App.src;
@@ -56,11 +56,12 @@ function updateEditUI() {
   const ci = $('#editChar'); if (document.activeElement !== ci) ci.value = chr(Edit.cp);
   $('#editColor').value = hex6(Edit.rgb); $('#editKeep').checked = Edit.keep;
   $('#editUndo').disabled = !Edits.undo.length; $('#editRedo').disabled = !Edits.redo.length;
-  const res = App.res, n = Edits.cells.size;
-  $('#editInfo').textContent = !n ? 'Click or drag on the picture to put the character there.' :
-    res && !editsMatch(res) ? `Your ${n} edits are hidden: they were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them.` :
-    `${n} character${n > 1 ? 's' : ''} edited. Edits stay on every frame and in every export.`;
-  $('#editInfo').classList.toggle('warn', !!(n && res && !editsMatch(res)));
+  const res = App.res, n = Edits.cells.size, hidden = n && res && !editsMatch(res);
+  $('#editInfo').textContent = hidden ? `Your ${n} edits are hidden: they were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them.` :
+    EDIT_TIPS[Edit.tool] + (n ? ` · ${n} edited` : '');
+  $('#editInfo').classList.toggle('warn', !!hidden);
+  $('#editSelActs').hidden = Edit.tool !== 'select';
+  placeEditOverlay();
 }
 function editsChanged() { Edits.ver++; App.dirty = true; updateEditUI(); scheduleSessionSave(); }
 function editsSnapshot() { Edits.undo.push({ cols: Edits.cols, rows: Edits.rows, cells: new Map(Edits.cells) }); if (Edits.undo.length > 60) Edits.undo.shift(); Edits.redo = []; }
@@ -75,6 +76,7 @@ function editsStep(back) {
 function editCell(c) {
   const res = App.res; if (!res) return;
   if (Edit.tool === 'pick') {
+    const res = freshRes();
     Edit.cp = res.cp[c.i] || 32; Edit.rgb = cellRGB(res, c.i); Edit.tool = 'paint'; updateEditUI();
     toast(`Brush: ${cpName(Edit.cp)} in ${hex6(Edit.rgb)}`); return;
   }
@@ -88,12 +90,27 @@ STAGE_TOOLS.push({
     if (!Edit.on || e.target.id !== 'outCanvas' || e.button !== 0) return false;
     const res = App.res; if (!res) return false;
     if (!editsMatch(res)) { toast(`Your edits were made at ${Edits.cols} × ${Edits.rows} characters. Go back to that width, or clear them to edit at this one`, 'error'); return true; }
+    if (Edit.tool === 'select') {
+      const c = cellAtClamped(e), r = selNorm(Edit.sel);
+      if (r && c.x >= r.x0 && c.x <= r.x1 && c.y >= r.y0 && c.y <= r.y1) Edit.selDrag = { move: true, from: c, dx: 0, dy: 0 };
+      else { Edit.sel = { ax: c.x, ay: c.y, bx: c.x, by: c.y }; Edit.selDrag = { move: false }; }
+      placeEditOverlay(); return true;
+    }
     const c = cellAt(e); if (!c) return true;
+    if (Edit.tool === 'type') { Edit.cursor = { x: c.x, y: c.y, x0: c.x }; Edit.lastKind = null; placeEditOverlay(); return true; }
+    if (Edit.tool === 'fill') { floodFill(c); return true; }
     if (Edit.tool !== 'pick') { editsSnapshot(); if (!Edits.cells.size) { Edits.cols = res.cols; Edits.rows = res.rows; } }
     Edit.last = c; editCell(c);
     return true;
   },
   move(e) {
+    if (Edit.on && Edit.selDrag) {
+      const c = cellAtClamped(e), D = Edit.selDrag; if (!c) return;
+      if (!D.move) { Edit.sel.bx = c.x; Edit.sel.by = c.y; placeEditOverlay(); return; }
+      const r = selNorm(Edit.sel), res = App.res;   // preview the move: the box follows, inside the picture
+      D.dx = clamp(c.x - D.from.x, -r.x0, res.cols - 1 - r.x1); D.dy = clamp(c.y - D.from.y, -r.y0, res.rows - 1 - r.y1);
+      Object.assign($('#editSel').style, cellBoxCss(r.x0 + D.dx, r.y0 + D.dy, r.x1 + D.dx, r.y1 + D.dy)); return;
+    }
     if (!Edit.on || !Edit.last || Edit.tool === 'pick') return;
     const c = cellAt(e); if (!c || c.i === Edit.last.i) return;
     // every cell on the way, so fast drags leave no gaps
@@ -101,7 +118,11 @@ STAGE_TOOLS.push({
     for (let k = 1; k <= n; k++) { const x = Math.round(a.x + (c.x - a.x) * k / n), y = Math.round(a.y + (c.y - a.y) * k / n); editCell({ x, y, i: y * App.res.cols + x }); }
     Edit.last = c;
   },
-  up() { Edit.last = null; updateEditUI(); },
+  up() {
+    const D = Edit.selDrag; Edit.selDrag = null;
+    if (D && D.move) selMoveBy(D.dx, D.dy);
+    Edit.last = null; updateEditUI();
+  },
 });
 function initEditTools() {
   $('#editBtn').addEventListener('click', () => setEditMode(!Edit.on));
@@ -114,6 +135,19 @@ function initEditTools() {
   $('#editKeep').addEventListener('change', e => { Edit.keep = e.target.checked; });
   $('#editUndo').addEventListener('click', () => editsStep(true));
   $('#editRedo').addEventListener('click', () => editsStep(false));
+  $('#editCopy').addEventListener('click', () => selCopy(false));
+  $('#editCut').addEventListener('click', () => selCopy(true));
+  $('#editPaste').addEventListener('click', () => editPaste(null));
+  $('#editDel').addEventListener('click', () => selClear());
+  $('#editFillSel').addEventListener('click', selFill);
+  // Ctrl+V while editing: what was copied here, or text from elsewhere, goes into the picture
+  window.addEventListener('paste', e => {
+    if (!Edit.on || (e.target.closest && e.target.closest('input,textarea'))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const t = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (Edit.clip && (!t || t === Edit.clip.text)) editPaste(null); else if (t) editPaste(t);
+  }, true);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => placeEditOverlay()).observe($('#outCanvas'));
   $('#editClear').addEventListener('click', () => { if (!Edits.cells.size) return; editsSnapshot(); Edits.cells.clear(); editsChanged(); toast('Edits cleared (Undo brings them back)'); });
   $('#stage').addEventListener('pointerleave', () => { $('#cellTip').hidden = true; });
   window.addEventListener('keydown', e => {
@@ -122,6 +156,15 @@ function initEditTools() {
     const k = (e.key || '').toLowerCase();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y')) { e.preventDefault(); e.stopImmediatePropagation(); editsStep(k === 'z' && !e.shiftKey); return; }
     if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setEditMode(false); return; }
+    const stop = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+    if (Edit.tool === 'type' && Edit.cursor && !(e.ctrlKey || e.metaKey)) { if (typeKey(e)) stop(); return; }
+    if (Edit.tool === 'select') {
+      if ((e.ctrlKey || e.metaKey) && k === 'c') { stop(); selCopy(false); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'x') { stop(); selCopy(true); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'a' && App.res) { stop(); Edit.sel = { ax: 0, ay: 0, bx: App.res.cols - 1, by: App.res.rows - 1 }; placeEditOverlay(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') { stop(); selClear(); return; }
+      if (e.key.startsWith('Arrow') && Edit.sel) { stop(); selMoveBy(e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0, e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0); return; }
+    }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && Array.from(e.key).length === 1 && e.key !== ' ') {   // type a character: it becomes the brush
       e.preventDefault(); e.stopImmediatePropagation(); Edit.cp = e.key.codePointAt(0); Edit.tool = 'paint'; updateEditUI();
     }

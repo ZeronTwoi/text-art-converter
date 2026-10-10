@@ -33,7 +33,7 @@ function buildVersions() {
     b.addEventListener('pointerleave', () => endPeek());
     box.appendChild(b);
   }
-  $('#versions').classList.toggle('empty', !Versions.list.length);
+  $('#versions').classList.toggle('none', !Versions.list.length);
   markVersions(); renderVersionThumbs();
 }
 /* each version's small picture: the current frame in that version */

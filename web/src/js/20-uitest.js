@@ -241,6 +241,45 @@ UI_TESTS.push(async function editing(ok, { wait }) {
   editsClear();
 });
 
+UI_TESTS.push(async function editorMore(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 60 }); renderNow(); editsClear();
+  const out = $('#outCanvas'), at = (fx, fy) => { const b = out.getBoundingClientRect(); return cellAt({ clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }); };
+  const key = k => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  setEditMode(true); Edit.tool = 'type'; updateEditUI();
+  uiDrag(out, [0.1, 0.5], [0.1, 0.5], 1); const c0 = at(0.1, 0.5);
+  for (const k of 'Hi there') key(k); key('Enter'); key('A'); key('B'); key('Backspace'); renderNow();
+  const row = y => uiRow(App.res, y);
+  ok('Type: text goes in at the cursor', row(c0.y).slice(c0.x, c0.x + 8) === 'Hi there', JSON.stringify(row(c0.y).slice(c0.x, c0.x + 8)));
+  ok('Type: Enter goes to the next line, Backspace removes a letter', row(c0.y + 1)[c0.x] === 'A' && !Edits.cells.has((c0.y + 1) * App.res.cols + c0.x + 1));
+  ok('Type: overlay cursor shown', !$('#editCursor').hidden);
+  editsStep(true); renderNow();
+  ok('Type: a burst of typing is one undo step', !row(c0.y).includes('Hi there'), Edits.cells.size + ' left');
+  editsClear(); editsChanged(); renderNow();
+  Edit.tool = 'select'; updateEditUI();
+  const s0 = at(0.2, 0.2), s1 = at(0.4, 0.3);
+  uiDrag(out, [0.2, 0.2], [0.4, 0.3]);
+  const r = selNorm(Edit.sel);
+  ok('Select: drag makes a box', r && r.x0 === s0.x && r.y1 === s1.y && !$('#editSel').hidden);
+  const before = []; for (let y = r.y0; y <= r.y1; y++) before.push(row(y).slice(r.x0, r.x1 + 1));
+  Edit.cp = 0x23; selFill(); renderNow();
+  ok('Select: fill the box', row(r.y0).slice(r.x0, r.x1 + 1) === '#'.repeat(r.x1 - r.x0 + 1));
+  editsStep(true); renderNow();
+  key('ArrowRight'); key('ArrowRight'); renderNow();
+  let moved = true; for (let y = r.y0; y <= r.y1; y++) if (row(y).slice(r.x0 + 2, r.x1 + 3) !== before[y - r.y0]) moved = false;
+  ok('Select: arrow keys move the box', moved && row(r.y0).slice(r.x0, r.x0 + 2).trim() === '');
+  selCopy(false); Edit.sel = null; Edit.cursor = { x: 0, y: 0, x0: 0 }; editPaste(null); renderNow();
+  ok('Select: copy and paste', row(0).slice(0, r.x1 - r.x0 + 1) === before[0]);
+  ok('Select: copied text on the clipboard object', Edit.clip.text.split('\n')[0] === before[0]);
+  editsClear(); editsChanged(); renderNow();
+  Edit.sel = { ax: 2, ay: 2, bx: 8, by: 6 }; selClear(true); renderNow();   // an empty 7 × 5 area
+  Edit.tool = 'fill'; Edit.cp = 0x2a; updateEditUI();
+  const cv = $('#outCanvas'), bb = cv.getBoundingClientRect(), [cw, chh] = cellSize(S, 1), k = bb.width / cv.width;
+  uiPointer(cv, 'pointerdown', (5.5 * cw * k) / bb.width, (4.5 * chh * k) / bb.height); uiPointer(cv, 'pointerup', 0, 0, $('#stage')); renderNow();
+  let filled = 0; for (let y = 2; y <= 6; y++) for (let x = 2; x <= 8; x++) if (App.res.cp[y * App.res.cols + x] === 0x2a) filled++;
+  ok('Fill: the empty area becomes the brush', filled === 35, filled + ' of 35');
+  setEditMode(false); editsClear();
+});
+
 UI_TESTS.push(async function captionControls(ok, { wait }) {
   await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 70 }); renderNow();
   const top = $('#capTop'); top.value = 'SUMMER 2026'; top.dispatchEvent(new Event('input', { bubbles: true })); renderNow();
@@ -457,6 +496,8 @@ UI_TESTS.push(async function sessionRestore(ok, { wait, reset }) {
 UI_TESTS.push(async function versions(ok, { wait }) {
   Versions.list = []; buildVersions();
   await demoImage(); await wait(30); applySettings({ mode: 'braille', cols: 80 }); renderNow();
+  const vb = $('#versions').getBoundingClientRect();
+  ok('Versions: the strip sits in the view bar (no style clash)', vb.height < 60 && vb.width < 600, `${vb.width | 0}×${vb.height | 0}`);
   $('#verAdd').click();
   applySettings({ mode: 'ascii', charset: 'detailed', colorMode: 'color' }); renderNow();
   $('#verAdd').click();
