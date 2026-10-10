@@ -1251,7 +1251,7 @@ const DEFAULTS = {
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1, playOrder: 'forward', playSpeed: 1, loopFade: 0,
   layerOn: false, layerX: 0.82, layerY: 0.82, layerSize: 0.25, layerOpacity: 1, layerBlend: 'source-over', layerStyle: 'chars',
 };
-const BUILD_INFO = '43147e4c';   // filled in by build.mjs
+const BUILD_INFO = 'ae30ac83';   // filled in by build.mjs
 const TONE_KEYS = ['brightness', 'contrast', 'gamma', 'saturation', 'threshold', 'edge', 'sharpen', 'invert', 'autoLevels'];
 const EDGE_KEYS = ['outline', 'outlineWidth', 'outlineDir', 'fill', 'localContrast', 'bgFade'];
 /* The built-in looks (on top of PRESET_BASE). Tuned on portraits, animals, landscapes, dark and pale pictures, logos
@@ -6737,7 +6737,7 @@ async function openProjectParts(meta, get) {
   applySettings(st);
   await layerFromProject(meta, get);
   UndoHistory.reset();
-  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
+  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear', t0: isFinite(r.t0) ? Math.max(0, +r.t0) : null, t1: isFinite(r.t1) ? Math.max(0, +r.t1) : null })) : [];
   buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
     Versions.list = meta.versions.filter(v => v && /^[ABCD]$/.test(v.name) && v.settings).map(v => {

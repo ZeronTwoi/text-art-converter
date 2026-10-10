@@ -141,7 +141,7 @@ async function openProjectParts(meta, get) {
   applySettings(st);
   await layerFromProject(meta, get);
   UndoHistory.reset();
-  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
+  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear', t0: isFinite(r.t0) ? Math.max(0, +r.t0) : null, t1: isFinite(r.t1) ? Math.max(0, +r.t1) : null })) : [];
   buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
     Versions.list = meta.versions.filter(v => v && /^[ABCD]$/.test(v.name) && v.settings).map(v => {
