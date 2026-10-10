@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text Art Studio</title>
+<style>
+@@STYLES@@
+</style>
+</head>
+<body data-kind="none" class="simple">
+
+<header class="topbar">
+  <div class="brand"><span class="logo">⣿</span>Text Art Studio <span class="tag">offline</span></div>
+  <nav class="steps" id="steps" aria-label="Steps">
+    <button class="step" data-step="1" title="Open an image, GIF or video"><b>1</b><span>Open</span></button>
+    <button class="step" data-step="2" title="Choose how the picture is drawn"><b>2</b><span>Pick a look</span></button>
+    <button class="step" data-step="3" title="Size, light, lines, colour and crop"><b>3</b><span>Adjust</span></button>
+    <button class="step" data-step="4" title="Copy to a chat app or save a file"><b>4</b><span>Share / save</span></button>
+  </nav>
+  <div class="topacts">
+    <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt">
+    <div class="menuwrap">
+      <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
+      <div class="menupop" id="morePop" hidden>
+        <button id="btnWebcam">📷 Use webcam</button>
+        <button id="btnText">✎ Text → Image</button>
+        <button id="btnDemoImg">🖼 Demo picture</button>
+        <button id="btnDemoAnim">🎞 Demo animation</button>
+        <button id="btnBatch">📚 Batch convert files…</button>
+      </div>
+    </div>
+    <button class="btn icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
+    <button class="btn icon" id="btnRedo" title="Redo (Ctrl+Y)" disabled>↷</button>
+    <label class="switch" title="Show every expert setting"><input type="checkbox" id="advToggle"><span></span>Advanced</label>
+    <button class="btn icon" id="btnHelp" title="How it works">?</button>
+    <button class="btn icon" id="btnTheme" title="Theme: auto / light / dark">◐</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ============ SETTINGS ============ -->
+  <aside class="panel settings" id="settings">
+    <div class="tabs" id="leftTabs" role="tablist">
+      <button data-tab="look" class="on" role="tab">Look</button>
+      <button data-tab="adjust" role="tab">Adjust</button>
+      <button data-tab="colour" role="tab">Colour</button>
+      <button data-tab="crop" role="tab">Crop</button>
+    </div>
+
+    <!-- LOOK -->
+    <section class="tab" data-tab="look">
+      <h3 class="h">Quick looks <span>tap one to apply</span></h3>
+      <div class="looks" id="looks"></div>
+      <h3 class="h">Drawn with <span>the kind of characters</span></h3>
+      <div class="modes" id="modes"></div>
+      <div class="hint" id="modeHint"></div>
+      <div class="group">
+        <div data-when="mode:ascii,edge">
+          <div class="row"><label for="charsetSel"><span data-when="mode:ascii">Characters (light → dark)</span><span data-when="mode:edge">Fill characters</span></label>
+            <select id="charsetSel" data-key="charset"></select></div>
+          <div class="row" data-when="charset:custom"><label>Your characters (light → dense)</label>
+            <input type="text" data-key="customChars" spellcheck="false" class="mono"></div>
+          <div class="row adv"><label class="chk"><input type="checkbox" data-key="sortRamp"> Sort them by how much ink each one has</label></div>
+        </div>
+        <div data-when="mode:braille" class="adv">
+          <div class="row"><label>Empty cells</label>
+            <select data-key="brailleBlank"><option value="braille">Invisible braille (keeps width everywhere)</option><option value="space">Normal space</option></select></div>
+        </div>
+        <div data-when="mode:glyph">
+          <div class="row"><label>Characters to choose from</label>
+            <select data-key="glyphSet"><option value="ascii">All keyboard characters</option><option value="alnum">Letters &amp; digits</option><option value="symbols">Symbols &amp; punctuation</option><option value="lines">Lines &amp; slashes</option><option value="custom">Custom…</option></select></div>
+          <div class="row" data-when="glyphSet:custom"><label>Your characters</label><input type="text" data-key="glyphCustom" class="mono" spellcheck="false"></div>
+        </div>
+        <div data-when="mode:edge">
+          <div class="row"><label class="chk"><input type="checkbox" data-key="edgeFill"> Fill flat areas too</label></div>
+        </div>
+        <div data-when="mode:word">
+          <div class="row"><label>Your text</label><textarea data-key="wordText" spellcheck="false"></textarea></div>
+          <div class="row"><label class="chk"><input type="checkbox" data-key="wordFillAll"> Fill every cell (best with colour)</label></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADJUST -->
+    <section class="tab src-only" data-tab="adjust" hidden>
+      <div class="group">
+        <h3 class="h">Size</h3>
+        <div class="row"><label>Width in characters <output data-out="cols"></output></label>
+          <div class="inline"><input type="range" data-key="cols" min="8" max="600" step="1"><input type="number" data-key="cols" min="1" max="1500" step="1"></div></div>
+        <div class="hint" id="sizeInfo">—</div>
+        <div class="row adv"><label>Character shape (height ÷ width) <output data-out="charAspect"></output></label>
+          <input type="range" data-key="charAspect" min="1" max="3" step="0.05"></div>
+        <div class="row adv"><label>Cell size in saved pictures (px) <output data-out="fontSize"></output></label>
+          <input type="range" data-key="fontSize" min="3" max="40" step="1"></div>
+        <div class="row adv"><label>Margin around the picture (characters) <output data-out="margin"></output></label>
+          <input type="range" data-key="margin" min="0" max="10" step="1"></div>
+      </div>
+      <div class="group">
+        <h3 class="h">Light</h3>
+        <div class="row"><label>Brightness <output data-out="brightness"></output></label><input type="range" data-key="brightness" min="-1" max="1" step="0.01"></div>
+        <div class="row"><label>Contrast <output data-out="contrast"></output></label><input type="range" data-key="contrast" min="-1" max="0.95" step="0.01"></div>
+        <div class="pair adv">
+          <div class="row"><label>Gamma <output data-out="gamma"></output></label><input type="range" data-key="gamma" min="0.2" max="3" step="0.01"></div>
+          <div class="row"><label>Saturation <output data-out="saturation"></output></label><input type="range" data-key="saturation" min="0" max="3" step="0.01"></div>
+          <div class="row"><label>Threshold <output data-out="threshold"></output></label><input type="range" data-key="threshold" min="0.05" max="0.95" step="0.01"></div>
+        </div>
+        <div class="row inline">
+          <label class="chk" title="Stretch the darkest and brightest parts to full range"><input type="checkbox" data-key="autoLevels"> Auto levels</label>
+          <label class="chk" title="Swap light and dark"><input type="checkbox" data-key="invert"> Invert</label>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="h">Lines &amp; detail</h3>
+        <div class="row"><label>Outlines <output data-out="outline"></output></label><input type="range" data-key="outline" min="0" max="1" step="0.01"></div>
+        <div class="row"><label>Shading <output data-out="fill"></output></label><input type="range" data-key="fill" min="0" max="1" step="0.01"></div>
+        <p class="hint">Outlines draw the edges as solid lines so shapes stay clear. Shading 0 = pure line art.</p>
+        <div class="row"><label>Hide plain background <output data-out="bgFade"></output></label><input type="range" data-key="bgFade" min="0" max="1" step="0.01"></div>
+        <div class="row" data-when="mode:ascii"><label class="chk"><input type="checkbox" data-key="outlineDir"> Draw outlines with / | \ -</label></div>
+        <div class="adv">
+          <div class="pair">
+            <div class="row"><label>Line width</label><select data-key="outlineWidth"><option value="1">Thin</option><option value="2">Medium</option><option value="3">Bold</option></select></div>
+            <div class="row"><label>Sharpen <output data-out="sharpen"></output></label><input type="range" data-key="sharpen" min="0" max="2" step="0.05"></div>
+            <div class="row"><label>Depth (local contrast) <output data-out="localContrast"></output></label><input type="range" data-key="localContrast" min="0" max="1" step="0.01"></div>
+            <div class="row"><label>Edge boost <output data-out="edge"></output></label><input type="range" data-key="edge" min="0" max="1" step="0.01"></div>
+          </div>
+          <div class="row" data-when="!mode:glyph"><label>Dithering (how grey is made from dots)</label>
+            <select data-key="dither">
+              <option value="none">None (hard edge)</option>
+              <option value="floyd">Floyd–Steinberg (smooth)</option>
+              <option value="atkinson">Atkinson (clean, high contrast)</option>
+              <option value="bayer4">Ordered pattern 4×4</option>
+              <option value="bayer8">Ordered pattern 8×8</option>
+              <option value="noise">Noise</option>
+            </select></div>
+        </div>
+      </div>
+      <div class="pair">
+        <button class="btn" id="resetTone">Reset light</button>
+        <button class="btn" id="resetEdges">Reset lines</button>
+      </div>
+    </section>
+
+    <!-- COLOUR -->
+    <section class="tab" data-tab="colour" hidden>
+      <div class="group">
+        <h3 class="h">Colours</h3>
+        <div class="choices" data-choice="colorMode">
+          <button data-val="mono"><i class="sw sw-mono"></i><b>Single colour</b><small>one text colour</small></button>
+          <button data-val="color"><i class="sw sw-orig"></i><b>Original colours</b><small>full colour, best for pictures, GIF &amp; video</small></button>
+          <button data-val="app"><i class="sw sw-app"></i><b>App colours</b><small>only colours a chat app or terminal can show</small></button>
+          <button data-val="gray"><i class="sw sw-gray"></i><b>Greyscale</b><small>shades of grey</small></button>
+          <button data-val="gradient"><i class="sw sw-grad"></i><b>Gradient</b><small>two colours of your choice</small></button>
+        </div>
+        <div class="row" data-when="colorMode:app"><label>Colours available in</label>
+          <select data-key="appPalette"><option value="discord">Discord colour text (8 colours)</option><option value="ansi16">Terminal, basic (16 colours)</option><option value="ansi256">Terminal, extended (256 colours)</option></select>
+          <p class="hint">The preview shows exactly the colours your colour text copy will have. Picture and video exports use them too.</p></div>
+        <div class="row colors">
+          <label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label>
+          <label><input type="color" data-key="bg"> Background</label>
+          <label data-when="colorMode:gradient"><input type="color" data-key="gradA"> Dark</label>
+          <label data-when="colorMode:gradient"><input type="color" data-key="gradB"> Light</label>
+          <button class="btn" id="swapColors" title="Swap text and background colours">⇄ Swap</button>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="h">Background</h3>
+        <div class="choices row3" data-choice="bgMode">
+          <button data-val="solid"><b>Solid</b></button>
+          <button data-val="transparent"><b>Transparent</b><small>PNG / WEBP / GIF</small></button>
+          <button data-val="cell"><b>Tinted</b><small>by the image</small></button>
+        </div>
+      </div>
+      <div class="group adv">
+        <h3 class="h">Drawing</h3>
+        <div data-when="mode:braille,half,quad,halftone">
+          <div class="row"><label>Draw as</label>
+            <select data-key="renderStyle"><option value="shapes">Shapes (crisp, same on every computer)</option><option value="font">Font characters</option></select></div>
+          <div data-when="renderStyle:shapes;mode:braille,halftone" class="pair">
+            <div class="row"><label>Dot shape</label><select data-key="dotShape"><option value="circle">Circle</option><option value="square">Square</option></select></div>
+            <div class="row"><label>Dot size <output data-out="dotSize"></output></label><input type="range" data-key="dotSize" min="0.2" max="1.6" step="0.05"></div>
+          </div>
+        </div>
+        <div class="row"><label>Font</label>
+          <select data-key="fontFamily">
+            <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
+            <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option>
+          </select></div>
+        <div class="row" data-when="fontFamily:custom"><label>Font name (installed on this computer)</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
+      </div>
+    </section>
+
+    <!-- CROP -->
+    <section class="tab src-only" data-tab="crop" hidden>
+      <div class="group">
+        <h3 class="h">Crop</h3>
+        <button class="btn wide" id="autoTrim" title="Crop away plain empty borders around the subject">✂ Auto-trim empty borders</button>
+        <div class="pair">
+          <div class="row"><label>Left <output data-out="cropL"></output></label><input type="range" data-key="cropL" min="0" max="45" step="0.5"></div>
+          <div class="row"><label>Right <output data-out="cropR"></output></label><input type="range" data-key="cropR" min="0" max="45" step="0.5"></div>
+          <div class="row"><label>Top <output data-out="cropT"></output></label><input type="range" data-key="cropT" min="0" max="45" step="0.5"></div>
+          <div class="row"><label>Bottom <output data-out="cropB"></output></label><input type="range" data-key="cropB" min="0" max="45" step="0.5"></div>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="h">Turn &amp; flip</h3>
+        <div class="pair">
+          <div class="row"><label>Rotate</label><select data-key="rotate"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+          <div class="row"><span class="lbl">Flip</span><div class="inline"><label class="chk"><input type="checkbox" data-key="flipH"> Mirror</label><label class="chk"><input type="checkbox" data-key="flipV"> Upside down</label></div></div>
+        </div>
+      </div>
+      <button class="btn wide" id="resetTransform">Reset crop &amp; turn</button>
+      <div class="group" style="margin-top:10px">
+        <h3 class="h">Mask <span>paint where to hide or keep</span></h3>
+        <button class="btn wide" id="maskPaint">🖌 Paint on the picture</button>
+        <div class="choices row3" id="maskBrushes">
+          <button data-brush="hide"><b>Hide</b><small>no characters there</small></button>
+          <button data-brush="keep"><b>Keep</b><small>safe from "hide background"</small></button>
+          <button data-brush="erase"><b>Eraser</b><small>remove paint</small></button>
+        </div>
+        <div class="row"><label>Brush size <output id="maskSizeOut"></output></label><input type="range" id="maskSize" min="1" max="30" step="0.5" value="6"></div>
+        <button class="btn wide" id="maskClearBtn">Clear the mask</button>
+      </div>
+    </section>
+    <div class="panelfoot"><button class="btn wide" id="resetAll">Reset everything</button></div>
+  </aside>
+
+  <!-- ============ CENTER ============ -->
+  <main class="center">
+    <div class="viewbar">
+      <div class="srcinfo" id="srcInfo">No file loaded</div>
+      <div class="seg" id="viewSeg">
+        <button data-view="out" class="on" title="The converted picture">Result</button>
+        <button data-view="split" title="Original and result side by side">Compare</button>
+        <button data-view="src" title="The original after crop / turn">Original</button>
+        <button data-view="text" title="The raw text, selectable">Text</button>
+        <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
+      </div>
+      <div class="zoom">
+        <button class="btn" id="zoomOut" title="Zoom out (-)">−</button>
+        <span id="zoomLabel">Fit</span>
+        <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
+        <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="empty" id="empty">
+        <div class="drop">
+          <div class="big">⣿⣷⣄ @#%</div>
+          <h2>Turn any picture, GIF or video into text art</h2>
+          <ol class="howto">
+            <li><b>Open</b> a file, or drop / paste it here</li>
+            <li><b>Pick a look</b> from the gallery on the left</li>
+            <li><b>Share</b> it to a chat app or save a file (right)</li>
+          </ol>
+          <div class="acts">
+            <label class="btn primary btn-lg" for="fileInput">Choose a file…</label>
+            <button class="btn" data-act="demoImg">Try a demo picture</button>
+            <button class="btn" data-act="demoAnim">Try a demo animation</button>
+          </div>
+          <div class="acts small">
+            <button class="btn" data-act="webcam">📷 Webcam</button>
+            <button class="btn" data-act="text">✎ Text → Image</button>
+          </div>
+          <div class="formats">
+            <b>Pictures</b> JPG · PNG · GIF · WEBP · APNG · AVIF · BMP · ICO · SVG (animated ones too)<br>
+            <b>Video</b> MP4 · WEBM · MOV · MKV · OGV <span>(depends on your browser)</span> · <b>Text</b> TXT<br>
+            Everything stays on your computer. Nothing is uploaded.
+          </div>
+        </div>
+      </div>
+      <div class="views view-out" id="views" hidden>
+        <canvas id="srcCanvas"></canvas>
+        <canvas id="outCanvas"></canvas>
+        <pre id="rawText"></pre>
+        <div id="platformView"><div class="phone" id="phone">
+          <div class="phonebar"><b id="phoneTitle">Discord</b><span>preview</span></div>
+          <div class="chat" id="phoneChat"></div>
+          <div class="phonenote" id="phoneNote">Approximate preview. Real apps differ slightly by device and font.</div>
+        </div></div>
+      </div>
+    </div>
+    <div class="player" id="player" hidden>
+      <div class="filmstrip seekonly" id="filmstrip"></div>
+      <div class="ptrack seekonly"><div class="trimbar" id="trimBar" hidden></div><input type="range" id="seek" min="0" max="10000" step="1" value="0" aria-label="Seek"></div>
+      <div class="pctrl">
+        <button class="btn seekonly" id="pStop" title="Back to start (Home)">⏮</button>
+        <button class="btn seekonly" id="pPrev" title="Previous frame (←)">◀ Frame</button>
+        <button class="btn primary playbtn" id="pPlay" title="Play / pause (Space)">▶</button>
+        <button class="btn seekonly" id="pNext" title="Next frame (→)">Frame ▶</button>
+        <div class="pinfo seekonly"><span id="pTime" class="mono">0:00.00 / 0:00.00</span><span id="pFrame" class="mono muted"></span></div>
+        <span class="spacer"></span>
+        <label class="seekonly" title="Playback speed">Speed <select id="pSpeed"><option>0.25</option><option>0.5</option><option>0.75</option><option selected>1</option><option>1.5</option><option>2</option><option>4</option></select></label>
+        <label class="chk seekonly"><input type="checkbox" id="pLoop" checked> Loop</label>
+        <div class="trimgroup seekonly" title="Exports use only the part between Start and End">
+          <span class="muted">Trim</span>
+          <button class="btn" id="pIn" title="Exports start here (I)">Start here</button>
+          <button class="btn" id="pOut" title="Exports end here (O)">End here</button>
+          <button class="btn" id="pClear" title="Use the whole clip">✕</button>
+        </div>
+        <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
+      </div>
+    </div>
+    <div class="statusbar"><span id="stats">—</span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
+  </main>
+
+  <!-- ============ EXPORT ============ -->
+  <aside class="panel export" id="exportPanel">
+    <h2 class="ph"><b>4</b> Share or save</h2>
+    <div class="goals" id="goalSeg">
+      <button data-goal="chat" class="on"><span>💬</span><b>Send in a chat app</b><small>Discord, WhatsApp, Telegram…</small></button>
+      <button data-goal="save"><span>🖼</span><b>Save a picture or animation</b><small>PNG, JPG, GIF, MP4…</small></button>
+      <button data-goal="text"><span>📄</span><b>Text &amp; files</b><small>copy text, .txt, .html, .svg</small></button>
+    </div>
+    <div id="exportBody"></div>
+  </aside>
+</div>
+<dialog id="helpDialog">
+  <h3>How Text Art Studio works</h3>
+  <ol class="howto big">
+    <li><b>Open</b> a picture, GIF or video: <i>Open file…</i>, drag it onto the page, or paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
+    <li><b>Pick a look</b> in the <i>Look</i> tab. Every thumbnail is your own image in that style.</li>
+    <li><b>Adjust</b> size, light and outlines in <i>Adjust</i>; colours in <i>Colour</i>; framing in <i>Crop</i>.</li>
+    <li><b>Share or save</b> on the right: send to a chat app as text, or save a PNG / GIF / MP4.</li>
+  </ol>
+  <h4>Good to know</h4>
+  <ul class="tips">
+    <li><b>Outlines</b> keep shapes recognisable, especially when small. Try the <i>Comic</i> or <i>Line art</i> looks.</li>
+    <li><b>Chat apps</b> are narrow on phones. Use <i>Send in a chat app → Fix all</i> and calibrate your phone once.</li>
+    <li><b>Original colours</b> are for pictures and videos. <b>App colours</b> show only the colours a chat app can display in text.</li>
+    <li><b>Advanced</b> (top right) shows every expert setting.</li>
+    <li>GIFs and videos get a player with a filmstrip; set <i>Start here / End here</i> to export only part.</li>
+  </ul>
+  <h4>Keyboard</h4>
+  <p class="muted small"><kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> previous/next frame · <kbd>Home</kbd> back to start · <kbd>I</kbd>/<kbd>O</kbd> trim start/end · <kbd>+</kbd>/<kbd>−</kbd>/<kbd>F</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</p>
+  <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>
+</dialog>
+
+<div class="dropOverlay" id="dropOverlay" hidden><div>Drop to convert</div></div>
+<div class="modal" id="progress" hidden>
+  <div class="mbox">
+    <h3 id="progTitle">Working…</h3>
+    <div class="pbar" id="progBarWrap"><div id="progBar"></div></div>
+    <div class="meta"><span class="muted small" id="progText"></span><button class="btn" id="progCancel">Cancel</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<dialog id="textDialog">
+  <h3>Text → Image</h3>
+  <p class="muted small" style="margin:0 0 8px">Paste ASCII, braille or block text art. It is drawn with the current font, colour and size settings and can be exported as PNG, JPG, WEBP, SVG or HTML.</p>
+  <textarea id="textIn" spellcheck="false" placeholder="Paste text art here…"></textarea>
+  <div class="textopts">
+    <div class="row"><label>Font</label><select data-key="fontFamily">
+      <option value="mono">System monospace</option><option value="consolas">Consolas</option><option value="courier">Courier New</option>
+      <option value="lucida">Lucida Console</option><option value="dejavu">DejaVu Sans Mono</option><option value="symbol">Segoe UI Symbol</option><option value="custom">Other font…</option></select></div>
+    <div class="row" data-when="fontFamily:custom"><label>Font name</label><input type="text" data-key="customFont" spellcheck="false" placeholder="e.g. JetBrains Mono"></div>
+    <div class="row"><label>Line height <output data-out="charAspect"></output></label><input type="range" data-key="charAspect" min="1" max="3" step="0.05"></div>
+    <div class="row"><label>Margin (characters) <output data-out="margin"></output></label><input type="range" data-key="margin" min="0" max="10" step="1"></div>
+    <div class="row"><label>Colours</label><select data-key="colorMode"><option value="mono">Single colour</option><option value="gradient">Gradient</option></select></div>
+    <div class="row" data-when="colorMode:gradient"><label>Gradient</label><select data-key="textGradient"><option value="vertical">Top → bottom</option><option value="horizontal">Left → right</option><option value="diagonal">Diagonal</option></select></div>
+    <div class="row colors"><label data-when="colorMode:mono"><input type="color" data-key="fg"> Text</label><label data-when="colorMode:gradient"><input type="color" data-key="gradB"> Top / left</label><label data-when="colorMode:gradient"><input type="color" data-key="gradA"> Bottom / right</label><label><input type="color" data-key="bg"> Background</label></div>
+  </div>
+  <div class="acts">
+    <label class="btn left" for="txtFile">Load .txt…</label>
+    <input type="file" id="txtFile" accept=".txt,.ans,.asc,.nfo,text/plain" hidden>
+    <button class="btn" id="textCancel">Cancel</button>
+    <button class="btn primary" id="textOk">Render</button>
+  </div>
+</dialog>
+<dialog id="calDialog">
+  <h3>Calibrate for your phone</h3>
+  <p class="muted small" style="margin:0 0 10px">Phones draw braille with different fonts, widths and line spacing. This one-minute check measures yours for <b class="calPlat">Discord</b>, so pasted art keeps its width and shape. It's saved for this platform.</p>
+  <ol class="calsteps">
+    <li><b>Copy the test card</b> and send it to yourself in <span class="calPlat">Discord</span> (a private chat, "Saved messages" or a test server).<br><button class="btn primary" id="calCopy">Copy test card</button></li>
+    <li><b>On your phone</b>, find the <u>longest bar that stays on one line</u> (its length is written at the start).<br><select id="calCols"></select></li>
+    <li><b>Which ring looks most like a circle?</b> (not tall, not flat)
+      <div class="calrings">
+        <label class="chk"><input type="radio" name="calAspect"> A</label><label class="chk"><input type="radio" name="calAspect"> B</label>
+        <label class="chk"><input type="radio" name="calAspect"> C</label><label class="chk"><input type="radio" name="calAspect"> D</label>
+      </div></li>
+  </ol>
+  <div class="acts"><button class="btn left" id="calReset">Remove calibration</button><button class="btn" id="calCancel">Cancel</button><button class="btn primary" id="calSave">Save</button></div>
+</dialog>
+<dialog id="lookDialog">
+  <h3>Save as your own look</h3>
+  <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
+  <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
+  <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="batchDialog">
+  <h3>Batch convert files</h3>
+  <p class="muted small" style="margin:0 0 10px">Converts every file with the current look and settings and saves one ZIP. Animations and videos can also become GIFs (whole clip, with the GIF options of the export panel).</p>
+  <div class="row"><label class="btn" for="batchFiles" style="width:auto">Choose files…</label> <span class="muted small" id="batchCount">No files chosen</span>
+    <input type="file" id="batchFiles" multiple hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.bmp,.svg,.mp4,.webm,.mov,.mkv,.txt"></div>
+  <h4>Save for every file</h4>
+  <div class="inline" id="batchFormats" style="flex-wrap:wrap;gap:12px"></div>
+  <div class="inline" style="flex-wrap:wrap;gap:12px;margin-top:8px">
+    <label class="chk"><input type="checkbox" id="batchTxt" checked> Text .txt</label>
+    <label class="chk"><input type="checkbox" id="batchHtml"> Web page .html</label>
+    <label class="chk"><input type="checkbox" id="batchGif" checked> GIF for animations &amp; videos</label>
+  </div>
+  <div class="acts"><button class="btn" id="batchCancel">Cancel</button><button class="btn primary" id="batchGo" disabled>Convert</button></div>
+</dialog>
+<dialog id="copyDialog">
+  <h3>Copy manually</h3>
+  <p class="muted small" style="margin:0 0 8px">Your browser blocked automatic copying. The text below is already selected. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> (<kbd>⌘</kbd>+<kbd>C</kbd> on Mac).</p>
+  <textarea id="copyArea" readonly spellcheck="false"></textarea>
+  <div class="acts"><button class="btn primary" id="copyClose">Done</button></div>
+</dialog>
+<div id="videoHost"></div>
+<pre id="selftest" hidden></pre>
+
+<script>
+@@SCRIPTS@@
+</script>
+</body>
+</html>

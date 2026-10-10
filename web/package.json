@@ -1,0 +1,13 @@
+{
+  "name": "text-art-studio",
+  "private": true,
+  "description": "Builds the single offline page index.html from src/",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "build:wasm": "node build.mjs --wasm"
+  },
+  "devDependencies": {
+    "wabt": "1.0.39"
+  }
+}
