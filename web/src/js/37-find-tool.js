@@ -62,6 +62,8 @@ function toolList() {
   add('Flood fill an area', 'Edit', 'bucket fill', needSrc(() => { setEditMode(true); Edit.tool = 'fill'; updateEditUI(); }));
   for (const [v, n, k2] of [['split', 'Compare side by side', 'before after original'], ['wipe', 'Wipe: drag between original and result', 'before after slider'], ['src', 'Show the original', 'source'], ['text', 'Show the raw text', 'select copy'], ['platform', 'Preview in a chat app', 'discord phone']])
     add(n, 'View', k2, needSrc(() => setView(v)));
+  add('Full screen / OBS view', 'View', 'present fullscreen stream obs browser source', needSrc(() => setPresent(true)));
+  add('Customize the screen (hide parts)', 'More', 'hide simplify declutter steps status', openCustomize);
   add('Keep these settings as a version (A–D)', 'Above the picture', 'snapshot compare ab a/b', needSrc(keepVersion));
   add('Fit the picture / zoom', 'View', 'zoom 100 fit', () => { App.zoom = App.zoom ? 0 : 1; applyZoom(); });
   add('Send in a chat app (Discord, WhatsApp…)', 'Share panel', 'copy paste message', () => showExport('chat'));

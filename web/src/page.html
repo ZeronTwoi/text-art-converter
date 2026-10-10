@@ -38,6 +38,7 @@
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
         <div class="menulabel">This browser</div>
+        <button id="btnCustomize" title="Hide the parts of the screen you do not use">⚙ Customize the screen…</button>
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
         <div class="menulabel">Help</div>
@@ -320,9 +321,9 @@
       </div>
       <div class="zoom">
         <button class="btn" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
-        <span id="zoomLabel" aria-live="polite">Fit</span>
+        <button class="btn zlabel" id="zoomLabel" title="Fit to the window (F)" aria-label="Zoom: fit to the window" aria-live="polite">Fit</button>
         <button class="btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
-        <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
+        <button class="btn icon" id="btnPresent" title="Full screen: only the art (Esc to leave)" aria-label="Full screen">⛶</button>
       </div>
     </div>
     <div class="editbar" id="editBar" hidden>
@@ -466,6 +467,10 @@
   <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>
 </dialog>
 
+<div class="presentbar" id="presentBar" role="toolbar" aria-label="Full screen">
+  <button class="btn" id="presentObs" title="An address for OBS (Browser source) that shows your webcam in this look">📡 Copy OBS link</button>
+  <button class="btn primary" id="presentExit" title="Leave full screen (Esc)">✕ Leave full screen</button>
+</div>
 <div class="dropOverlay" id="dropOverlay" hidden><div>Drop to convert</div></div>
 <div class="modal" id="progress" hidden>
   <div class="mbox">
@@ -517,6 +522,12 @@
   <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="customDialog">
+  <h3>Customize the screen</h3>
+  <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>
+  <div class="customlist" id="customList"></div>
+  <div class="acts"><button class="btn" id="customReset">Show everything</button><button class="btn primary" id="customClose">Done</button></div>
 </dialog>
 <dialog id="findDialog" class="find" aria-label="Find a tool">
   <div class="findhead"><span aria-hidden="true">🔍</span><input id="findInput" type="text" placeholder="What do you want to do? e.g. crop, sticker, palette, type text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="findList" aria-label="Search the tools"><button class="btn" id="findClose">Esc</button></div>

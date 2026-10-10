@@ -144,7 +144,7 @@ function initUI() {
   $$('#viewSeg button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   $('#zoomIn').addEventListener('click', () => zoomBy(1));
   $('#zoomOut').addEventListener('click', () => zoomBy(-1));
-  $('#zoomFit').addEventListener('click', () => { App.zoom = 0; applyZoom(); });
+  $('#zoomLabel').addEventListener('click', () => { App.zoom = 0; applyZoom(); });
   const stage = $('#stage');
   stage.addEventListener('wheel', e => { if (!e.ctrlKey || !App.src) return; e.preventDefault(); zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   let drag = null;
@@ -274,6 +274,8 @@ function initUI() {
   initPalettes();
   initShareLink();
   initFindTool();
+  initCustomize();
+  initPresent();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

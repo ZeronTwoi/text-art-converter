@@ -96,7 +96,7 @@ body[data-kind="text"] .src-only{opacity:.4;pointer-events:none}
 .seg button.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
 .zoom{display:inline-flex;align-items:center;gap:4px}
 .zoom button{padding:4px 9px}
-#zoomLabel{min-width:44px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+#zoomLabel{min-width:52px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
 .stage{flex:1;position:relative;overflow:auto;background:var(--stage);min-height:220px;
   background-image:linear-gradient(45deg,rgba(128,128,128,.07) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.07) 75%),linear-gradient(45deg,rgba(128,128,128,.07) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.07) 75%);
   background-size:20px 20px;background-position:0 0,10px 10px}
@@ -392,6 +392,21 @@ details.group.fold>summary.h span{margin-left:auto}
 .xsec details.xmore .xbtns,.xsec details.xstick .xbtns{margin-top:4px}
 .looks:not(.all) .look.extra:not(.shown){display:none}
 .moreLooks{margin-top:8px}
+/* full screen / OBS: only the art */
+body.present{background:#000}
+body.present .topbar,body.present .settings,body.present .export,body.present .viewbar,body.present .editbar,body.present .player,body.present .statusbar,body.present .mobilebar,body.present .toast,body.present #peekBadge{display:none!important}
+body.present .layout{grid-template-columns:1fr}
+body.present .stage{background:#000;background-image:none}
+body.present .views{padding:0}
+body.present .views canvas{box-shadow:none;border-radius:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+.presentbar{display:none}
+body.present .presentbar{display:flex;gap:8px;position:fixed;top:12px;right:12px;z-index:80;opacity:0;transition:opacity .3s;pointer-events:none}
+body.present .presentbar.show{opacity:1;pointer-events:auto}
+/* customize the screen: parts you can hide */
+body.hide-steps .steps,body.hide-versions .versions,body.hide-edit #editBtn,body.hide-guides #rampStrip,body.hide-guides #toneHist,body.hide-guides #toneInfo,
+body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide-platform #viewSeg [data-view="platform"],body.hide-film .filmstrip{display:none!important}
+.customlist{display:flex;flex-direction:column;gap:6px}
+.customlist label{padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -480,6 +495,7 @@ details.group.fold>summary.h span{margin-left:auto}
         <button id="btnSaveProject" title="Saves the picture, every setting, crop, mask, edits and captions in one file (Ctrl+S)">💾 Save project (.textart)…</button>
         <button id="btnOpenProject" title="Open a .textart project to continue where you stopped">📂 Open project…</button>
         <div class="menulabel">This browser</div>
+        <button id="btnCustomize" title="Hide the parts of the screen you do not use">⚙ Customize the screen…</button>
         <button id="btnForget" title="This browser keeps your last picture so you can continue later. This removes it">🗑 Forget my last picture</button>
         <button id="btnInstall" title="Install Text Art Studio as an app that also works offline" hidden>⬇ Install as an app</button>
         <div class="menulabel">Help</div>
@@ -762,9 +778,9 @@ details.group.fold>summary.h span{margin-left:auto}
       </div>
       <div class="zoom">
         <button class="btn" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
-        <span id="zoomLabel" aria-live="polite">Fit</span>
+        <button class="btn zlabel" id="zoomLabel" title="Fit to the window (F)" aria-label="Zoom: fit to the window" aria-live="polite">Fit</button>
         <button class="btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
-        <button class="btn" id="zoomFit" title="Fit to view (F)">Fit</button>
+        <button class="btn icon" id="btnPresent" title="Full screen: only the art (Esc to leave)" aria-label="Full screen">⛶</button>
       </div>
     </div>
     <div class="editbar" id="editBar" hidden>
@@ -908,6 +924,10 @@ details.group.fold>summary.h span{margin-left:auto}
   <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>
 </dialog>
 
+<div class="presentbar" id="presentBar" role="toolbar" aria-label="Full screen">
+  <button class="btn" id="presentObs" title="An address for OBS (Browser source) that shows your webcam in this look">📡 Copy OBS link</button>
+  <button class="btn primary" id="presentExit" title="Leave full screen (Esc)">✕ Leave full screen</button>
+</div>
 <div class="dropOverlay" id="dropOverlay" hidden><div>Drop to convert</div></div>
 <div class="modal" id="progress" hidden>
   <div class="mbox">
@@ -959,6 +979,12 @@ details.group.fold>summary.h span{margin-left:auto}
   <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
   <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+</dialog>
+<dialog id="customDialog">
+  <h3>Customize the screen</h3>
+  <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>
+  <div class="customlist" id="customList"></div>
+  <div class="acts"><button class="btn" id="customReset">Show everything</button><button class="btn primary" id="customClose">Done</button></div>
 </dialog>
 <dialog id="findDialog" class="find" aria-label="Find a tool">
   <div class="findhead"><span aria-hidden="true">🔍</span><input id="findInput" type="text" placeholder="What do you want to do? e.g. crop, sticker, palette, type text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="findList" aria-label="Search the tools"><button class="btn" id="findClose">Esc</button></div>
@@ -5055,7 +5081,7 @@ function initUI() {
   $$('#viewSeg button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   $('#zoomIn').addEventListener('click', () => zoomBy(1));
   $('#zoomOut').addEventListener('click', () => zoomBy(-1));
-  $('#zoomFit').addEventListener('click', () => { App.zoom = 0; applyZoom(); });
+  $('#zoomLabel').addEventListener('click', () => { App.zoom = 0; applyZoom(); });
   const stage = $('#stage');
   stage.addEventListener('wheel', e => { if (!e.ctrlKey || !App.src) return; e.preventDefault(); zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   let drag = null;
@@ -5185,6 +5211,8 @@ function initUI() {
   initPalettes();
   initShareLink();
   initFindTool();
+  initCustomize();
+  initPresent();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -6950,6 +6978,7 @@ async function initSession() {
   $('#btnForget').addEventListener('click', () => sessionForget(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
   if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
+  if (location.hash.startsWith('#present')) return;   // full screen / OBS: opened by initPresent
   if (location.hash && location.hash !== '#') return;   // tests and demos start clean
   const saved = await sessionLoad();
   if (!saved || App.src) return;
@@ -7621,6 +7650,8 @@ function toolList() {
   add('Flood fill an area', 'Edit', 'bucket fill', needSrc(() => { setEditMode(true); Edit.tool = 'fill'; updateEditUI(); }));
   for (const [v, n, k2] of [['split', 'Compare side by side', 'before after original'], ['wipe', 'Wipe: drag between original and result', 'before after slider'], ['src', 'Show the original', 'source'], ['text', 'Show the raw text', 'select copy'], ['platform', 'Preview in a chat app', 'discord phone']])
     add(n, 'View', k2, needSrc(() => setView(v)));
+  add('Full screen / OBS view', 'View', 'present fullscreen stream obs browser source', needSrc(() => setPresent(true)));
+  add('Customize the screen (hide parts)', 'More', 'hide simplify declutter steps status', openCustomize);
   add('Keep these settings as a version (A–D)', 'Above the picture', 'snapshot compare ab a/b', needSrc(keepVersion));
   add('Fit the picture / zoom', 'View', 'zoom 100 fit', () => { App.zoom = App.zoom ? 0 : 1; applyZoom(); });
   add('Send in a chat app (Discord, WhatsApp…)', 'Share panel', 'copy paste message', () => showExport('chat'));
@@ -7726,6 +7757,94 @@ function initFindTool() {
     if (returning) setTimeout(openWhatsNew, 900);
     else try { localStorage.setItem('textArtStudio.seenNews', WHATS_NEW_ID); } catch (e) {}
   }
+}
+/* =====================================================================
+   Customize the screen: hide the parts you do not use (remembered in this browser).
+   Hidden parts stay reachable with Find a tool.
+   ===================================================================== */
+const SCREEN_PARTS = [
+  ['steps', 'The steps bar (1 Open · 2 Pick a look · 3 Adjust · 4 Share)'],
+  ['versions', 'Versions (A–D) above the picture'],
+  ['edit', 'The ✎ Edit button'],
+  ['wipe', 'The Wipe view'],
+  ['platform', 'The "In the app" view'],
+  ['film', 'The filmstrip of animations and videos'],
+  ['guides', 'Guides: character strip and brightness histogram'],
+  ['status', 'The status bar at the bottom'],
+];
+const CUSTOM_KEY = 'textArtStudio.hidden';
+function hiddenParts() { try { return new Set(JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]')); } catch (e) { return new Set(); } }
+function applyHiddenParts(set = hiddenParts()) { for (const [id] of SCREEN_PARTS) document.body.classList.toggle('hide-' + id, set.has(id)); }
+function setPartHidden(id, hide) {
+  const s = hiddenParts(); if (hide) s.add(id); else s.delete(id);
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify([...s])); } catch (e) {}
+  applyHiddenParts(s);
+}
+function openCustomize() {
+  const box = $('#customList'), hidden = hiddenParts(); box.textContent = '';
+  for (const [id, label] of SCREEN_PARTS) {
+    const l = document.createElement('label'); l.className = 'chk';
+    l.innerHTML = '<input type="checkbox"> <span></span>'; l.lastChild.textContent = label;
+    const c = l.firstChild; c.checked = !hidden.has(id); c.addEventListener('change', () => setPartHidden(id, !c.checked));
+    box.appendChild(l);
+  }
+  $('#customDialog').showModal();
+}
+function initCustomize() {
+  applyHiddenParts();
+  $('#btnCustomize').addEventListener('click', openCustomize);
+  $('#customClose').addEventListener('click', () => $('#customDialog').close());
+  $('#customReset').addEventListener('click', () => { try { localStorage.removeItem(CUSTOM_KEY); } catch (e) {} applyHiddenParts(new Set()); openCustomize(); });
+}
+/* =====================================================================
+   Full screen / OBS view: only the art, on black. For streaming, an OBS "Browser source" can open
+   index.html#present=webcam;s=<your look> (OBS has its own browser, so the look travels in the address).
+   ===================================================================== */
+const Present = { on: false, timer: 0 };
+function setPresent(on, fullscreen = true) {
+  Present.on = !!on && !!App.src;
+  document.body.classList.toggle('present', Present.on);
+  if (Present.on) {
+    if (Edit.on) setEditMode(false); if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false);
+    Present.view = App.view; setView('out'); App.zoom = 0; applyZoom(); presentBar();
+    if (fullscreen && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    if (Present.view) setView(Present.view);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+  App.dirty = true;
+}
+/* the little bar shows on mouse movement and hides after 2.5 s */
+function presentBar() { const b = $('#presentBar'); b.classList.add('show'); clearTimeout(Present.timer); Present.timer = setTimeout(() => b.classList.remove('show'), 2500); }
+/* an address that opens the webcam (or the demo) full screen in your current look */
+async function presentLink(what = 'webcam') {
+  const s = {}; for (const k in DEFAULTS) if (!LOOK_SKIP.has(k) || k === 'cols') s[k] = S[k];
+  const z = await deflateRaw(new TextEncoder().encode(JSON.stringify(s)));
+  return location.href.replace(/#.*$/, '') + `#present=${what};s=${b64url(z)}`;
+}
+async function openPresentLink(hash) {
+  const m = /^#present(?:=(\w+))?(?:;s=([A-Za-z0-9_-]+))?/.exec(hash); if (!m) return false;
+  if (m[2]) try {
+    const o = JSON.parse(new TextDecoder().decode(await inflateRaw(unb64url(m[2])))), st = {};
+    for (const k in o) if (k in DEFAULTS && typeof o[k] === typeof DEFAULTS[k]) st[k] = o[k];
+    applySettings(st);
+  } catch (e) { console.warn('present settings', e); }
+  if (m[1] === 'webcam') await startWebcam(); else await demoImage();
+  setPresent(true, false);
+  return true;
+}
+function initPresent() {
+  $('#btnPresent').addEventListener('click', () => { if (!App.src) return toast('Open a picture first'); setPresent(!Present.on); });
+  $('#presentExit').addEventListener('click', () => setPresent(false));
+  $('#presentObs').addEventListener('click', async () => copyOrShow(await presentLink('webcam'), 'OBS link copied: in OBS add a "Browser" source, untick "Local file", paste it as the URL (it opens the webcam in this look)'));
+  document.addEventListener('pointermove', () => { if (Present.on) presentBar(); });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && Present.on && !location.hash.startsWith('#present')) setPresent(false); });
+  window.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input,textarea,select') || document.querySelector('dialog[open]')) return;
+    if (e.key === 'Escape' && Present.on) { e.preventDefault(); setPresent(false); }
+    else if (e.key === 'F11' && App.src) { e.preventDefault(); setPresent(!Present.on); }
+  });
+  if (location.hash.startsWith('#present')) openPresentLink(location.hash);
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)

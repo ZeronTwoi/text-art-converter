@@ -7,7 +7,7 @@ async function uiTest() {
   const log = [], say = l => { log.push(l); out.textContent = log.join('\n'); };
   const ok = (name, cond, detail) => { say(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' (' + detail + ')' : ''}`); return cond; };
   const saved = Object.assign({}, S);
-  const reset = () => { Object.assign(S, DEFAULTS); editsClear(); syncControls(); };
+  const reset = () => { Object.assign(S, DEFAULTS); editsClear(); if (Present.on) setPresent(false); syncControls(); };
   const wait = ms => new Promise(r => setTimeout(r, ms));
   try {
     reset();
@@ -674,7 +674,7 @@ UI_TESTS.push(async function findTool(ok, { wait }) {
     try { await uiCaptureDownloads(async () => { await t.run(); await wait(40); }); }
     catch (e) { errors.push(t.name + ': ' + e.message); }
     for (const d of $$('dialog[open]')) d.close();
-    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false);
+    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false); if (Present.on) setPresent(false);
     if (!App.src || App.src.kind !== 'image') { await demoImage(); await wait(20); }
     App.zoom = 0; setView('out');
   }
@@ -698,6 +698,29 @@ UI_TESTS.push(async function layoutCover(ok, { wait }) {
   for (const tab of ['look', 'adjust', 'colour', 'crop']) setTab(tab);
   setTab('look');
   ok('Layout: nothing unexpected covers the page with a picture', uiCoverCheck().length === 0, uiCoverCheck().join(', '));
+});
+
+UI_TESTS.push(async function leanScreen(ok, { wait }) {
+  try { localStorage.removeItem(CUSTOM_KEY); } catch (e) {} applyHiddenParts(new Set());
+  await demoImage(); await wait(40); renderNow(); setTab('look'); S.exportGoal = 'chat'; applyGoal();
+  $$('details.fold').forEach(d => { d.open = false; }); setAllLooks(false); setAdvanced(false); await wait(20);   // as a new user sees it
+  const visible = el => el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : !!el.offsetWidth;
+  const n = $$('button, input:not([type=hidden]), select, textarea, label.btn').filter(visible).length;
+  ok('Lean: the first screen shows at most 64 controls', n <= 64, n + ' visible');
+  openCustomize(); const boxes = $$('#customList input');
+  boxes[0].click(); boxes[1].click();
+  ok('Customize: hiding parts hides them', document.body.classList.contains('hide-steps') && getComputedStyle($('.steps')).display === 'none' && getComputedStyle($('#versions')).display === 'none');
+  $('#customReset').click(); $('#customDialog').close();
+  ok('Customize: "Show everything" brings them back', !document.body.classList.contains('hide-steps') && getComputedStyle($('.steps')).display !== 'none');
+  setPresent(true, false); await wait(30);
+  ok('Full screen: only the art is shown', document.body.classList.contains('present') && getComputedStyle($('.topbar')).display === 'none' && getComputedStyle($('.settings')).display === 'none' && $('#outCanvas').getBoundingClientRect().width > innerWidth * 0.5);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  ok('Full screen: Esc leaves it', !document.body.classList.contains('present') && getComputedStyle($('.topbar')).display !== 'none');
+  applySettings({ mode: 'ascii', cols: 77 }); const link = await presentLink('demo');
+  applySettings({ mode: 'braille', cols: 120 });
+  await openPresentLink(link.slice(link.indexOf('#'))); await wait(40);
+  ok('OBS link: opens full screen in the look of the link', document.body.classList.contains('present') && S.mode === 'ascii' && S.cols === 77 && App.src.kind === 'image');
+  setPresent(false);
 });
 
 UI_TESTS.push(async function captions(ok) {
