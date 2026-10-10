@@ -836,6 +836,29 @@ UI_TESTS.push(async function videoTools(ok, { wait, reset }) {
   set({});
 });
 
+UI_TESTS.push(async function shareLooks(ok, { wait }) {
+  const keep = JSON.stringify(userLooks);
+  await demoImage(); await wait(30);
+  applySettings({ mode: 'ascii', charset: 'custom', customChars: ' .oO@', fg: '#33ff66', bg: '#001100', contrast: 0.4 });
+  const want = currentLook(), link = await lookLink('Green terminal', want);
+  ok('Share looks: a short link', /#look=[A-Za-z0-9_-]+$/.test(link) && link.length < 400, link.length + ' characters');
+  applySettings(Object.assign(lookOnly(DEFAULTS), { cols: 77 })); userLooks = []; buildLooks();
+  await openLookLink(link.slice(link.indexOf('#')));
+  ok('Share looks: opening the link adds the look and uses it', userLooks.length === 1 && userLooks[0].name === 'Green terminal' && App.look === 'user:Green terminal' && S.customChars === ' .oO@' && S.fg === '#33ff66' && S.contrast === 0.4);
+  ok('Share looks: your picture settings stay', S.cols === 77 && App.src.kind === 'image');
+  await openLookLink(link.slice(link.indexOf('#')));
+  ok('Share looks: the same look is not added twice', userLooks.length === 1);
+  const got = await uiCaptureDownloads(() => saveLookFile('Green terminal', want));
+  ok('Share looks: saved as a .textlook file', got.length === 1 && got[0].name === 'Green terminal.textlook');
+  userLooks = []; buildLooks(); applySettings(lookOnly(DEFAULTS));
+  await openFile(new File([got[0].blob], got[0].name));
+  ok('Share looks: opening the file adds it too', userLooks.length === 1 && S.customChars === ' .oO@' && App.src.kind === 'image');
+  ok('Share looks: your own look cards can be shared', !!$('#looks .look[data-look="user:Green terminal"] .share'));
+  await openFile(new File(['{"type":"nope"}'], 'bad.textlook'));
+  ok('Share looks: a wrong file is refused', userLooks.length === 1);
+  userLooks = JSON.parse(keep); storeUserLooks(); buildLooks(); applySettings(lookOnly(DEFAULTS)); App.look = null; markLooks();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

@@ -246,6 +246,7 @@ body.simple .adv{display:none!important}
 .look{position:relative}
 .look .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:1;opacity:0;transition:opacity .12s}
 .look:hover .del,.look:focus-within .del{opacity:1}
+.look .del.share{right:auto;left:2px}
 .look.add{align-items:center;justify-content:center;border-style:dashed;color:var(--muted);min-height:70px}
 .look.add b{font-size:22px;font-weight:400;line-height:1}
 @media (hover:none){.look .del{opacity:1}}
@@ -504,7 +505,7 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
   <div class="topacts">
     <button class="btn findbtn" id="btnFind" title="Find any tool or setting by name (Ctrl+K)" aria-label="Find a tool"><span aria-hidden="true">🔍</span><b>Find a tool</b><kbd>Ctrl K</kbd></button>
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
-    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart,.textlook">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
@@ -1006,10 +1007,10 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
   <div class="acts"><button class="btn left" id="calReset">Remove calibration</button><button class="btn" id="calCancel">Cancel</button><button class="btn primary" id="calSave">Save</button></div>
 </dialog>
 <dialog id="lookDialog">
-  <h3>Save as your own look</h3>
-  <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
+  <h3>Save or share a look</h3>
+  <p class="muted small" style="margin:0 0 8px">A look is the style, colours, light and line settings (not the picture, width, crop or export options). Saved looks are kept in this browser; a link or a .textlook file gives the look to someone else.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
-  <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+  <div class="acts"><button class="btn left" id="lookLink" title="A link that adds this look for whoever opens it">🔗 Copy link</button><button class="btn" id="lookFile" title="A small file you can send; open or drop it to add the look">.textlook file</button><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
 </dialog>
 <dialog id="revealDialog">
   <h3>Before → after video</h3>
@@ -3234,6 +3235,7 @@ async function openFile(file, how) {
   if (App.exporting) return toast('Wait for the export to finish first');
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
+  if (ext === 'textlook') { await openLookFile(file); return; }
   if (ext === 'textart' || isZipHead(head)) { await openProject(file); return; }
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {
@@ -5352,6 +5354,7 @@ function initUI() {
   initPoster();
   initPlotter();
   initDesigner();
+  initLookShare();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5424,10 +5427,10 @@ function deleteUserLook(name) {
   if (App.look === USER_PREFIX + name) App.look = null;
   buildLooks(); markLooks(); scheduleLooks();
 }
-function openLookDialog() {
+function openLookDialog(name) {
   const d = $('#lookDialog'), inp = $('#lookName');
   let n = 1; while (userLooks.some(l => l.name === 'My look ' + n)) n++;
-  inp.value = 'My look ' + n; d.showModal(); inp.focus(); inp.select();
+  inp.value = typeof name === 'string' ? name : 'My look ' + n; d.showModal(); inp.focus(); inp.select();
 }
 /* the looks shown first; the others behind "Show all looks" (the active one is always shown) */
 const FEATURED_LOOKS = ['Braille: colour', 'Braille: classic', 'ASCII: colour', 'Pixel art (half blocks)', 'Comic (outlines + shading)', 'Matrix', 'Emoji mosaic', 'Game Boy'];
@@ -5451,7 +5454,9 @@ function buildLooks() {
     if (user) {
       const x = document.createElement('i'); x.className = 'del'; x.textContent = '✕'; x.title = 'Delete this look'; x.setAttribute('role', 'button');
       x.addEventListener('click', e => { e.stopPropagation(); if (confirm(`Delete your look "${label}"?`)) deleteUserLook(label); });
-      b.appendChild(x);
+      const sh = document.createElement('i'); sh.className = 'del share'; sh.textContent = '⤴'; sh.title = 'Share this look (link or file)'; sh.setAttribute('role', 'button');
+      sh.addEventListener('click', e => { e.stopPropagation(); applyPreset(id); openLookDialog(label); });
+      b.append(x, sh);
     }
     el.appendChild(b);
   };
@@ -7118,7 +7123,7 @@ async function initSession() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
   if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
   if (location.hash.startsWith('#present')) return;   // full screen / OBS: opened by initPresent
-  if (location.hash && location.hash !== '#') return;   // tests and demos start clean
+  if (location.hash && location.hash !== '#' && !location.hash.startsWith('#look=')) return;   // tests and demos start clean (a look link keeps your picture)
   const saved = await sessionLoad();
   if (!saved || App.src) return;
   const m = saved.state.meta, box = $('#resumeBox');
@@ -7764,6 +7769,7 @@ function toolList() {
   add('Open a project', 'Projects', 'load textart', () => $('#fileInput').click());
   add('Forget my last picture', 'This browser', 'privacy delete session', () => sessionForget(false));
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
+  add('Share a look (link or .textlook file)', 'Look tab → Save current look', 'share look send friend preset link file import export', () => openLookDialog());
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
   add('Design your own characters', 'Look tab', 'character set charset designer letters ramp custom', openDesigner);
@@ -8387,6 +8393,51 @@ function initDesigner() {
   $('#csUse').addEventListener('click', designerUse);
   $('#csSave').addEventListener('click', designerSave);
   $('#csCancel').addEventListener('click', () => $('#csDialog').close());
+}
+/* =====================================================================
+   Share looks: a look as a small .textlook file or a link (#look=…). Opening either adds it to your looks and uses it.
+   Only look settings travel (style, colours, light, characters), never the picture.
+   ===================================================================== */
+function lookOnly(o) { const st = {}; for (const k in o || {}) if (k in DEFAULTS && !LOOK_SKIP.has(k) && typeof o[k] === typeof DEFAULTS[k]) st[k] = o[k]; return st; }
+const currentLook = () => lookOnly(S);
+/* what is shared: only the settings that differ from the defaults (shorter links) */
+function lookPayload(name, st) { const d = {}; for (const k in st) if (st[k] !== DEFAULTS[k]) d[k] = st[k]; return { generator: 'Text Art Studio', type: 'look', v: 1, name, settings: d }; }
+async function lookLink(name, st) {
+  const z = await deflateRaw(new TextEncoder().encode(JSON.stringify(lookPayload(name, st))));
+  return location.href.replace(/#.*$/, '') + '#look=' + b64url(z);
+}
+function saveLookFile(name, st) {
+  download(new Blob([JSON.stringify(lookPayload(name, st), null, 1)], { type: 'application/json' }), (name.replace(/[\\/:*?"<>|]+/g, '_') || 'look') + '.textlook');
+}
+/* adds a shared look to yours (once: the same settings are not added twice) and uses it */
+function addSharedLook(p) {
+  if (!p || p.type !== 'look' || typeof p.name !== 'string' || !p.settings || typeof p.settings !== 'object') throw new Error('not a Text Art Studio look');
+  const settings = Object.assign(lookOnly(DEFAULTS), lookOnly(p.settings)), base = p.name.trim().slice(0, 34) || 'Shared look';
+  const same = userLooks.find(l => Object.keys(settings).every(k => l.settings[k] === settings[k]));
+  let name = same && same.name;
+  if (!name) { name = base; for (let n = 2; userLooks.some(l => l.name === name); n++) name = `${base} (${n})`; userLooks.push({ name, settings }); storeUserLooks(); buildLooks(); }
+  applyPreset(USER_PREFIX + name); scheduleLooks();
+  toast(same ? `You already have this look: ${name}` : `Look added to your looks: ${name}`);
+  return name;
+}
+async function openLookLink(hash) {
+  const m = /^#look=([A-Za-z0-9_-]+)$/.exec(hash || ''); if (!m) return false;
+  try { addSharedLook(JSON.parse(new TextDecoder().decode(await inflateRaw(unb64url(m[1]))))); history.replaceState(null, '', location.href.replace(/#.*$/, '')); return true; }
+  catch (e) { toast('This look link could not be opened: ' + e.message, 'error'); return false; }
+}
+async function openLookFile(file) {
+  try { addSharedLook(JSON.parse(await file.text())); } catch (e) { toast('Could not open the look: ' + e.message, 'error'); }
+}
+function initLookShare() {
+  const name = () => $('#lookName').value.trim().slice(0, 40) || 'Shared look';
+  $('#lookLink').addEventListener('click', async () => {
+    if (!canDeflate()) return toast('This browser cannot make links', 'error');
+    const link = await lookLink(name(), currentLook()); $('#lookDialog').close();
+    copyOrShow(link, 'Look link copied. Whoever opens it gets this look (not your picture)' + (servedOnWeb() ? '' : '. While the page is only on this computer, the link opens here only'));
+  });
+  $('#lookFile').addEventListener('click', () => { saveLookFile(name(), currentLook()); $('#lookDialog').close(); toast('Look saved as a file. Open it (or drop it) in Text Art Studio to add it'); });
+  window.addEventListener('hashchange', () => { if (location.hash.startsWith('#look=')) openLookLink(location.hash); });
+  if (location.hash.startsWith('#look=')) openLookLink(location.hash);
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)
@@ -9655,6 +9706,29 @@ UI_TESTS.push(async function videoTools(ok, { wait, reset }) {
   set({ playOrder: 'reverse' }); App.time = 1; App.loop = true; setPlaying(true); await wait(300); const t1 = App.time; setPlaying(false);
   ok('Video tools: the preview plays backwards too', t1 < 1 && t1 > 0.3, 'time ' + t1.toFixed(2));
   set({});
+});
+
+UI_TESTS.push(async function shareLooks(ok, { wait }) {
+  const keep = JSON.stringify(userLooks);
+  await demoImage(); await wait(30);
+  applySettings({ mode: 'ascii', charset: 'custom', customChars: ' .oO@', fg: '#33ff66', bg: '#001100', contrast: 0.4 });
+  const want = currentLook(), link = await lookLink('Green terminal', want);
+  ok('Share looks: a short link', /#look=[A-Za-z0-9_-]+$/.test(link) && link.length < 400, link.length + ' characters');
+  applySettings(Object.assign(lookOnly(DEFAULTS), { cols: 77 })); userLooks = []; buildLooks();
+  await openLookLink(link.slice(link.indexOf('#')));
+  ok('Share looks: opening the link adds the look and uses it', userLooks.length === 1 && userLooks[0].name === 'Green terminal' && App.look === 'user:Green terminal' && S.customChars === ' .oO@' && S.fg === '#33ff66' && S.contrast === 0.4);
+  ok('Share looks: your picture settings stay', S.cols === 77 && App.src.kind === 'image');
+  await openLookLink(link.slice(link.indexOf('#')));
+  ok('Share looks: the same look is not added twice', userLooks.length === 1);
+  const got = await uiCaptureDownloads(() => saveLookFile('Green terminal', want));
+  ok('Share looks: saved as a .textlook file', got.length === 1 && got[0].name === 'Green terminal.textlook');
+  userLooks = []; buildLooks(); applySettings(lookOnly(DEFAULTS));
+  await openFile(new File([got[0].blob], got[0].name));
+  ok('Share looks: opening the file adds it too', userLooks.length === 1 && S.customChars === ' .oO@' && App.src.kind === 'image');
+  ok('Share looks: your own look cards can be shared', !!$('#looks .look[data-look="user:Green terminal"] .share'));
+  await openFile(new File(['{"type":"nope"}'], 'bad.textlook'));
+  ok('Share looks: a wrong file is refused', userLooks.length === 1);
+  userLooks = JSON.parse(keep); storeUserLooks(); buildLooks(); applySettings(lookOnly(DEFAULTS)); App.look = null; markLooks();
 });
 
 UI_TESTS.push(async function captions(ok) {

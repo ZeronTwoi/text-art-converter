@@ -24,7 +24,7 @@
   <div class="topacts">
     <button class="btn findbtn" id="btnFind" title="Find any tool or setting by name (Ctrl+K)" aria-label="Find a tool"><span aria-hidden="true">🔍</span><b>Find a tool</b><kbd>Ctrl K</kbd></button>
     <label class="btn primary" for="fileInput" title="Open an image, GIF or video (you can also drop or paste it anywhere)">Open file…</label>
-    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart">
+    <input type="file" id="fileInput" hidden accept="image/*,video/*,.gif,.apng,.png,.webp,.avif,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.bmp,.ico,.cur,.svg,.mp4,.m4v,.webm,.mov,.mkv,.ogv,.ogg,.3gp,.txt,.ans,.asc,.nfo,.diz,.textart,.textlook">
     <div class="menuwrap">
       <button class="btn" id="moreBtn" aria-haspopup="true" title="Other ways to start">More ▾</button>
       <div class="menupop" id="morePop" hidden>
@@ -526,10 +526,10 @@
   <div class="acts"><button class="btn left" id="calReset">Remove calibration</button><button class="btn" id="calCancel">Cancel</button><button class="btn primary" id="calSave">Save</button></div>
 </dialog>
 <dialog id="lookDialog">
-  <h3>Save as your own look</h3>
-  <p class="muted small" style="margin:0 0 8px">Saves the style, colours, light and line settings (not the width, crop or export options). Your looks are kept in this browser.</p>
+  <h3>Save or share a look</h3>
+  <p class="muted small" style="margin:0 0 8px">A look is the style, colours, light and line settings (not the picture, width, crop or export options). Saved looks are kept in this browser; a link or a .textlook file gives the look to someone else.</p>
   <div class="row"><label for="lookName">Name</label><input type="text" id="lookName" maxlength="40" spellcheck="false" style="width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)"></div>
-  <div class="acts"><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
+  <div class="acts"><button class="btn left" id="lookLink" title="A link that adds this look for whoever opens it">🔗 Copy link</button><button class="btn" id="lookFile" title="A small file you can send; open or drop it to add the look">.textlook file</button><button class="btn" id="lookCancel">Cancel</button><button class="btn primary" id="lookSave">Save look</button></div>
 </dialog>
 <dialog id="revealDialog">
   <h3>Before → after video</h3>

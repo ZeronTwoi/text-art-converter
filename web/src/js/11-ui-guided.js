@@ -61,10 +61,10 @@ function deleteUserLook(name) {
   if (App.look === USER_PREFIX + name) App.look = null;
   buildLooks(); markLooks(); scheduleLooks();
 }
-function openLookDialog() {
+function openLookDialog(name) {
   const d = $('#lookDialog'), inp = $('#lookName');
   let n = 1; while (userLooks.some(l => l.name === 'My look ' + n)) n++;
-  inp.value = 'My look ' + n; d.showModal(); inp.focus(); inp.select();
+  inp.value = typeof name === 'string' ? name : 'My look ' + n; d.showModal(); inp.focus(); inp.select();
 }
 /* the looks shown first; the others behind "Show all looks" (the active one is always shown) */
 const FEATURED_LOOKS = ['Braille: colour', 'Braille: classic', 'ASCII: colour', 'Pixel art (half blocks)', 'Comic (outlines + shading)', 'Matrix', 'Emoji mosaic', 'Game Boy'];
@@ -88,7 +88,9 @@ function buildLooks() {
     if (user) {
       const x = document.createElement('i'); x.className = 'del'; x.textContent = '✕'; x.title = 'Delete this look'; x.setAttribute('role', 'button');
       x.addEventListener('click', e => { e.stopPropagation(); if (confirm(`Delete your look "${label}"?`)) deleteUserLook(label); });
-      b.appendChild(x);
+      const sh = document.createElement('i'); sh.className = 'del share'; sh.textContent = '⤴'; sh.title = 'Share this look (link or file)'; sh.setAttribute('role', 'button');
+      sh.addEventListener('click', e => { e.stopPropagation(); applyPreset(id); openLookDialog(label); });
+      b.append(x, sh);
     }
     el.appendChild(b);
   };

@@ -179,6 +179,7 @@ async function openFile(file, how) {
   if (App.exporting) return toast('Wait for the export to finish first');
   const name = file.name || 'pasted', ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
   const head = new Uint8Array(await file.slice(0, 64).arrayBuffer()), fmt = sniffFormat(head);
+  if (ext === 'textlook') { await openLookFile(file); return; }
   if (ext === 'textart' || isZipHead(head)) { await openProject(file); return; }
   const type = SNIFF_MIME[fmt] || file.type || MIME_BY_EXT[ext] || '';
   if (!fmt && (type.startsWith('text/') || ['txt', 'ans', 'nfo', 'asc', 'diz'].includes(ext))) {

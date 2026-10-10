@@ -281,6 +281,7 @@ function initUI() {
   initPoster();
   initPlotter();
   initDesigner();
+  initLookShare();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

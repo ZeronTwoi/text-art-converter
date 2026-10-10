@@ -76,7 +76,7 @@ async function initSession() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
   if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
   if (location.hash.startsWith('#present')) return;   // full screen / OBS: opened by initPresent
-  if (location.hash && location.hash !== '#') return;   // tests and demos start clean
+  if (location.hash && location.hash !== '#' && !location.hash.startsWith('#look=')) return;   // tests and demos start clean (a look link keeps your picture)
   const saved = await sessionLoad();
   if (!saved || App.src) return;
   const m = saved.state.meta, box = $('#resumeBox');
