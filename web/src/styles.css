@@ -213,6 +213,8 @@ body.simple .adv{display:none!important}
 .menupop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;min-width:200px;z-index:45}
 .menupop button{border:0;background:none;text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer}
 .menupop button:hover{background:var(--accent-soft)}
+.menulang{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 10px;cursor:default}
+.menulang select{max-width:130px}
 .menupop hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 .switch{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--muted);font-weight:600;user-select:none}
 .switch input{position:absolute;opacity:0;width:1px;height:1px;margin:0}

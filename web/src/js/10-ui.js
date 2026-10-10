@@ -287,6 +287,7 @@ function initUI() {
   initLiveLooks();
   initSession();
   buildExportPanel();
+  initI18n();
   requestAnimationFrame(tick);
 }
 function setView(v) {

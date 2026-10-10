@@ -281,7 +281,7 @@ function initUI2() {
   $('#advToggle').addEventListener('change', e => setAdvanced(e.target.checked));
   const pop = $('#morePop');
   $('#moreBtn').addEventListener('click', e => { e.stopPropagation(); pop.hidden = !pop.hidden; });
-  pop.addEventListener('click', () => { pop.hidden = true; });
+  pop.addEventListener('click', e => { if (!e.target.closest('.menulang')) pop.hidden = true; });
   document.addEventListener('click', e => { if (!pop.hidden && !e.target.closest('.menuwrap')) pop.hidden = true; });
   const help = $('#helpDialog');
   $('#btnHelp').addEventListener('click', () => help.showModal());

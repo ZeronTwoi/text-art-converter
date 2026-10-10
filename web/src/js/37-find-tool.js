@@ -19,7 +19,7 @@ function showControl(el, tab) {
 const key = k => $(`[data-key="${k}"]`);
 function showExport(goal, label) {
   S.exportGoal = goal; saveSettings(); applyGoal();
-  const b = label && $$('#exportBody button, #exportBody label, #exportBody select').find(x => x.textContent.trim().startsWith(label) || x.id === label);
+  const b = label && $$('#exportBody button, #exportBody label, #exportBody select').find(x => x.textContent.trim().startsWith(label) || x.textContent.trim().startsWith(tr(label)) || x.id === label);
   showControl(b || $(`#goalSeg [data-goal="${goal}"]`));
 }
 const needSrc = fn => () => { if (!App.src) { toast('Open a picture first'); gotoStep(1); return; } fn(); };
@@ -67,6 +67,7 @@ function toolList() {
   for (const [v, n, k2] of [['split', 'Compare side by side', 'before after original'], ['wipe', 'Wipe: drag between original and result', 'before after slider'], ['src', 'Show the original', 'source'], ['text', 'Show the raw text', 'select copy'], ['platform', 'Preview in a chat app', 'discord phone']])
     add(n, 'View', k2, needSrc(() => setView(v)));
   add('Full screen / OBS view', 'View', 'present fullscreen stream obs browser source', needSrc(() => setPresent(true)));
+  add('Language (English, Türkçe, Deutsch, Español, Русский, 日本語, 中文)', 'More menu', 'language translate dil sprache idioma язык 言語 语言', () => { $('#morePop').hidden = false; $('#langSel').focus(); });
   add('Customize the screen (hide parts)', 'More', 'hide simplify declutter steps status', openCustomize);
   add('Keep these settings as a version (A–D)', 'Above the picture', 'snapshot compare ab a/b', needSrc(keepVersion));
   add('Fit the picture / zoom', 'View', 'zoom 100 fit', () => { App.zoom = App.zoom ? 0 : 1; applyZoom(); });
@@ -102,7 +103,8 @@ const findState = { list: [], sel: 0 };
 function findFilter(q) {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean), all = toolList();
   if (!words.length) return all;
-  return all.map(t => { const hay = (t.name + ' ' + t.keys + ' ' + t.where).toLowerCase(), name = t.name.toLowerCase(); if (!words.every(w => hay.includes(w))) return null;
+  // English and the chosen language both match
+  return all.map(t => { const hay = (t.name + ' ' + t.keys + ' ' + t.where + ' ' + tr(t.name) + ' ' + tr(t.where)).toLowerCase(), name = tr(t.name).toLowerCase(); if (!words.every(w => hay.includes(w))) return null;
     return { t, score: (name.startsWith(words[0]) ? 0 : name.includes(words[0]) ? 1 : 2) }; }).filter(Boolean).sort((a, b) => a.score - b.score).map(x => x.t);
 }
 function renderFind() {

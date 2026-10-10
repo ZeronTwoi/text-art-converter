@@ -897,6 +897,31 @@ UI_TESTS.push(async function liveLooks(ok, { wait, reset }) {
   setLiveLooks(true);
 });
 
+UI_TESTS.push(async function languages(ok, { wait, reset }) {
+  reset(); await demoImage(); await wait(50); setAllLooks(false);
+  ok('Languages: English runs nothing extra', I18N.lang === 'en' && !I18N.obs);
+  ok('Languages: the picker has all seven', $$('#langSel option').map(o => o.value).join() === 'en,tr,de,es,ru,ja,zh');
+  const before = { settings: $('#settings').innerHTML, help: $('#helpDialog').innerHTML, top: $('.topbar').innerHTML };
+  const sel = $('#langSel'); sel.value = 'de'; sel.dispatchEvent(new Event('change')); await wait(400);
+  ok('Languages: German from the picker', I18N.lang === 'de' && document.documentElement.lang === 'de' && $('#btnFind b').textContent === 'Werkzeug finden', $('#btnFind b').textContent);
+  ok('Languages: titles and placeholders too', $('#btnHelp').title === 'So funktioniert es' && $('#findInput').placeholder.startsWith('Was möchtest du tun?'));
+  ok('Languages: numbers inside sentences are kept', /^Alle \d+ Looks zeigen/.test($('#moreLooks').textContent.trim()), $('#moreLooks').textContent);
+  ok('Languages: formatted help text', $('#helpDialog').innerHTML.includes('<b>Öffnen</b>') === false && $('#helpDialog').innerHTML.includes('<kbd>Ctrl</kbd>'));
+  toast('Look saved: My look 2'); await wait(30);
+  ok('Languages: messages from the app (with names in them)', $('#toast').textContent === 'Look gespeichert: Mein Look 2', $('#toast').textContent);
+  ok('Languages: search finds tools in both languages', findFilter('zuschnitt').length > 0 && findFilter('crop').length > 0);
+  // how much of the page is translated (brand and format names stay as they are)
+  const pieces = [], same = new Set([...I18N.dict].filter(([k, v]) => k === v).map(([k]) => k));
+  buildExportPanel(); await wait(100);
+  i18nWalk(document.body, (kind, node, attr) => { const o = I18N.orig.get(node), rec = o && o[kind === 'attr' ? attr : kind]; if (rec && /[A-Za-z]{3}/.test(rec.en) && !same.has(normText(rec.en))) pieces.push(rec.en !== rec.shown); });
+  const share = pieces.filter(Boolean).length / pieces.length;
+  ok('Languages: nearly everything is translated', share > 0.93, (share * 100).toFixed(1) + '% of ' + pieces.length + ' pieces');
+  for (const l of ['tr', 'es', 'ru', 'ja', 'zh']) { await setLanguage(l); await wait(50); ok('Languages: ' + LANGS[l], $('#btnFind b').textContent !== 'Find a tool' && $('#btnFind b').textContent.length > 1, $('#btnFind b').textContent); }
+  await setLanguage('en'); await wait(100);
+  ok('Languages: back to English exactly as it was', $('.topbar').innerHTML === before.top && $('#helpDialog').innerHTML === before.help && $('#settings').innerHTML.replace(/ (aria-pressed|class|style|width|height)="[^"]*"/g, '') === before.settings.replace(/ (aria-pressed|class|style|width|height)="[^"]*"/g, '') && !I18N.obs);
+  try { localStorage.removeItem(LANG_KEY); } catch (e) {}
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

@@ -16,6 +16,7 @@
 // After changing anything, run  node test.mjs  (or open test.html#selftest, #equiv, #uitest in a browser).
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { deflateRawSync } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +49,13 @@ if (args.includes('--types')) {
 const list = dir => readdirSync(join(src, dir)).filter(f => /^\d+-.*\.js$/.test(f)).sort();
 const parts = list('js'), testParts = list('tests');
 const wasm = read(src, 'wasm', 'edges_simd.b64').trim();
-const appScript = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM_BASE64@@', wasm);
+// interface languages: src/i18n/<lang>.json (English → that language), compressed into the page. The English
+// sentences are stored once (LANG_KEYS); each language is the list of its translations in the same order.
+const langs = existsSync(join(src, 'i18n')) ? Object.fromEntries(readdirSync(join(src, 'i18n')).filter(f => f.endsWith('.json')).map(f => [f.slice(0, -5), JSON.parse(read(src, 'i18n', f))])) : {};
+const langKeys = [...new Set(Object.values(langs).flatMap(Object.keys))].sort();
+const packed = v => deflateRawSync(Buffer.from(JSON.stringify(v)), { level: 9 }).toString('base64');
+const langData = l => l === 'KEYS' ? packed(langKeys) : langs[l] ? packed(langKeys.map(k => langs[l][k] ?? null)) : '';
+const appScript = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM_BASE64@@', wasm).replace(/'@@LANG_(\w+)@@'/g, (_, l) => `'${langData(l)}'`);
 const testScript = appScript + testParts.map(f => read(src, 'tests', f)).join('');
 const page = read(src, 'page.html'), styles = read(src, 'styles.css');
 const pageWith = script => page.replace('@@STYLES@@\n', () => styles).replace('@@SCRIPTS@@\n', () => script);
