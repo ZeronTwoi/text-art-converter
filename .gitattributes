@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# The web page is built and byte-checked with LF line endings on every platform
+web/** text eol=lf
+web/**/*.png binary
+web/**/*.gif binary
+web/**/*.wasm binary

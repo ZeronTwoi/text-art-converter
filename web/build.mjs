@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url)), src = join(here, 'src'), out = join(here, 'index.html');
 const args = process.argv.slice(2);
+const read = (...p) => readFileSync(join(...p), 'utf8').replace(/\r\n/g, '\n');   // the same output from a CRLF checkout
 
 if (args.includes('--wasm')) {
   const { createRequire } = await import('node:module');
@@ -26,13 +27,13 @@ if (args.includes('--wasm')) {
 }
 
 const parts = readdirSync(join(src, 'js')).filter(f => /^\d+-.*\.js$/.test(f)).sort();
-const wasm = readFileSync(join(src, 'wasm', 'edges_simd.b64'), 'utf8').trim();
-const script = parts.map(f => readFileSync(join(src, 'js', f), 'utf8')).join('').replace('@@EDGES_WASM_BASE64@@', wasm);
-const page = readFileSync(join(src, 'page.html'), 'utf8');
-const html = page.replace('@@STYLES@@\n', () => readFileSync(join(src, 'styles.css'), 'utf8')).replace('@@SCRIPTS@@\n', () => script);
+const wasm = read(src, 'wasm', 'edges_simd.b64').trim();
+const script = parts.map(f => read(src, 'js', f)).join('').replace('@@EDGES_WASM_BASE64@@', wasm);
+const page = read(src, 'page.html');
+const html = page.replace('@@STYLES@@\n', () => read(src, 'styles.css')).replace('@@SCRIPTS@@\n', () => script);
 
 if (args.includes('--check')) {
-  const same = existsSync(out) && readFileSync(out, 'utf8') === html;
+  const same = existsSync(out) && read(out) === html;
   console.log(same ? 'index.html is up to date' : 'index.html differs from src/ (run: node build.mjs)');
   process.exit(same ? 0 : 1);
 }
