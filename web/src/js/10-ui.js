@@ -11,7 +11,8 @@ function syncControls(root = document) {
 function updateOutputs() {
   $$('[data-out]').forEach(o => {
     const v = S[o.dataset.out];
-    o.textContent = (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : v) + (o.dataset.suffix || '');
+    if (o.hasAttribute('data-pct')) { o.textContent = Math.round(v * 100) + '%'; return; }
+    o.textContent =(typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : v) + (o.dataset.suffix || '');
   });
 }
 function updateVisibility() {
@@ -282,6 +283,7 @@ function initUI() {
   initPlotter();
   initDesigner();
   initLookShare();
+  initLayers();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

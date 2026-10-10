@@ -267,6 +267,8 @@ function engineSource() {
     'let LZW_TABLE = null, LZW_USED = null, edgesWasm;',
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
+    'function drawLayer() {}',
+    'function layerSig() { return ""; }',
     'function withOverlay(r) { return r; }',
     'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
     'let pixelGlyphs = null; const customPals = new Map();',

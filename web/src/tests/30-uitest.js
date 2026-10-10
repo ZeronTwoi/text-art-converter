@@ -859,6 +859,29 @@ UI_TESTS.push(async function shareLooks(ok, { wait }) {
   userLooks = JSON.parse(keep); storeUserLooks(); buildLooks(); applySettings(lookOnly(DEFAULTS)); App.look = null; markLooks();
 });
 
+UI_TESTS.push(async function layers(ok, { wait, reset }) {
+  reset(); await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 80, layerSize: 0.5, layerX: 0.5, layerY: 0.5, layerOpacity: 1, layerBlend: 'source-over' });
+  renderNow(); const text0 = resultText(App.res);
+  const sq = document.createElement('canvas'); sq.width = sq.height = 64; const g = sq.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
+  ok('Layer: a picture is added', await setLayerFile(new File([await canvasToBlob(sq, 'image/png')], 'logo.png')) && S.layerOn && !$('#layerOpts').hidden);
+  // geometry on the 960 × 640 demo: a square half the width is 3/4 of the height
+  const c = document.createElement('canvas'); c.width = 300; c.height = 200; const cg = c.getContext('2d', { willReadFrequently: true }); drawLayer(cg, 960, 640, 300, 200, S);
+  const a = (x, y) => cg.getImageData(x, y, 1, 1).data[3];
+  ok('Layer: placed and sized on the picture', a(150, 100) === 255 && a(80, 100) === 255 && a(70, 100) === 0 && a(150, 30) === 255 && a(150, 20) === 0);
+  App.dirty = true; renderNow(); const t1 = resultText(App.res);
+  ok('Layer: it becomes characters', t1 !== text0 && t1.split('\n')[Math.floor(App.res.rows / 2)].includes('@'.repeat(10)) === (CHARSETS.standard.chars.slice(-1) === '@'));
+  applySettings({ layerX: 0.2 }); renderNow(); const t2 = resultText(App.res);
+  ok('Layer: moving it changes the result', t2 !== t1 && t2 !== text0);
+  applySettings({ layerOn: false }); renderNow();
+  ok('Layer: hidden = your picture as before', resultText(App.res) === text0);
+  applySettings({ layerOn: true }); renderNow();
+  const got = await uiCaptureDownloads(saveProject); removeLayer(); renderNow();
+  ok('Layer: removed', !Layer.bmp && resultText(App.res) === text0 && $('#layerOpts').hidden);
+  await openProject(new File([got[0].blob], got[0].name)); App.dirty = true; renderNow();
+  ok('Layer: saved in projects', !!Layer.bmp && Layer.name === 'logo.png' && S.layerOn && resultText(App.res) === t2);
+  removeLayer();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

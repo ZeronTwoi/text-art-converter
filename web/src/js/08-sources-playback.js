@@ -483,7 +483,7 @@ function drawSourceView() {
   const W = Math.max(1, Math.round(ow * k)), H = Math.max(1, Math.round(oh * k));
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
   const g = c.getContext('2d');
-  drawTransformed(g, d[0], d[1], d[2], W, H, S);
+  drawTransformed(g, d[0], d[1], d[2], W, H, S); drawLayer(g, d[1], d[2], W, H, S);
   if (Mask.canvas && Mask.src === App.src && (Mask.ver || Mask.on)) {   // the painted mask on top: red = hide, green = keep
     const t = drawSourceView.t || (drawSourceView.t = document.createElement('canvas'));
     if (t.width !== W || t.height !== H) { t.width = W; t.height = H; }

@@ -105,6 +105,7 @@ const DEFAULTS = {
   appPalette: 'discord', exportGoal: 'chat', customPalette: '#1a1c2c #5d275d #b13e53 #ef7d57 #ffcd75 #a7f070 #38b764 #257179 #29366f #3b5dc9 #41a6f6 #73eff7 #f4f4f4 #94b0c2 #566c86 #333c57', customPaletteTone: false,
   captionTop: '', captionBottom: '', captionStyle: 'plain', captionBox: true, captionColor: '#ffffff',
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1, playOrder: 'forward', playSpeed: 1, loopFade: 0,
+  layerOn: false, layerX: 0.82, layerY: 0.82, layerSize: 0.25, layerOpacity: 1, layerBlend: 'source-over',
 };
 const TONE_KEYS = ['brightness', 'contrast', 'gamma', 'saturation', 'threshold', 'edge', 'sharpen', 'invert', 'autoLevels'];
 const EDGE_KEYS = ['outline', 'outlineWidth', 'outlineDir', 'fill', 'localContrast', 'bgFade'];

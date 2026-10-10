@@ -762,6 +762,23 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
         </div>
       </div>
       <button class="btn wide" id="resetTransform">Reset crop &amp; turn</button>
+      <details class="group fold" data-fold="layer" style="margin-top:10px">
+        <summary class="h">Picture on top <span>logo, watermark, frame</span></summary>
+        <div class="inline"><button class="btn" id="layerPick">＋ Choose a picture…</button><button class="btn" id="layerRemove" hidden>Remove</button></div>
+        <p class="muted small" id="layerName" style="margin:4px 0 0"></p>
+        <div id="layerOpts" hidden>
+          <label class="chk"><input type="checkbox" data-key="layerOn"> Show it (it becomes characters too)</label>
+          <div class="row"><label>Size <output data-out="layerSize" data-pct></output></label><input type="range" data-key="layerSize" min="0.05" max="1" step="0.01"></div>
+          <div class="pair">
+            <div class="row"><label>Across <output data-out="layerX" data-pct></output></label><input type="range" data-key="layerX" min="0" max="1" step="0.01"></div>
+            <div class="row"><label>Down <output data-out="layerY" data-pct></output></label><input type="range" data-key="layerY" min="0" max="1" step="0.01"></div>
+          </div>
+          <div class="pair">
+            <div class="row"><label>Opacity <output data-out="layerOpacity" data-pct></output></label><input type="range" data-key="layerOpacity" min="0" max="1" step="0.01"></div>
+            <div class="row"><label>Blend</label><select data-key="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply (darken)</option><option value="screen">Screen (lighten)</option><option value="overlay">Overlay</option><option value="difference">Difference</option></select></div>
+          </div>
+        </div>
+      </details>
       <details class="group fold" data-fold="mask" style="margin-top:10px">
         <summary class="h">Mask <span>paint where to hide or keep</span></summary>
         <button class="btn wide" id="maskPaint">🖌 Paint on the picture</button>
@@ -1220,6 +1237,7 @@ const DEFAULTS = {
   appPalette: 'discord', exportGoal: 'chat', customPalette: '#1a1c2c #5d275d #b13e53 #ef7d57 #ffcd75 #a7f070 #38b764 #257179 #29366f #3b5dc9 #41a6f6 #73eff7 #f4f4f4 #94b0c2 #566c86 #333c57', customPaletteTone: false,
   captionTop: '', captionBottom: '', captionStyle: 'plain', captionBox: true, captionColor: '#ffffff',
   exportScale: 1, quality: 0.82, gifFps: 12, frameStep: 1, gifColors: 128, gifDiff: true, gifDither: false, gifPalette: 'frame', videoFps: 30, videoBitrate: 6, includeAudio: true, animRepeat: 1, playOrder: 'forward', playSpeed: 1, loopFade: 0,
+  layerOn: false, layerX: 0.82, layerY: 0.82, layerSize: 0.25, layerOpacity: 1, layerBlend: 'source-over',
 };
 const TONE_KEYS = ['brightness', 'contrast', 'gamma', 'saturation', 'threshold', 'edge', 'sharpen', 'invert', 'autoLevels'];
 const EDGE_KEYS = ['outline', 'outlineWidth', 'outlineDir', 'fill', 'localContrast', 'bgFade'];
@@ -1311,7 +1329,7 @@ function srcKey(src) {
   let id = srcIds.get(src); if (!id) { id = srcIdNext++; srcIds.set(src, id); }
   return tag + id + (tag === 'v' ? '@' + src.currentTime : '');
 }
-const transformSig = S => [S.cropL, S.cropR, S.cropT, S.cropB, normRot(S.rotate), !!S.flipH, !!S.flipV].join();
+const transformSig = S => [S.cropL, S.cropR, S.cropT, S.cropB, normRot(S.rotate), !!S.flipH, !!S.flipV].join() + layerSig(S);
 function clearEngineCaches() {
   sampleCache.clear(); outlineCache.clear(); resultCache.clear();
   for (const s of gradSlots) s.key = null;
@@ -1532,7 +1550,7 @@ const gradSlots = [];
 function hiFactor(W, H, sx) { let f = Math.max(2, Math.ceil(8 / sx)); while (f > 2 && W * f * H * f > 2.0e6) f--; return f; }
 function hiPixels(src, sw, sh, S, HW, HH) {
   if (hiCanvas.width !== HW || hiCanvas.height !== HH) { hiCanvas.width = HW; hiCanvas.height = HH; }
-  drawTransformed(hiCtx, src, sw, sh, HW, HH, S);
+  drawTransformed(hiCtx, src, sw, sh, HW, HH, S); drawLayer(hiCtx, sw, sh, HW, HH, S);
   return hiCtx.getImageData(0, 0, HW, HH).data;
 }
 /* The same pass as WebAssembly with SIMD (two pixels at a time): identical arithmetic and rounding, so identical results,
@@ -1773,7 +1791,7 @@ const convertSig = S => JSON.stringify(CONVERT_KEYS.map(k => S[k]));
 function memoKey(src, sw, sh, S, sig) {
   const sk = srcKey(src); if (!sk) return null;
   const m = maskFor(src);
-  return sk + '|' + sw + 'x' + sh + '|' + (sig || convertSig(S)) + (m ? '|mask' + m.ver : '');
+  return sk + '|' + sw + 'x' + sh + '|' + (sig || convertSig(S)) + (m ? '|mask' + m.ver : '') + layerSig(S);
 }
 /* ---- painted mask: where the picture is hidden (red) or kept safe from "Hide plain background" (green) ----
    Painted in source coordinates, so crop, turn and flip apply to it like to the picture. */
@@ -1821,7 +1839,7 @@ function samplePixels(src, sw, sh, S, W, H, sk) {
   if (!data) {
     const cv = work.sample;
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    drawTransformed(sctx, src, sw, sh, W, H, S);
+    drawTransformed(sctx, src, sw, sh, W, H, S); drawLayer(sctx, sw, sh, W, H, S);
     data = sctx.getImageData(0, 0, W, H).data;
     if (skey) sampleCache.set(skey, data, data.length);
   }
@@ -2949,6 +2967,8 @@ function engineSource() {
     'let LZW_TABLE = null, LZW_USED = null, edgesWasm;',
     'function srcKey() { return null; }',
     'function maskPixels() { return null; }',
+    'function drawLayer() {}',
+    'function layerSig() { return ""; }',
     'function withOverlay(r) { return r; }',
     'const capCache = new Map(), ovApply = (r, ov) => ov ? applyOverlay(r, ov) : r, emojiTables = new Map();',
     'let pixelGlyphs = null; const customPals = new Map();',
@@ -3539,7 +3559,7 @@ function drawSourceView() {
   const W = Math.max(1, Math.round(ow * k)), H = Math.max(1, Math.round(oh * k));
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
   const g = c.getContext('2d');
-  drawTransformed(g, d[0], d[1], d[2], W, H, S);
+  drawTransformed(g, d[0], d[1], d[2], W, H, S); drawLayer(g, d[1], d[2], W, H, S);
   if (Mask.canvas && Mask.src === App.src && (Mask.ver || Mask.on)) {   // the painted mask on top: red = hide, green = keep
     const t = drawSourceView.t || (drawSourceView.t = document.createElement('canvas'));
     if (t.width !== W || t.height !== H) { t.width = W; t.height = H; }
@@ -5084,7 +5104,8 @@ function syncControls(root = document) {
 function updateOutputs() {
   $$('[data-out]').forEach(o => {
     const v = S[o.dataset.out];
-    o.textContent = (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : v) + (o.dataset.suffix || '');
+    if (o.hasAttribute('data-pct')) { o.textContent = Math.round(v * 100) + '%'; return; }
+    o.textContent =(typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : v) + (o.dataset.suffix || '');
   });
 }
 function updateVisibility() {
@@ -5355,6 +5376,7 @@ function initUI() {
   initPlotter();
   initDesigner();
   initLookShare();
+  initLayers();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -5370,7 +5392,7 @@ function setView(v) {
 const PRESET_BASE = { invert: false, edge: 0, sharpen: 0, outline: DEFAULTS.outline, outlineWidth: 1, fill: 1, localContrast: 0, bgFade: 0, bgMode: 'solid', sortRamp: false, saturation: 1, threshold: 0.5, brightness: 0, contrast: 0, gamma: 1 };
 /* Your own looks: everything except settings that belong to one picture (width, crop, turn) or to sharing/exporting. */
 const LOOK_STORE = 'textArtStudio.looks.v1';
-const LOOK_SKIP = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'playOrder', 'playSpeed', 'loopFade', 'fontSize']);
+const LOOK_SKIP = new Set(['captionTop', 'captionBottom', 'captionStyle', 'captionBox', 'captionColor', 'cols', 'cropL', 'cropR', 'cropT', 'cropB', 'rotate', 'flipH', 'flipV', 'platform', 'shareOptimize', 'shareTarget', 'shareSplit', 'shareColor', 'shareTheme', 'calib', 'exportGoal', 'exportScale', 'quality', 'gifFps', 'frameStep', 'gifColors', 'gifDiff', 'gifDither', 'gifPalette', 'videoFps', 'videoBitrate', 'includeAudio', 'animRepeat', 'playOrder', 'playSpeed', 'loopFade', 'layerOn', 'layerX', 'layerY', 'layerSize', 'layerOpacity', 'layerBlend', 'fontSize']);
 let userLooks = [];
 function loadUserLooks() {
   try {
@@ -6160,7 +6182,7 @@ function drawWipeSource(c, out, d) {
   g.setTransform(1, 0, 0, 1, 0, 0);
   if (St.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = St.bg; g.fillRect(0, 0, W, H); }
   if (wipeTmp.width !== iw || wipeTmp.height !== ih) { wipeTmp.width = iw; wipeTmp.height = ih; }
-  drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S);
+  drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S); drawLayer(wipeTmp.getContext('2d'), d[1], d[2], iw, ih, S);
   g.drawImage(wipeTmp, mx, my);
   placeWipe();
 }
@@ -6322,6 +6344,7 @@ async function projectParts(withSource = true) {
     meta.mask = { file: 'mask.rgba', w: m.width, h: m.height };
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
+  layerProjectFiles(meta, files);
   if (Ramps.list.length) meta.ramps = Ramps.list.map(r => Object.assign({}, r));
   if (Versions.list.length) meta.versions = Versions.list.map(v => ({ name: v.name, settings: v.settings }));
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
@@ -6373,6 +6396,7 @@ async function openProjectParts(meta, get) {
   } catch (e) { console.error(e); toast('Could not open the project: ' + e.message, 'error'); return false; }
   if (!App.src || App.src === before) return false;
   applySettings(st);
+  await layerFromProject(meta, get);
   UndoHistory.reset();
   Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
   buildRampsUI(); rampsChanged();
@@ -7769,6 +7793,7 @@ function toolList() {
   add('Open a project', 'Projects', 'load textart', () => $('#fileInput').click());
   add('Forget my last picture', 'This browser', 'privacy delete session', () => sessionForget(false));
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
+  add('Picture on top (logo, watermark, frame)', 'Crop tab', 'layer logo watermark overlay sticker stamp frame image on top composite', () => showControl($('#layerPick'), 'crop'));
   add('Share a look (link or .textlook file)', 'Look tab → Save current look', 'share look send friend preset link file import export', () => openLookDialog());
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });
@@ -8438,6 +8463,68 @@ function initLookShare() {
   $('#lookFile').addEventListener('click', () => { saveLookFile(name(), currentLook()); $('#lookDialog').close(); toast('Look saved as a file. Open it (or drop it) in Text Art Studio to add it'); });
   window.addEventListener('hashchange', () => { if (location.hash.startsWith('#look=')) openLookLink(location.hash); });
   if (location.hash.startsWith('#look=')) openLookLink(location.hash);
+}
+/* =====================================================================
+   Layer: a picture on top of yours (logo, watermark, frame, sticker), mixed in before the conversion, so it becomes
+   characters too. Placed on the cropped and turned picture; stays when you open another picture (so batches get it
+   too); saved in projects.
+   ===================================================================== */
+const Layer = { bmp: null, png: null, name: '', id: 0 };
+const LAYER_MAX = 1024;
+function layerActive(S) { return !!(Layer.bmp && S.layerOn && S.layerOpacity > 0); }
+function layerSig(S) { return layerActive(S) ? `|L${Layer.id},${S.layerX},${S.layerY},${S.layerSize},${S.layerOpacity},${S.layerBlend}` : ''; }
+/* draws the layer over a picture that drawTransformed drew (an sw × sh source on a W × H canvas) */
+function drawLayer(ctx, sw, sh, W, H, S) {
+  if (!layerActive(S)) return;
+  const [, , iw, ih] = cropRect(sw, sh, S), rot = normRot(S.rotate), A = rot === 90 || rot === 270 ? ih / iw : iw / ih;   // the picture's width : height
+  const b = Layer.bmp, w = W * S.layerSize, h = H * S.layerSize * A * b.height / b.width;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = S.layerOpacity; ctx.globalCompositeOperation = S.layerBlend;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(b, S.layerX * W - w / 2, S.layerY * H - h / 2, w, h);
+  ctx.restore();
+}
+/* keepSetting: opening a project (its own "show" setting stays) */
+async function setLayerFile(file, keepSetting) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const w0 = img.naturalWidth || 300, h0 = img.naturalHeight || 150, k = Math.min(1, LAYER_MAX / Math.max(w0, h0)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    Layer.png = new Uint8Array(await (await canvasToBlob(c, 'image/png')).arrayBuffer());
+    Object.assign(Layer, { bmp: c, name: file.name || 'layer.png', id: Layer.id + 1 });
+    if (!keepSetting) applySettings({ layerOn: true });
+    layerChanged();
+    return true;
+  } catch (e) { toast('Could not open that picture: ' + (e && e.message || e), 'error'); return false; }
+  finally { URL.revokeObjectURL(url); }
+}
+function removeLayer(quiet) {
+  Object.assign(Layer, { bmp: null, png: null, name: '', id: Layer.id + 1 });
+  if (!quiet) applySettings({ layerOn: false });
+  layerChanged();
+}
+function layerChanged() { App.dirty = true; App.lastIdx = -1; updateLayerUI(); scheduleSessionSave(); scheduleLooks(); }
+function updateLayerUI() {
+  const on = !!Layer.bmp;
+  $('#layerOpts').hidden = !on; $('#layerRemove').hidden = !on;
+  $('#layerPick').textContent = on ? 'Change picture…' : '＋ Choose a picture…';
+  $('#layerName').textContent = on ? Layer.name : '';
+}
+/* projects */
+function layerProjectFiles(meta, files) { if (Layer.bmp && Layer.png) { meta.layer = { file: 'layer.png', name: Layer.name }; files.push({ name: 'layer.png', data: Layer.png }); } }
+async function layerFromProject(meta, get) {
+  const raw = meta.layer && get(meta.layer.file);
+  if (raw) await setLayerFile(new File([raw], meta.layer.name || 'layer.png', { type: 'image/png' }), true);
+  else if (Layer.bmp) removeLayer(true);
+}
+function initLayers() {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.hidden = true; document.body.appendChild(inp);
+  inp.addEventListener('change', () => { if (inp.files[0]) setLayerFile(inp.files[0]); inp.value = ''; });
+  $('#layerPick').addEventListener('click', () => inp.click());
+  $('#layerRemove').addEventListener('click', () => removeLayer());
+  updateLayerUI();
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)
@@ -9729,6 +9816,29 @@ UI_TESTS.push(async function shareLooks(ok, { wait }) {
   await openFile(new File(['{"type":"nope"}'], 'bad.textlook'));
   ok('Share looks: a wrong file is refused', userLooks.length === 1);
   userLooks = JSON.parse(keep); storeUserLooks(); buildLooks(); applySettings(lookOnly(DEFAULTS)); App.look = null; markLooks();
+});
+
+UI_TESTS.push(async function layers(ok, { wait, reset }) {
+  reset(); await demoImage(); await wait(30); applySettings({ mode: 'ascii', cols: 80, layerSize: 0.5, layerX: 0.5, layerY: 0.5, layerOpacity: 1, layerBlend: 'source-over' });
+  renderNow(); const text0 = resultText(App.res);
+  const sq = document.createElement('canvas'); sq.width = sq.height = 64; const g = sq.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
+  ok('Layer: a picture is added', await setLayerFile(new File([await canvasToBlob(sq, 'image/png')], 'logo.png')) && S.layerOn && !$('#layerOpts').hidden);
+  // geometry on the 960 × 640 demo: a square half the width is 3/4 of the height
+  const c = document.createElement('canvas'); c.width = 300; c.height = 200; const cg = c.getContext('2d', { willReadFrequently: true }); drawLayer(cg, 960, 640, 300, 200, S);
+  const a = (x, y) => cg.getImageData(x, y, 1, 1).data[3];
+  ok('Layer: placed and sized on the picture', a(150, 100) === 255 && a(80, 100) === 255 && a(70, 100) === 0 && a(150, 30) === 255 && a(150, 20) === 0);
+  App.dirty = true; renderNow(); const t1 = resultText(App.res);
+  ok('Layer: it becomes characters', t1 !== text0 && t1.split('\n')[Math.floor(App.res.rows / 2)].includes('@'.repeat(10)) === (CHARSETS.standard.chars.slice(-1) === '@'));
+  applySettings({ layerX: 0.2 }); renderNow(); const t2 = resultText(App.res);
+  ok('Layer: moving it changes the result', t2 !== t1 && t2 !== text0);
+  applySettings({ layerOn: false }); renderNow();
+  ok('Layer: hidden = your picture as before', resultText(App.res) === text0);
+  applySettings({ layerOn: true }); renderNow();
+  const got = await uiCaptureDownloads(saveProject); removeLayer(); renderNow();
+  ok('Layer: removed', !Layer.bmp && resultText(App.res) === text0 && $('#layerOpts').hidden);
+  await openProject(new File([got[0].blob], got[0].name)); App.dirty = true; renderNow();
+  ok('Layer: saved in projects', !!Layer.bmp && Layer.name === 'logo.png' && S.layerOn && resultText(App.res) === t2);
+  removeLayer();
 });
 
 UI_TESTS.push(async function captions(ok) {

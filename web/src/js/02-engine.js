@@ -45,7 +45,7 @@ function srcKey(src) {
   let id = srcIds.get(src); if (!id) { id = srcIdNext++; srcIds.set(src, id); }
   return tag + id + (tag === 'v' ? '@' + src.currentTime : '');
 }
-const transformSig = S => [S.cropL, S.cropR, S.cropT, S.cropB, normRot(S.rotate), !!S.flipH, !!S.flipV].join();
+const transformSig = S => [S.cropL, S.cropR, S.cropT, S.cropB, normRot(S.rotate), !!S.flipH, !!S.flipV].join() + layerSig(S);
 function clearEngineCaches() {
   sampleCache.clear(); outlineCache.clear(); resultCache.clear();
   for (const s of gradSlots) s.key = null;

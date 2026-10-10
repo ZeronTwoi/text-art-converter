@@ -115,7 +115,7 @@ function drawWipeSource(c, out, d) {
   g.setTransform(1, 0, 0, 1, 0, 0);
   if (St.bgMode === 'transparent') g.clearRect(0, 0, W, H); else { g.fillStyle = St.bg; g.fillRect(0, 0, W, H); }
   if (wipeTmp.width !== iw || wipeTmp.height !== ih) { wipeTmp.width = iw; wipeTmp.height = ih; }
-  drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S);
+  drawTransformed(wipeTmp.getContext('2d'), d[0], d[1], d[2], iw, ih, S); drawLayer(wipeTmp.getContext('2d'), d[1], d[2], iw, ih, S);
   g.drawImage(wipeTmp, mx, my);
   placeWipe();
 }

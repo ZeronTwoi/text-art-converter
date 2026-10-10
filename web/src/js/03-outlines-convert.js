@@ -15,7 +15,7 @@ const gradSlots = [];
 function hiFactor(W, H, sx) { let f = Math.max(2, Math.ceil(8 / sx)); while (f > 2 && W * f * H * f > 2.0e6) f--; return f; }
 function hiPixels(src, sw, sh, S, HW, HH) {
   if (hiCanvas.width !== HW || hiCanvas.height !== HH) { hiCanvas.width = HW; hiCanvas.height = HH; }
-  drawTransformed(hiCtx, src, sw, sh, HW, HH, S);
+  drawTransformed(hiCtx, src, sw, sh, HW, HH, S); drawLayer(hiCtx, sw, sh, HW, HH, S);
   return hiCtx.getImageData(0, 0, HW, HH).data;
 }
 /* The same pass as WebAssembly with SIMD (two pixels at a time): identical arithmetic and rounding, so identical results,
@@ -256,7 +256,7 @@ const convertSig = S => JSON.stringify(CONVERT_KEYS.map(k => S[k]));
 function memoKey(src, sw, sh, S, sig) {
   const sk = srcKey(src); if (!sk) return null;
   const m = maskFor(src);
-  return sk + '|' + sw + 'x' + sh + '|' + (sig || convertSig(S)) + (m ? '|mask' + m.ver : '');
+  return sk + '|' + sw + 'x' + sh + '|' + (sig || convertSig(S)) + (m ? '|mask' + m.ver : '') + layerSig(S);
 }
 /* ---- painted mask: where the picture is hidden (red) or kept safe from "Hide plain background" (green) ----
    Painted in source coordinates, so crop, turn and flip apply to it like to the picture. */
@@ -304,7 +304,7 @@ function samplePixels(src, sw, sh, S, W, H, sk) {
   if (!data) {
     const cv = work.sample;
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    drawTransformed(sctx, src, sw, sh, W, H, S);
+    drawTransformed(sctx, src, sw, sh, W, H, S); drawLayer(sctx, sw, sh, W, H, S);
     data = sctx.getImageData(0, 0, W, H).data;
     if (skey) sampleCache.set(skey, data, data.length);
   }

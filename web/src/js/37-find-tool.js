@@ -37,6 +37,7 @@ function toolList() {
   add('Open a project', 'Projects', 'load textart', () => $('#fileInput').click());
   add('Forget my last picture', 'This browser', 'privacy delete session', () => sessionForget(false));
   add('Pick a look (styles gallery)', 'Look tab', 'preset theme quick', () => showControl($('#looks'), 'look'));
+  add('Picture on top (logo, watermark, frame)', 'Crop tab', 'layer logo watermark overlay sticker stamp frame image on top composite', () => showControl($('#layerPick'), 'crop'));
   add('Share a look (link or .textlook file)', 'Look tab → Save current look', 'share look send friend preset link file import export', () => openLookDialog());
   add('Bigger previews of every look', 'Look tab', 'gallery preview', openGallery);
   for (const [k, m] of Object.entries(MODES)) if (k !== 'text') add(`Style: ${m.name}`, 'Look tab', 'mode drawn with ' + (MODE_WORDS[k] || ''), () => { applySettings({ mode: k }); showControl($(`.mode[data-mode="${k}"]`), 'look'); });

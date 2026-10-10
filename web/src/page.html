@@ -281,6 +281,23 @@
         </div>
       </div>
       <button class="btn wide" id="resetTransform">Reset crop &amp; turn</button>
+      <details class="group fold" data-fold="layer" style="margin-top:10px">
+        <summary class="h">Picture on top <span>logo, watermark, frame</span></summary>
+        <div class="inline"><button class="btn" id="layerPick">＋ Choose a picture…</button><button class="btn" id="layerRemove" hidden>Remove</button></div>
+        <p class="muted small" id="layerName" style="margin:4px 0 0"></p>
+        <div id="layerOpts" hidden>
+          <label class="chk"><input type="checkbox" data-key="layerOn"> Show it (it becomes characters too)</label>
+          <div class="row"><label>Size <output data-out="layerSize" data-pct></output></label><input type="range" data-key="layerSize" min="0.05" max="1" step="0.01"></div>
+          <div class="pair">
+            <div class="row"><label>Across <output data-out="layerX" data-pct></output></label><input type="range" data-key="layerX" min="0" max="1" step="0.01"></div>
+            <div class="row"><label>Down <output data-out="layerY" data-pct></output></label><input type="range" data-key="layerY" min="0" max="1" step="0.01"></div>
+          </div>
+          <div class="pair">
+            <div class="row"><label>Opacity <output data-out="layerOpacity" data-pct></output></label><input type="range" data-key="layerOpacity" min="0" max="1" step="0.01"></div>
+            <div class="row"><label>Blend</label><select data-key="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply (darken)</option><option value="screen">Screen (lighten)</option><option value="overlay">Overlay</option><option value="difference">Difference</option></select></div>
+          </div>
+        </div>
+      </details>
       <details class="group fold" data-fold="mask" style="margin-top:10px">
         <summary class="h">Mask <span>paint where to hide or keep</span></summary>
         <button class="btn wide" id="maskPaint">🖌 Paint on the picture</button>
