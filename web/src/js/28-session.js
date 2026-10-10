@@ -74,6 +74,7 @@ const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 
 async function initSession() {
   $('#btnForget').addEventListener('click', () => sessionForget(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
+  if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
   if (location.hash && location.hash !== '#') return;   // tests and demos start clean
   const saved = await sessionLoad();
   if (!saved || App.src) return;

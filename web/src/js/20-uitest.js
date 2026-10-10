@@ -615,6 +615,23 @@ UI_TESTS.push(async function exportTargets(ok, { wait }) {
   ok('Terminal script: .ps1 is UTF-8 with BOM for Windows PowerShell', !!ps && ps[0] === 0xEF && ps[1] === 0xBB && ps[2] === 0xBF);
 });
 
+UI_TESTS.push(async function shareLinks(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', colorMode: 'color', cols: 50, bg: '#102030' }); renderNow();
+  const res = App.res, link = await artLink(res);
+  ok('Link: the art is inside the link', /#art=[A-Za-z0-9_-]+$/.test(link), link.length + ' characters');
+  await demoAnim(); applySettings({ bg: '#000000' });
+  await openArtLink(link.slice(link.indexOf('#'))); App.dirty = true; renderNow();
+  let same = App.src.kind === 'text' && App.res.cols === res.cols && App.res.rows === res.rows;
+  for (let i = 0; same && i < res.cp.length; i++) if ((App.res.cp[i] || 32) !== (res.cp[i] || 32)) same = false;
+  for (let i = 0; same && i < res.fg.length; i++) if (App.res.fg[i] !== res.fg[i]) same = false;
+  ok('Link: opening it shows the same characters and colours', same && S.bg === '#102030');
+  const mono = textResult('hello\nworld', Object.assign({}, S, { colorMode: 'mono' }));
+  const l2 = await artLink(mono); await openArtLink(l2.slice(l2.indexOf('#'))); App.dirty = true; renderNow();
+  ok('Link: one-colour text stays plain text', resultText(App.res) === 'hello\nworld' && S.colorMode === 'mono');
+  const bad = await openArtLink('#art=AAAA');
+  ok('Link: a broken link is refused', bad === false);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

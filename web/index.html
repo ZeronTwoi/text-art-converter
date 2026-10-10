@@ -4776,6 +4776,7 @@ function buildExportPanel() {
   t.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
+  btn(t, '🔗 Copy link', actCopyLink, { title: 'A link that opens this text art (with its colours) in Text Art Studio. The art is inside the link: nothing is uploaded' });
   if (!animated) for (const k of ['sh', 'ps1', 'py']) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = '.' + k; b.title = ({ sh: 'Shell script (macOS, Linux, Git Bash)', ps1: 'PowerShell script (Windows)', py: 'Python script (any computer)' })[k]; b.addEventListener('click', () => exportTerminalScript(k)); t.querySelector('#scriptBtns').appendChild(b); }
 
   if (s.kind !== 'text' || true) {
@@ -5109,6 +5110,7 @@ function initUI() {
   initVersions();
   initRamps();
   initPalettes();
+  initShareLink();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -7165,6 +7167,23 @@ UI_TESTS.push(async function exportTargets(ok, { wait }) {
   ok('Terminal script: .ps1 is UTF-8 with BOM for Windows PowerShell', !!ps && ps[0] === 0xEF && ps[1] === 0xBB && ps[2] === 0xBF);
 });
 
+UI_TESTS.push(async function shareLinks(ok, { wait }) {
+  await demoImage(); await wait(30); applySettings({ mode: 'braille', colorMode: 'color', cols: 50, bg: '#102030' }); renderNow();
+  const res = App.res, link = await artLink(res);
+  ok('Link: the art is inside the link', /#art=[A-Za-z0-9_-]+$/.test(link), link.length + ' characters');
+  await demoAnim(); applySettings({ bg: '#000000' });
+  await openArtLink(link.slice(link.indexOf('#'))); App.dirty = true; renderNow();
+  let same = App.src.kind === 'text' && App.res.cols === res.cols && App.res.rows === res.rows;
+  for (let i = 0; same && i < res.cp.length; i++) if ((App.res.cp[i] || 32) !== (res.cp[i] || 32)) same = false;
+  for (let i = 0; same && i < res.fg.length; i++) if (App.res.fg[i] !== res.fg[i]) same = false;
+  ok('Link: opening it shows the same characters and colours', same && S.bg === '#102030');
+  const mono = textResult('hello\nworld', Object.assign({}, S, { colorMode: 'mono' }));
+  const l2 = await artLink(mono); await openArtLink(l2.slice(l2.indexOf('#'))); App.dirty = true; renderNow();
+  ok('Link: one-colour text stays plain text', resultText(App.res) === 'hello\nworld' && S.colorMode === 'mono');
+  const bad = await openArtLink('#art=AAAA');
+  ok('Link: a broken link is refused', bad === false);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -7941,6 +7960,7 @@ const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 
 async function initSession() {
   $('#btnForget').addEventListener('click', () => sessionForget(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Session.timer) { clearTimeout(Session.timer); sessionSave(); } });
+  if (location.hash.startsWith('#art=')) { await openArtLink(location.hash); return; }   // a shared link opens its art
   if (location.hash && location.hash !== '#') return;   // tests and demos start clean
   const saved = await sessionLoad();
   if (!saved || App.src) return;
@@ -8507,6 +8527,44 @@ function actCopyCode() {
   if (!requireRes()) return;
   const lang = $('#codeLang').value;
   copyOrShow(codeLiteral(resultText(App.res), lang), `Copied as ${({ js: 'JavaScript', py: 'Python', cs: 'C#', json: 'JSON' })[lang]} code`);
+}
+/* =====================================================================
+   Share as a link: the current text art (with its colours) packed into the address itself,
+   index.html#art=…, compressed. Opening the link shows it; nothing is sent anywhere.
+   ===================================================================== */
+const b64url = u8 => bytesToBase64(u8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = s => base64ToBytes(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+/* the link of the current result */
+async function artLink(res) {
+  const colour = !res.uniform;
+  const payload = { v: 1, a: colour ? resultANSI(res) : resultText(res), c: colour,
+    s: { fg: S.fg, bg: S.bg, bgMode: S.bgMode, fontFamily: S.fontFamily, customFont: S.customFont, charAspect: S.charAspect, fontSize: S.fontSize, margin: S.margin } };
+  const z = await deflateRaw(new TextEncoder().encode(JSON.stringify(payload)));
+  return location.href.replace(/#.*$/, '') + '#art=' + b64url(z);
+}
+async function actCopyLink() {
+  if (!requireRes()) return;
+  if (!canDeflate()) return toast('This browser cannot make links', 'error');
+  const link = await artLink(App.res), n = link.length;
+  await copyOrShow(link, `Link copied (${n.toLocaleString()} characters)` +
+    (n > 2000 ? '. Too long for most chat messages: fewer characters or one colour makes it shorter' : '') +
+    (servedOnWeb() ? '' : '. While the page is only on this computer, the link opens here only'));
+}
+/* opens the art of an #art= link; true if there was one */
+async function openArtLink(hash) {
+  const m = /^#art=([A-Za-z0-9_-]+)$/.exec(hash || ''); if (!m) return false;
+  try {
+    const p = JSON.parse(new TextDecoder().decode(await inflateRaw(unb64url(m[1]))));
+    if (!p || p.v !== 1 || typeof p.a !== 'string') throw new Error('not a Text Art Studio link');
+    const st = {}; for (const k in p.s || {}) if (k in DEFAULTS && typeof p.s[k] === typeof DEFAULTS[k]) st[k] = p.s[k];
+    if (p.c) { const a = ansiParse(p.a, 0); st.colorMode = 'color'; applySettings(st); setTextSource(ansiPlain(a), 'shared-art.txt', a); }
+    else { st.colorMode = 'mono'; applySettings(st); setTextSource(p.a, 'shared-art.txt'); }
+    toast('Opened shared text art');
+    return true;
+  } catch (e) { toast('This link could not be opened: ' + e.message, 'error'); return false; }
+}
+function initShareLink() {
+  window.addEventListener('hashchange', () => { if (location.hash.startsWith('#art=')) openArtLink(location.hash); });
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

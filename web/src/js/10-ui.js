@@ -272,6 +272,7 @@ function initUI() {
   initVersions();
   initRamps();
   initPalettes();
+  initShareLink();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
