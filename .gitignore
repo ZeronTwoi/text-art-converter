@@ -405,3 +405,5 @@ FodyWeavers.xsd
 .idea/
 ImageTo_Text_TextImage/
 ImageTo_Text_TextImage.sln
+desktop.ini
+*.lnk
