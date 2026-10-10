@@ -330,15 +330,38 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
   .layout{grid-template-columns:290px minmax(0,1fr)}
   .export{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);max-height:40vh}
 }
+/* phones: settings and export are bottom sheets over the picture */
+.sheethead,.mobilebar{display:none}
 @media (max-width:820px){
-  body{overflow:auto;height:auto}
-  .layout{display:flex;flex-direction:column}
-  .settings{border-right:0;border-bottom:1px solid var(--line);max-height:none;order:2}
-  .center{order:1}
-  .export{order:3;max-height:none}
-  .stage{height:58vh;flex:none}
-  .panel{padding:8px 16px 20px}
-  .viewbar,.player,.statusbar,.topbar{padding-left:16px;padding-right:16px}
+  body{overflow:hidden;height:100%}
+  .layout{display:flex;flex-direction:column;min-height:0}
+  .center{order:1;flex:1;min-height:0}
+  .stage{flex:1;min-height:0;touch-action:none}
+  .panel.settings,.panel.export{position:fixed;left:0;right:0;bottom:0;height:min(66vh,640px);max-height:none;z-index:35;border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;
+    box-shadow:0 -12px 40px rgba(0,0,0,.35);padding:0 16px calc(24px + env(safe-area-inset-bottom));transform:translateY(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s;overscroll-behavior:contain}
+  body.sheet-settings .panel.settings,body.sheet-export .panel.export{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+  .sheethead{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:7;background:var(--panel);margin:0 -16px 8px;padding:16px 16px 8px;border-bottom:1px solid var(--line);touch-action:none;cursor:grab}
+  .sheethead i{position:absolute;left:50%;top:6px;width:42px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
+  .sheethead b{flex:1;font-size:15px}
+  .settings .tabs{top:49px}
+  .export .ph{display:none}
+  .mobilebar{display:flex;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--panel)}
+  .mobilebar button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:11px;padding:10px 8px;font-weight:650;cursor:pointer;color:var(--text)}
+  .mobilebar button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .mobilebar button[aria-expanded="true"]{outline:2px solid var(--accent);outline-offset:1px}
+  .statusbar .keys,.statusbar .cellinfo{display:none}
+  .topbar{padding:6px 12px;gap:6px}
+  .brand .tag{display:none}
+  .brand{font-size:14px}
+  .viewbar{padding:5px 12px;gap:6px}
+  .viewbar .srcinfo{flex-basis:100%;order:-1;font-size:11.5px}
+  .seg button{padding:6px 8px}
+  #zoomLabel{display:none}
+  .views{padding:8px}
+  .player{padding:6px 12px 8px}
+  .player .trimgroup,.player label.seekonly:not(.chk){display:none}
+  .editbar{padding:6px 12px}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
@@ -378,7 +401,8 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 
 <div class="layout">
   <!-- ============ SETTINGS ============ -->
-  <aside class="panel settings" id="settings">
+  <aside class="panel settings" id="settings" aria-label="Look and settings">
+    <div class="sheethead"><i></i><b>Look &amp; settings</b><button class="btn icon sheetclose" aria-label="Close the settings">✕</button></div>
     <div class="tabs" id="leftTabs" role="tablist">
       <button data-tab="look" class="on" role="tab">Look</button>
       <button data-tab="adjust" role="tab">Adjust</button>
@@ -695,11 +719,16 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
     </div>
+    <nav class="mobilebar" aria-label="Panels">
+      <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
+      <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
+    </nav>
     <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </main>
 
   <!-- ============ EXPORT ============ -->
-  <aside class="panel export" id="exportPanel">
+  <aside class="panel export" id="exportPanel" aria-label="Share or save">
+    <div class="sheethead"><i></i><b>Share or save</b><button class="btn icon sheetclose" aria-label="Close share and save">✕</button></div>
     <h2 class="ph"><b>4</b> Share or save</h2>
     <div class="goals" id="goalSeg">
       <button data-goal="chat" class="on"><span>💬</span><b>Send in a chat app</b><small>Discord, WhatsApp, Telegram…</small></button>
@@ -4916,6 +4945,7 @@ function initUI() {
   initEditTools();
   initEffects();
   initGuides();
+  initMobile();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
@@ -5070,6 +5100,7 @@ function setStep(n) {
 }
 function gotoStep(n) {
   if (n === 1) { $('#fileInput').click(); return; }
+  if (isNarrow()) setSheet(n === 4 ? 'export' : 'settings');
   if (n === 2) setTab('look');
   else if (n === 3) setTab('adjust');
   else {
@@ -6655,6 +6686,36 @@ UI_TESTS.push(async function guides(ok, { wait }) {
   setTab('look');
 });
 
+UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  setSheet('settings');
+  ok('Sheets: settings opens', document.body.classList.contains('sheet-settings') && $('#mbSettings').getAttribute('aria-expanded') === 'true');
+  setSheet('export');
+  ok('Sheets: only one open at a time', !document.body.classList.contains('sheet-settings') && document.body.classList.contains('sheet-export'));
+  setSheet(null);
+  const out = $('#outCanvas'), stage = $('#stage'), b = out.getBoundingClientRect();
+  const touch = (type, id, x, y, el) => (el || out).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1, button: 0, buttons: type === 'pointerup' ? 0 : 1, clientX: x, clientY: y }));
+  const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+  touch('pointerdown', 1, cx + 80, cy); touch('pointermove', 1, cx, cy, stage); touch('pointerup', 1, cx - 80, cy, stage);
+  ok('Swipe left: shows the original', App.view === 'src');
+  touch('pointerdown', 1, cx - 80, cy); touch('pointerup', 1, cx + 80, cy, stage);
+  ok('Swipe right: back to the result', App.view === 'out');
+  const start = currentScaleForZoom();
+  touch('pointerdown', 1, cx - 30, cy); touch('pointerdown', 2, cx + 30, cy);
+  touch('pointermove', 2, cx + 120, cy, stage); touch('pointermove', 1, cx - 120, cy, stage);
+  touch('pointerup', 1, cx - 120, cy, stage); touch('pointerup', 2, cx + 120, cy, stage);
+  const z = App.zoom;
+  ok('Pinch: two fingers spread 4× zoom in 4×', Math.abs(z / start - 4) < 0.05, `zoom ${start.toFixed(2)} → ${z.toFixed(2)}`);
+  App.zoom = 0; applyZoom();
+  touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Double-tap: zooms in', App.zoom === 2);
+  touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Double-tap again: back to fit', App.zoom === 0 && Touch.pts.size === 0);
+  setSheet('settings'); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Tap on the picture closes the sheet', !sheetOpen());
+  applyZoom();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
@@ -7128,6 +7189,83 @@ function initGuides() {
   updateRampStrip();
   $$('#leftTabs button').forEach(b => b.addEventListener('click', () => { if (b.dataset.tab === 'adjust') setTimeout(drawHistogram, 0); }));
   window.addEventListener('resize', scheduleHistogram);
+}
+/* =====================================================================
+   Phones and tablets: settings and export as bottom sheets, pinch to zoom, swipe between Result and Original,
+   double-tap to zoom
+   ===================================================================== */
+const isNarrow = () => window.matchMedia('(max-width: 820px)').matches;
+function setSheet(which) {
+  document.body.classList.toggle('sheet-settings', which === 'settings');
+  document.body.classList.toggle('sheet-export', which === 'export');
+  $('#mbSettings').setAttribute('aria-expanded', which === 'settings');
+  $('#mbExport').setAttribute('aria-expanded', which === 'export');
+  if (which) { const p = which === 'settings' ? $('#settings') : $('#exportPanel'); p.scrollTop = 0; }
+}
+const sheetOpen = () => document.body.classList.contains('sheet-settings') || document.body.classList.contains('sheet-export');
+/* two fingers: zoom (keeping the point between them in place); one quick sideways swipe: Result ↔ Original */
+const Touch = { pts: new Map(), pinch: null, swipe: null, tap: null, lastTap: 0 };
+STAGE_TOOLS.unshift({
+  down(e) {
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return false;
+    if (sheetOpen()) { setSheet(null); Touch.tap = null; return true; }   // a tap on the picture closes the sheet
+    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    Touch.tap = Touch.pts.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null;   // maybe a (double) tap
+    if (Touch.pts.size === 2) {
+      const [a, b] = [...Touch.pts.values()], stage = $('#stage');
+      Touch.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: App.zoom || currentScaleForZoom(), mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, sl: stage.scrollLeft, st: stage.scrollTop };
+      Touch.swipe = null; return true;
+    }
+    if (Touch.pts.size === 1 && !App.zoom && App.src && !Crop.on && !Mask.on && !Edit.on && App.view !== 'wipe') { Touch.swipe = { x: e.clientX, y: e.clientY, t: performance.now() }; return true; }
+    return false;
+  },
+  move(e) {
+    if (!Touch.pts.has(e.pointerId)) return;
+    Touch.pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const P = Touch.pinch; if (!P || Touch.pts.size < 2) return;
+    const [a, b] = [...Touch.pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const z = clamp(P.z * d / Math.max(1, P.d), ZOOMS[0], ZOOMS[ZOOMS.length - 1]), stage = $('#stage'), r = stage.getBoundingClientRect();
+    App.zoom = z; applyZoom();
+    const k = z / P.z, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;   // keep the pinched point under the fingers
+    stage.scrollLeft = (P.sl + P.mx - r.left) * k - (mx - r.left); stage.scrollTop = (P.st + P.my - r.top) * k - (my - r.top);
+  },
+  up(e) {
+    Touch.pts.delete(e && e.pointerId);
+    if (Touch.pinch) { if (Touch.pts.size < 2) Touch.pinch = null; return; }
+    const sw = Touch.swipe; Touch.swipe = null; if (!sw || !e) return;
+    const dx = e.clientX - sw.x, dy = e.clientY - sw.y, dt = performance.now() - sw.t;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 700) {
+      const order = ['out', 'src'], i = order.indexOf(App.view);
+      const v = dx < 0 ? order[Math.min(order.length - 1, i + 1)] : order[Math.max(0, i - 1)];
+      if (v !== App.view) { setView(v); toast(v === 'src' ? 'Original' : 'Result'); }
+    }
+  },
+});
+function initMobile() {
+  const forget = e => {
+    const tap = Touch.tap; Touch.tap = null;
+    if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !Touch.pinch && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 300) {
+      const now = performance.now();   // double-tap: zoom in to 2× / back to fit (zoomed or not)
+      if (now - Touch.lastTap < 350 && App.src && !Edit.on && !Crop.on && !Mask.on) { App.zoom = App.zoom ? 0 : 2; applyZoom(); Touch.lastTap = 0; } else Touch.lastTap = now;
+    }
+    Touch.pts.delete(e.pointerId); if (Touch.pts.size < 2) Touch.pinch = null;
+  };
+  window.addEventListener('pointerup', forget, true); window.addEventListener('pointercancel', forget, true);
+  $('#mbSettings').addEventListener('click', () => setSheet(document.body.classList.contains('sheet-settings') ? null : 'settings'));
+  $('#mbExport').addEventListener('click', () => setSheet(document.body.classList.contains('sheet-export') ? null : 'export'));
+  $$('.sheetclose').forEach(b => b.addEventListener('click', () => setSheet(null)));
+  // drag a sheet's handle down to close it
+  $$('.sheethead').forEach(h => {
+    let y0 = null, panel = h.closest('.panel');
+    h.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; y0 = e.clientY; h.setPointerCapture(e.pointerId); panel.style.transition = 'none'; });
+    h.addEventListener('pointermove', e => { if (y0 == null) return; panel.style.transform = `translateY(${Math.max(0, e.clientY - y0)}px)`; });
+    const end = e => { if (y0 == null) return; const dy = e.clientY - y0; y0 = null; panel.style.transition = panel.style.transform = ''; if (dy > 70) setSheet(null); };
+    h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+  });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen() && !document.querySelector('dialog[open]')) setSheet(null); });
+  window.matchMedia('(max-width: 820px)').addEventListener('change', () => { if (!isNarrow()) setSheet(null); });
+  // double-click (mouse): fit ↔ 100 %
+  $('#stage').addEventListener('dblclick', e => { if (!App.src || Edit.on || Crop.on || Mask.on || e.target.id === 'rawText') return; App.zoom = App.zoom ? 0 : 1; applyZoom(); });
 }
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)

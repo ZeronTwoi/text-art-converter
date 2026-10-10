@@ -44,7 +44,8 @@
 
 <div class="layout">
   <!-- ============ SETTINGS ============ -->
-  <aside class="panel settings" id="settings">
+  <aside class="panel settings" id="settings" aria-label="Look and settings">
+    <div class="sheethead"><i></i><b>Look &amp; settings</b><button class="btn icon sheetclose" aria-label="Close the settings">✕</button></div>
     <div class="tabs" id="leftTabs" role="tablist">
       <button data-tab="look" class="on" role="tab">Look</button>
       <button data-tab="adjust" role="tab">Adjust</button>
@@ -361,11 +362,16 @@
         <button class="btn" id="pMute" title="Mute / unmute" hidden>Sound on</button>
       </div>
     </div>
+    <nav class="mobilebar" aria-label="Panels">
+      <button id="mbSettings" aria-controls="settings" aria-expanded="false">🎨 Look &amp; settings</button>
+      <button id="mbExport" aria-controls="exportPanel" aria-expanded="false" class="primary">⤴ Share / save</button>
+    </nav>
     <div class="statusbar"><span id="stats">—</span><span id="cellInfo" class="cellinfo"></span><span class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> frame · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste</span></div>
   </main>
 
   <!-- ============ EXPORT ============ -->
-  <aside class="panel export" id="exportPanel">
+  <aside class="panel export" id="exportPanel" aria-label="Share or save">
+    <div class="sheethead"><i></i><b>Share or save</b><button class="btn icon sheetclose" aria-label="Close share and save">✕</button></div>
     <h2 class="ph"><b>4</b> Share or save</h2>
     <div class="goals" id="goalSeg">
       <button data-goal="chat" class="on"><span>💬</span><b>Send in a chat app</b><small>Discord, WhatsApp, Telegram…</small></button>

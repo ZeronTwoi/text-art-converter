@@ -266,6 +266,7 @@ function initUI() {
   initEditTools();
   initEffects();
   initGuides();
+  initMobile();
   buildExportPanel();
   requestAnimationFrame(tick);
 }

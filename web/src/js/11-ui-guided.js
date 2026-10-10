@@ -144,6 +144,7 @@ function setStep(n) {
 }
 function gotoStep(n) {
   if (n === 1) { $('#fileInput').click(); return; }
+  if (isNarrow()) setSheet(n === 4 ? 'export' : 'settings');
   if (n === 2) setTab('look');
   else if (n === 3) setTab('adjust');
   else {

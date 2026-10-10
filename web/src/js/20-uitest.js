@@ -332,6 +332,36 @@ UI_TESTS.push(async function guides(ok, { wait }) {
   setTab('look');
 });
 
+UI_TESTS.push(async function touchAndSheets(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  setSheet('settings');
+  ok('Sheets: settings opens', document.body.classList.contains('sheet-settings') && $('#mbSettings').getAttribute('aria-expanded') === 'true');
+  setSheet('export');
+  ok('Sheets: only one open at a time', !document.body.classList.contains('sheet-settings') && document.body.classList.contains('sheet-export'));
+  setSheet(null);
+  const out = $('#outCanvas'), stage = $('#stage'), b = out.getBoundingClientRect();
+  const touch = (type, id, x, y, el) => (el || out).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1, button: 0, buttons: type === 'pointerup' ? 0 : 1, clientX: x, clientY: y }));
+  const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+  touch('pointerdown', 1, cx + 80, cy); touch('pointermove', 1, cx, cy, stage); touch('pointerup', 1, cx - 80, cy, stage);
+  ok('Swipe left: shows the original', App.view === 'src');
+  touch('pointerdown', 1, cx - 80, cy); touch('pointerup', 1, cx + 80, cy, stage);
+  ok('Swipe right: back to the result', App.view === 'out');
+  const start = currentScaleForZoom();
+  touch('pointerdown', 1, cx - 30, cy); touch('pointerdown', 2, cx + 30, cy);
+  touch('pointermove', 2, cx + 120, cy, stage); touch('pointermove', 1, cx - 120, cy, stage);
+  touch('pointerup', 1, cx - 120, cy, stage); touch('pointerup', 2, cx + 120, cy, stage);
+  const z = App.zoom;
+  ok('Pinch: two fingers spread 4× zoom in 4×', Math.abs(z / start - 4) < 0.05, `zoom ${start.toFixed(2)} → ${z.toFixed(2)}`);
+  App.zoom = 0; applyZoom();
+  touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Double-tap: zooms in', App.zoom === 2);
+  touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Double-tap again: back to fit', App.zoom === 0 && Touch.pts.size === 0);
+  setSheet('settings'); touch('pointerdown', 1, cx, cy); touch('pointerup', 1, cx, cy, stage);
+  ok('Tap on the picture closes the sheet', !sheetOpen());
+  applyZoom();
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });
