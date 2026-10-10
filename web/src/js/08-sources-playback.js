@@ -226,7 +226,7 @@ function disposeSource(s) {
   if (s.audio) { try { s.audio.ctx.close(); } catch (e) {} }
 }
 function setSource(s) {
-  endPeek(true);
+  endPeek(true); if (Crop.on) setCropMode(false);
   disposeSource(App.src); Prefetch.clear(); maskClear(); previewCacheClear(); if (Mask.on) setMaskMode(false);
   App.src = s; App.time = 0; App.tin = App.tout = null; App.lastIdx = -1; App.lastVT = -1; App.playing = false;
   if (s.bmp) srcOwner.set(s.bmp, s); if (s.video) srcOwner.set(s.video, s);
@@ -431,7 +431,7 @@ function showResult(res, t0) {
   }
   App.res = res;
   drawPreview(res, S, out);
-  if (App.view === 'src' || App.view === 'split') drawSourceView();
+  if (App.view === 'src' || App.view === 'split' || App.view === 'wipe') drawSourceView();
   if (App.view === 'text') updateRawText();
   scheduleShareUI();
   if (App.view === 'platform') updatePlatformView();
@@ -445,6 +445,8 @@ function drawSourceView() {
   const c = $('#srcCanvas'), out = $('#outCanvas');
   const d = App.src && App.src.kind !== 'text' ? currentDrawable() : null;
   if (!d) { c.width = c.height = 1; return; }
+  if (Crop.on) return drawCropView(c, d);
+  if (App.view === 'wipe') return drawWipeSource(c, out, d);
   const [, , mx, my] = pictureSize(0, 0, S, 1), ow = Math.max(1, out.width - 2 * mx), oh = Math.max(1, out.height - 2 * my);
   const k = Math.min(1, 1600 / ow);
   const W = Math.max(1, Math.round(ow * k)), H = Math.max(1, Math.round(oh * k));
@@ -478,7 +480,7 @@ function maskStroke(px, py, from) {
   const col = Mask.brush === 'keep' ? '0,255,0' : '255,0,0';
   for (let k = from ? 1 : 0; k <= steps; k++) {
     const x = start[0] + (to[0] - start[0]) * k / steps, y = start[1] + (to[1] - start[1]) * k / steps;
-    const gr = g.createRadialGradient(x, y, r * 0.55, x, y, r);
+    const gr = g.createRadialGradient(x, y, r * (Mask.hard ? 0.94 : 0.55), x, y, r);
     gr.addColorStop(0, `rgba(${col},1)`); gr.addColorStop(1, `rgba(${col},0)`);
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
   }
@@ -488,6 +490,7 @@ function maskStroke(px, py, from) {
 }
 function setMaskMode(on) {
   Mask.on = on && !!App.src && App.src.kind !== 'text';
+  if (Mask.on && Crop.on) setCropMode(false);
   $('#maskPaint').classList.toggle('primary', Mask.on);
   $('#maskPaint').textContent = Mask.on ? '✓ Painting (drag on the original)' : '🖌 Paint on the picture';
   $('#views').classList.toggle('painting', Mask.on);
@@ -495,8 +498,10 @@ function setMaskMode(on) {
   App.dirty = true;
 }
 function updateMaskUI() {
-  $$('#maskBrushes button').forEach(b => b.classList.toggle('on', b.dataset.brush === Mask.brush));
+  $$('#maskBrushes button').forEach(b => { b.classList.toggle('on', b.dataset.brush === Mask.brush); b.setAttribute('aria-pressed', b.dataset.brush === Mask.brush); });
+  $$('#maskHardness button').forEach(b => { const on = (b.dataset.hard === '1') === !!Mask.hard; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   $('#maskSizeOut').textContent = Mask.size + '%';
+  $('#maskUndo').disabled = !MaskHist.undo.length; $('#maskRedo').disabled = !MaskHist.redo.length;
 }
 function updateRawText() {
   const pre = $('#rawText'), res = App.res; if (!res) return;
@@ -507,7 +512,7 @@ function updateRawText() {
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8];
 function applyZoom() {
   const views = $('#views'), out = $('#outCanvas'), src = $('#srcCanvas');
-  views.className = 'views view-' + App.view + (App.zoom ? ' zoomed' : '');
+  views.className = 'views view-' + App.view + (App.zoom ? ' zoomed' : '') + (Mask.on ? ' painting' : '') + (Crop.on ? ' cropping' : '') + (typeof Edit !== 'undefined' && Edit.on ? ' editing' : '');
   if (App.zoom) {
     const w = Math.round(out.width * App.zoom) + 'px', h = Math.round(out.height * App.zoom) + 'px';
     out.style.width = src.style.width = w; out.style.height = src.style.height = h;
@@ -518,6 +523,7 @@ function applyZoom() {
   }
   out.style.imageRendering = App.zoom >= 2 ? 'pixelated' : 'auto';
   setText('zoomLabel', App.zoom ? Math.round(App.zoom * 100) + '%' : 'Fit');
+  placeWipe();
 }
 function currentScaleForZoom() {
   const out = $('#outCanvas'), r = out.getBoundingClientRect();

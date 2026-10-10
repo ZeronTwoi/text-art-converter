@@ -283,6 +283,23 @@ dialog h4{margin:14px 0 6px}
 dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .biglooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-height:calc(100vh - 190px);overflow:auto;padding:2px}
 .look.big span{font-size:12.5px}
+/* two-way toggle */
+.seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
+.seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
+.seg2 button+button{border-left:1px solid var(--line)}
+.seg2 button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+/* ===== crop box & wipe ===== */
+.views.cropping #srcCanvas{outline:2px solid var(--accent);outline-offset:2px;touch-action:none;cursor:crosshair}
+.view-wipe #rawText{display:none!important}
+.views:not(.view-wipe) #wipeBar{display:none}
+.view-wipe #srcCanvas{box-shadow:none;max-width:none;max-height:none;pointer-events:none}
+.view-wipe canvas,.view-wipe .wipebar{cursor:ew-resize;touch-action:none}
+.wipebar{position:absolute;width:0;border-left:2px solid #fff;margin-left:-1px;z-index:3;filter:drop-shadow(0 0 2px rgba(0,0,0,.75))}
+.wipebar i{position:absolute;top:50%;left:-15px;width:28px;height:28px;margin-top:-14px;border-radius:50%;background:#fff}
+.wipebar i::before{content:"⇆";display:grid;place-items:center;height:100%;color:#111;font-size:15px;font-style:normal}
+.wipebar::before,.wipebar::after{position:absolute;top:6px;font-size:11px;font-weight:600;background:rgba(0,0,0,.62);color:#fff;padding:1px 6px;border-radius:5px;white-space:nowrap}
+.wipebar::before{content:"Original";right:8px} .wipebar::after{content:"Result";left:8px}
+.wipebar:focus{outline:none} .wipebar:focus-visible i{outline:3px solid var(--accent);outline-offset:1px}
 @media (max-width:1320px){ .step span{display:none} .step{padding:4px} }
 @media (max-width:980px){ .steps{display:none} .switch{font-size:0;gap:0} }
 @media (max-width:1180px){

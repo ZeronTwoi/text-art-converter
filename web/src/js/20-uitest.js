@@ -45,6 +45,79 @@ UI_TESTS.push(async function gallery(ok, { wait }) {
   ok('Bigger gallery: click applies the look and closes', App.look === cards[2].dataset.look && !$('#galleryDialog').open);
 });
 
+/* pointer events on an element at fractions (fx, fy) of its box */
+function uiPointer(el, type, fx, fy, target) {
+  const b = el.getBoundingClientRect();
+  (target || el).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'mouse', button: 0, buttons: type === 'pointerup' ? 0 : 1, clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }));
+}
+function uiDrag(el, a, b, steps = 4) {
+  uiPointer(el, 'pointerdown', a[0], a[1]);
+  for (let i = 1; i <= steps; i++) uiPointer(el, 'pointermove', a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps, $('#stage'));
+  uiPointer(el, 'pointerup', b[0], b[1], $('#stage'));
+}
+UI_TESTS.push(async function cropAndWipe(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  // the view ↔ source mapping is exact for every turn and flip
+  let worst = 0;
+  for (const rotate of [0, 90, 180, 270]) for (const flipH of [false, true]) for (const flipV of [false, true]) {
+    const St = Object.assign({}, DEFAULTS, { rotate, flipH, flipV }), W = rotate % 180 ? 640 : 960, H = rotate % 180 ? 960 : 640;
+    for (const [x, y] of [[0, 0], [123, 456], [959, 1], [480, 320]]) { const v = sourceToView(x, y, W, H, 960, 640, St), s = viewToSource(v[0], v[1], W, H, 960, 640, St); worst = Math.max(worst, Math.abs(s[0] - x), Math.abs(s[1] - y)); }
+  }
+  ok('Crop box: picture ↔ view mapping is exact for every turn and flip', worst < 1e-6, 'max error ' + worst.toExponential(1));
+  setCropMode(true); renderNow();
+  const c = $('#srcCanvas');
+  ok('Crop box: shows the whole picture next to the result', Crop.on && App.view === 'split' && Math.abs(c.width / c.height - 1.5) < 0.01, c.width + 'x' + c.height);
+  uiDrag(c, [0.25, 0.2], [0.75, 0.6]);
+  ok('Crop box: drawing a box sets the crop', Math.abs(S.cropL - 25) < 1 && Math.abs(S.cropR - 25) < 1 && Math.abs(S.cropT - 20) < 1 && Math.abs(S.cropB - 40) < 1, [S.cropL, S.cropR, S.cropT, S.cropB].join(' / '));
+  uiDrag(c, [0.5, 0.4], [0.6, 0.5]);
+  ok('Crop box: dragging inside moves it', Math.abs(S.cropL - 35) < 1.5 && Math.abs(S.cropR - 15) < 1.5 && Math.abs(S.cropT - 30) < 1.5, [S.cropL, S.cropR, S.cropT, S.cropB].join(' / '));
+  uiDrag(c, [0.85, 0.5], [0.95, 0.5]);
+  ok('Crop box: dragging the right edge resizes it', Math.abs(S.cropR - 5) < 1.5 && Math.abs(S.cropL - 35) < 1.5, [S.cropL, S.cropR].join(' / '));
+  applySettings({ cropL: 0, cropR: 0, cropT: 0, cropB: 0, rotate: 90 }); renderNow();
+  uiDrag(c, [0, 0], [0.5, 0.5]);
+  ok('Crop box: works on a turned picture', S.cropL + S.cropR > 40 && S.cropT + S.cropB > 40 && S.cropL + S.cropR < 60, [S.cropL, S.cropR, S.cropT, S.cropB].join(' / '));
+  setCropMode(false); applySettings({ cropL: 0, cropR: 0, cropT: 0, cropB: 0, rotate: 0 });
+  ok('Crop box: done returns to the previous view', !Crop.on && App.view === 'out');
+  setView('wipe'); renderNow(); await wait(30);
+  const out = $('#outCanvas');
+  ok('Wipe: the original lies exactly over the result', c.style.position === 'absolute' && c.style.left === out.offsetLeft + 'px' && c.style.width === out.offsetWidth + 'px' && c.width === out.width);
+  uiDrag(out, [0.5, 0.5], [0.3, 0.5]);
+  ok('Wipe: dragging moves the divider', Math.abs(Wipe.pos - 30) < 1 && /inset\(0(px)? 70/.test(c.style.clipPath), Wipe.pos.toFixed(1) + '% ' + c.style.clipPath);
+  $('#wipeBar').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  ok('Wipe: arrow keys move the divider', Math.abs(Wipe.pos - 32) < 0.01);
+  setView('out'); await wait(10);
+  ok('Wipe: leaving puts the original back', c.style.position === '' && c.style.clipPath === '');
+});
+
+UI_TESTS.push(async function maskTools(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  setMaskMode(true); renderNow();
+  const c = $('#srcCanvas'), ink = () => { const m = Mask.canvas, d = m.getContext('2d').getImageData(0, 0, m.width, m.height).data; let s = 0; for (let i = 3; i < d.length; i += 4) s += d[i]; return s; };
+  uiDrag(c, [0.3, 0.5], [0.6, 0.5]);
+  const after1 = ink();
+  ok('Mask: a stroke paints', after1 > 0 && MaskHist.undo.length === 1);
+  uiDrag(c, [0.3, 0.2], [0.6, 0.2]);
+  maskStep(true);
+  ok('Mask undo: removes the last stroke only', ink() === after1);
+  maskStep(true);
+  ok('Mask undo: back to empty', ink() === 0 && !$('#maskRedo').disabled);
+  maskStep(false);
+  ok('Mask redo: the stroke comes back', ink() === after1);
+  // hard brush: full strength up to the edge; soft: fades
+  maskStep(true); Mask.hard = true; Mask.size = 10;
+  uiDrag(c, [0.5, 0.5], [0.5, 0.5], 1);
+  const m = Mask.canvas, k = m.width / c.width, cx = Math.round(m.width / 2), cy = Math.round(m.height / 2);
+  const r = 10 / 100 * Math.max(m.width, m.height), at = f => m.getContext('2d').getImageData(Math.round(cx + r * f), cy, 1, 1).data[3];
+  const hardEdge = at(0.88);
+  maskStep(true); Mask.hard = false;
+  uiDrag(c, [0.5, 0.5], [0.5, 0.5], 1);
+  const softEdge = at(0.88);
+  ok('Mask brush: hard edge is solid, soft edge fades', hardEdge > 240 && softEdge < 160, `hard ${hardEdge}, soft ${softEdge}`);
+  $('#maskClearBtn').click(); maskStep(true);
+  ok('Mask: clearing can be undone', ink() > 0);
+  setMaskMode(false); Mask.size = 6;
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

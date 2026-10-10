@@ -260,7 +260,7 @@ function memoKey(src, sw, sh, S, sig) {
 }
 /* ---- painted mask: where the picture is hidden (red) or kept safe from "Hide plain background" (green) ----
    Painted in source coordinates, so crop, turn and flip apply to it like to the picture. */
-const Mask = { canvas: null, ver: 0, src: null, cache: new Map(), on: false, brush: 'hide', size: 6, pending: false };
+const Mask = { canvas: null, ver: 0, src: null, cache: new Map(), on: false, brush: 'hide', size: 6, hard: false, pending: false };
 function maskFor(src) { return Mask.ver && Mask.src && src && srcOwner.get(src) === Mask.src ? Mask : null; }
 function maskEnsure() {
   const s = App.src;
@@ -270,7 +270,7 @@ function maskEnsure() {
   Mask.src = s; Mask.ver = 0; Mask.cache.clear();
   return Mask;
 }
-function maskClear() { Mask.canvas = null; Mask.src = null; Mask.ver = 0; Mask.cache.clear(); }
+function maskClear() { if (typeof maskHistReset === 'function') maskHistReset(); Mask.canvas = null; Mask.src = null; Mask.ver = 0; Mask.cache.clear(); }
 const maskCanvas = newCanvas(), maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
 /* the mask at the character grid (W×H RGBA: R = hide, G = keep, A = strength), or null */
 function maskPixels(src, S, W, H) {

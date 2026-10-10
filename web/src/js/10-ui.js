@@ -85,6 +85,9 @@ const History = {
   update() { const u = $('#btnUndo'), r = $('#btnRedo'); if (u) { u.disabled = !this.undo.length && !this.timer; r.disabled = !this.redo.length; } },
 };
 
+/* pointer tools on the picture (crop box, wipe divider, character brush…): { down(e) → true if it takes the drag,
+   move(e), up(e), hover(e) → true if it handled a pointer move without a drag } */
+const STAGE_TOOLS = [];
 function initUI() {
   // modes
   const mg = $('#modes');
@@ -106,7 +109,8 @@ function initUI() {
   $('#maskPaint').addEventListener('click', () => setMaskMode(!Mask.on));
   $$('#maskBrushes button').forEach(b => b.addEventListener('click', () => { Mask.brush = b.dataset.brush; updateMaskUI(); if (!Mask.on) setMaskMode(true); }));
   $('#maskSize').addEventListener('input', e => { Mask.size = +e.target.value; updateMaskUI(); });
-  $('#maskClearBtn').addEventListener('click', () => { if (Mask.src === App.src && Mask.canvas) { Mask.canvas.getContext('2d').clearRect(0, 0, Mask.canvas.width, Mask.canvas.height); Mask.pending = true; toast('Mask cleared'); } });
+  $('#maskClearBtn').addEventListener('click', () => { if (Mask.src === App.src && Mask.canvas) { maskStrokeStart(); Mask.canvas.getContext('2d').clearRect(0, 0, Mask.canvas.width, Mask.canvas.height); Mask.pending = true; toast('Mask cleared (Undo brings it back)'); } });
+  initMaskTools();
   updateMaskUI();
   $('#resetTransform').addEventListener('click', () => applySettings({ rotate: 0, flipH: false, flipV: false, cropL: 0, cropR: 0, cropT: 0, cropB: 0 }));
   $('#resetAll').addEventListener('click', () => { if (confirm('Reset every setting to its default?')) applySettings(Object.assign({}, DEFAULTS)); });
@@ -143,20 +147,25 @@ function initUI() {
   const stage = $('#stage');
   stage.addEventListener('wheel', e => { if (!e.ctrlKey || !App.src) return; e.preventDefault(); zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   let drag = null;
-  let stroke = null;
+  let stroke = null, tool = null;
   stage.addEventListener('pointerdown', e => {
+    const capture = () => { try { stage.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ } };
+    for (const t of STAGE_TOOLS) if (t.down(e)) { tool = t; capture(); e.preventDefault(); return; }
     if (Mask.on && e.target.id === 'srcCanvas' && e.button === 0) {
       const c = e.target, r = c.getBoundingClientRect();
+      maskEnsure(); maskStrokeStart();
       stroke = { c, last: maskStroke((e.clientX - r.left) / r.width * c.width, (e.clientY - r.top) / r.height * c.height, null) };
-      stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      capture(); e.preventDefault(); return;
     }
     if (!App.zoom || e.button !== 0 || e.target.id === 'rawText') return;
     drag = { x: e.clientX, y: e.clientY, sl: stage.scrollLeft, st: stage.scrollTop }; $('#views').classList.add('dragging'); stage.setPointerCapture(e.pointerId);
   });
   stage.addEventListener('pointermove', e => {
+    if (tool) { tool.move(e); return; }
+    if (!drag && !stroke) for (const t of STAGE_TOOLS) if (t.hover && t.hover(e)) break;
     if (stroke) { const r = stroke.c.getBoundingClientRect(); stroke.last = maskStroke((e.clientX - r.left) / r.width * stroke.c.width, (e.clientY - r.top) / r.height * stroke.c.height, stroke.last); return; }
     if (!drag) return; stage.scrollLeft = drag.sl - (e.clientX - drag.x); stage.scrollTop = drag.st - (e.clientY - drag.y); });
-  const endDrag = () => { drag = null; stroke = null; $('#views').classList.remove('dragging'); };
+  const endDrag = e => { if (tool && tool.up) tool.up(e); tool = null; drag = null; if (stroke) maskStrokeEnd(); stroke = null; $('#views').classList.remove('dragging'); };
   stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
 
   // player
@@ -251,9 +260,11 @@ function initUI() {
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b && e.detail > 0) b.blur(); });
 
   initUI2();
+  initCropWipe();
   buildExportPanel();
   requestAnimationFrame(tick);
 }
 function setView(v) {
+  if (Crop.on && v !== 'split' && v !== 'src') { Crop.prevView = null; setCropMode(false); }
   App.view = v; $$('#viewSeg button').forEach(x => x.classList.toggle('on', x.dataset.view === v)); App.dirty = true; applyZoom();
 }

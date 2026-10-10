@@ -195,12 +195,13 @@
     <section class="tab src-only" data-tab="crop" hidden>
       <div class="group">
         <h3 class="h">Crop</h3>
+        <button class="btn wide" id="cropDraw" title="Drag a box on the picture: corners and edges resize it, inside moves it">⬚ Draw the crop on the picture</button>
         <button class="btn wide" id="autoTrim" title="Crop away plain empty borders around the subject">✂ Auto-trim empty borders</button>
         <div class="pair">
-          <div class="row"><label>Left <output data-out="cropL"></output></label><input type="range" data-key="cropL" min="0" max="45" step="0.5"></div>
-          <div class="row"><label>Right <output data-out="cropR"></output></label><input type="range" data-key="cropR" min="0" max="45" step="0.5"></div>
-          <div class="row"><label>Top <output data-out="cropT"></output></label><input type="range" data-key="cropT" min="0" max="45" step="0.5"></div>
-          <div class="row"><label>Bottom <output data-out="cropB"></output></label><input type="range" data-key="cropB" min="0" max="45" step="0.5"></div>
+          <div class="row"><label>Left <output data-out="cropL"></output></label><input type="range" data-key="cropL" min="0" max="95" step="0.5"></div>
+          <div class="row"><label>Right <output data-out="cropR"></output></label><input type="range" data-key="cropR" min="0" max="95" step="0.5"></div>
+          <div class="row"><label>Top <output data-out="cropT"></output></label><input type="range" data-key="cropT" min="0" max="95" step="0.5"></div>
+          <div class="row"><label>Bottom <output data-out="cropB"></output></label><input type="range" data-key="cropB" min="0" max="95" step="0.5"></div>
         </div>
       </div>
       <div class="group">
@@ -219,7 +220,14 @@
           <button data-brush="keep"><b>Keep</b><small>safe from "hide background"</small></button>
           <button data-brush="erase"><b>Eraser</b><small>remove paint</small></button>
         </div>
-        <div class="row"><label>Brush size <output id="maskSizeOut"></output></label><input type="range" id="maskSize" min="1" max="30" step="0.5" value="6"></div>
+        <div class="row"><label for="maskSize">Brush size <output id="maskSizeOut"></output></label><input type="range" id="maskSize" min="1" max="30" step="0.5" value="6"></div>
+        <div class="seg2" id="maskHardness" role="group" aria-label="Brush edge">
+          <button data-hard="0" title="Soft, feathered edge">◌ Soft edge</button><button data-hard="1" title="Hard, crisp edge">● Hard edge</button>
+        </div>
+        <div class="pair">
+          <button class="btn" id="maskUndo" title="Undo the last stroke (Ctrl+Z while painting)" disabled>↶ Undo stroke</button>
+          <button class="btn" id="maskRedo" title="Redo (Ctrl+Y while painting)" disabled>↷ Redo</button>
+        </div>
         <button class="btn wide" id="maskClearBtn">Clear the mask</button>
       </div>
     </section>
@@ -233,6 +241,7 @@
       <div class="seg" id="viewSeg">
         <button data-view="out" class="on" title="The converted picture">Result</button>
         <button data-view="split" title="Original and result side by side">Compare</button>
+        <button data-view="wipe" title="Original and result on top of each other: drag the divider">Wipe</button>
         <button data-view="src" title="The original after crop / turn">Original</button>
         <button data-view="text" title="The raw text, selectable">Text</button>
         <button data-view="platform" title="Roughly how the copied text will look in the chosen chat app">In the app</button>
@@ -274,6 +283,7 @@
       <div class="views view-out" id="views" hidden>
         <canvas id="srcCanvas"></canvas>
         <canvas id="outCanvas"></canvas>
+        <div id="wipeBar" class="wipebar" role="slider" tabindex="0" aria-label="Wipe: original on the left, result on the right" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><i></i></div>
         <pre id="rawText"></pre>
         <div id="platformView"><div class="phone" id="phone">
           <div class="phonebar"><b id="phoneTitle">Discord</b><span>preview</span></div>

@@ -54,7 +54,7 @@ function clearEngineCaches() {
 }
 
 function cropRect(sw, sh, S) {
-  const l = clamp(S.cropL, 0, 49) / 100, r = clamp(S.cropR, 0, 49) / 100, t = clamp(S.cropT, 0, 49) / 100, b = clamp(S.cropB, 0, 49) / 100;
+  const l = clamp(S.cropL, 0, 95) / 100, r = clamp(S.cropR, 0, 95) / 100, t = clamp(S.cropT, 0, 95) / 100, b = clamp(S.cropB, 0, 95) / 100;
   return [sw * l, sh * t, Math.max(1, sw * (1 - l - r)), Math.max(1, sh * (1 - t - b))];
 }
 function normRot(r) { return ((Math.round((+r || 0) / 90) * 90) % 360 + 360) % 360; }
