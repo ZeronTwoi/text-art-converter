@@ -555,6 +555,17 @@
   <div class="acts"><button class="btn left" id="posterCancel">Cancel</button><button class="btn" id="posterPng">Download PNG</button><button class="btn primary" id="posterPrintBtn">🖨 Print / save as PDF</button></div>
 </dialog>
 <div id="printArea" aria-hidden="true"></div>
+<dialog id="plotDialog">
+  <h3>Plotter / laser SVG</h3>
+  <p class="muted small" style="margin:0 0 8px">Only lines: line characters become strokes, shading becomes hatching. Best with the Edges style.</p>
+  <div class="row"><label for="plotWidth">Width <output id="plotWidthOut">200 mm</output></label><input type="range" id="plotWidth" min="50" max="600" step="10" value="200"></div>
+  <div class="pair">
+    <div class="row"><label for="plotPen">Pen / beam width</label><select id="plotPen"><option value="0.2">0.2 mm</option><option value="0.3" selected>0.3 mm</option><option value="0.5">0.5 mm</option><option value="0.8">0.8 mm</option></select></div>
+    <div class="row"><label class="chk" style="margin-top:22px"><input type="checkbox" id="plotHatch" checked> Shade with lines</label></div>
+  </div>
+  <p class="hint" id="plotInfo"></p>
+  <div class="acts"><button class="btn" id="plotCancel">Cancel</button><button class="btn primary" id="plotSave">Save SVG</button></div>
+</dialog>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>
   <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>

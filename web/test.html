@@ -1027,6 +1027,17 @@ body.hide-status .statusbar,body.hide-wipe #viewSeg [data-view="wipe"],body.hide
   <div class="acts"><button class="btn left" id="posterCancel">Cancel</button><button class="btn" id="posterPng">Download PNG</button><button class="btn primary" id="posterPrintBtn">🖨 Print / save as PDF</button></div>
 </dialog>
 <div id="printArea" aria-hidden="true"></div>
+<dialog id="plotDialog">
+  <h3>Plotter / laser SVG</h3>
+  <p class="muted small" style="margin:0 0 8px">Only lines: line characters become strokes, shading becomes hatching. Best with the Edges style.</p>
+  <div class="row"><label for="plotWidth">Width <output id="plotWidthOut">200 mm</output></label><input type="range" id="plotWidth" min="50" max="600" step="10" value="200"></div>
+  <div class="pair">
+    <div class="row"><label for="plotPen">Pen / beam width</label><select id="plotPen"><option value="0.2">0.2 mm</option><option value="0.3" selected>0.3 mm</option><option value="0.5">0.5 mm</option><option value="0.8">0.8 mm</option></select></div>
+    <div class="row"><label class="chk" style="margin-top:22px"><input type="checkbox" id="plotHatch" checked> Shade with lines</label></div>
+  </div>
+  <p class="hint" id="plotInfo"></p>
+  <div class="acts"><button class="btn" id="plotCancel">Cancel</button><button class="btn primary" id="plotSave">Save SVG</button></div>
+</dialog>
 <dialog id="customDialog">
   <h3>Customize the screen</h3>
   <p class="muted small" style="margin:0 0 8px">Hide what you do not use. Everything stays reachable with 🔍 Find a tool (Ctrl+K).</p>
@@ -4916,6 +4927,7 @@ function buildExportPanel() {
   btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)', more: 'text' });
   btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals', more: 'text' });
   btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image', more: 'text' });
+  btn(t, 'Plotter SVG…', openPlotter, { title: 'Only lines, for pen plotters and laser cutters (best with the Edges style)', more: 'text' });
   moreOf(t, 'text').parentNode.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
@@ -5265,6 +5277,7 @@ function initUI() {
   initTour();
   initReveal();
   initPoster();
+  initPlotter();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -7713,6 +7726,7 @@ function toolList() {
     add('Save ' + lab, 'Share panel', k2 + ' download export', needSrc(() => showExport('save', lab)));
   add('Before → after video (picture turns into the art)', 'Share panel', 'reveal transformation wipe fade video gif mp4 tiktok reel', needSrc(openRevealDialog));
   add('Print or poster (A4, A3, PDF)', 'Share panel', 'print paper pdf poster a4 a3 letter', needSrc(openPoster));
+  add('Plotter / laser SVG (lines only)', 'Share panel', 'plotter laser cutter pen cnc svg lines hatching', needSrc(openPlotter));
   add('Stickers & emoji (Discord, Slack, Telegram)', 'Share panel', 'sticker emoji discord slack telegram', needSrc(() => showExport('save', 'Discord emoji')));
   add('Copy as text', 'Share panel', 'clipboard plain', needSrc(actCopyText));
   add('Copy with colours (Word, email)', 'Share panel', 'rich html clipboard', needSrc(actCopyHTML));
@@ -8115,6 +8129,92 @@ function initPoster() {
   $('#posterCancel').addEventListener('click', () => $('#posterDialog').close());
   $('#posterPng').addEventListener('click', () => { $('#posterDialog').close(); posterDownload(); });
   $('#posterPrintBtn').addEventListener('click', () => { $('#posterDialog').close(); posterPrint(); });
+}
+/* =====================================================================
+   Plotter / laser SVG: only lines. Line characters (/ \ | - _ = + x # box lines…) become strokes, everything else
+   becomes horizontal hatching by how much ink it has (0-4 lines per cell, levels nest, so equal neighbours join).
+   Straight lines through many cells become one stroke; strokes are ordered to cut pen travel.
+   Coordinates: 4 units per cell width and 4 per cell height, scaled to millimetres in the SVG.
+   ===================================================================== */
+/* segments of line characters inside a 4 × 4 cell (x0, y0, x1, y1) */
+const PLOT_CHARS = (() => {
+  const H = y => [0, y, 4, y], V = x => [x, 0, x, 4], D1 = [0, 4, 4, 0], D2 = [0, 0, 4, 4];
+  const m = {
+    '-': [H(2)], '_': [H(4)], '‾': [H(0)], '|': [V(2)], '/': [D1], '\\': [D2], '+': [H(2), V(2)], 'x': [[1, 1, 3, 3], [1, 3, 3, 1]], 'X': [D1, D2],
+    '=': [H(1.5), H(2.5)], '#': [H(1.5), H(2.5), V(1.5), V(2.5)], '<': [[3, 0.5, 1, 2], [1, 2, 3, 3.5]], '>': [[1, 0.5, 3, 2], [3, 2, 1, 3.5]],
+    '^': [[1, 2, 2, 0.5], [2, 0.5, 3, 2]], 'v': [[1, 1.5, 2, 3.5], [2, 3.5, 3, 1.5]], '(': [[2.5, 0, 1.5, 2], [1.5, 2, 2.5, 4]], ')': [[1.5, 0, 2.5, 2], [2.5, 2, 1.5, 4]],
+    '[': [[2.5, 0, 1.5, 0], [1.5, 0, 1.5, 4], [1.5, 4, 2.5, 4]], ']': [[1.5, 0, 2.5, 0], [2.5, 0, 2.5, 4], [2.5, 4, 1.5, 4]], '*': [H(2), [1, 1, 3, 3], [1, 3, 3, 1]],
+    '.': [[2, 3.4, 2, 3.6]], ',': [[2, 3.2, 1.6, 4]], ':': [[2, 1.4, 2, 1.6], [2, 3.4, 2, 3.6]], "'": [[2, 0.5, 2, 1.5]], '`': [[1.6, 0.4, 2.2, 1.2]], '~': [[0.5, 2.3, 1.5, 1.7], [1.5, 1.7, 2.5, 2.3], [2.5, 2.3, 3.5, 1.7]],
+    '≡': [H(1), H(2), H(3)], '─': [H(2)], '│': [V(2)], '┼': [H(2), V(2)],
+  };
+  for (const [cp, arms] of Object.entries({ 0x250C: 'rd', 0x2510: 'ld', 0x2514: 'ru', 0x2518: 'lu', 0x251C: 'udr', 0x2524: 'udl', 0x252C: 'lrd', 0x2534: 'lru' })) {
+    const s = []; if (arms.includes('l')) s.push([0, 2, 2, 2]); if (arms.includes('r')) s.push([2, 2, 4, 2]); if (arms.includes('u')) s.push([2, 0, 2, 2]); if (arms.includes('d')) s.push([2, 2, 2, 4]);
+    m[String.fromCodePoint(+cp)] = s;
+  }
+  return m;
+})();
+const HATCH_ROWS = [2, 1, 3, 0.5];   // the y of the 1st, 2nd… hatching line in a cell (levels nest)
+/* how much ink a cell has (0..1) */
+function cellInk(res, i) {
+  if (res.bits) { const b = res.bits[i]; let n = 0; for (let k = b; k; k &= k - 1) n++; return n / (res.mode === 'braille' ? 8 : res.mode === 'quad' ? 4 : 2); }
+  if (res.val) return res.val[i];
+  const cp = res.cp[i] || 32; if (isBlankCp(cp)) return 0;
+  const B = BLOCK_RECTS[cp]; if (B) return Math.min(1, B.reduce((a, r) => a + r[2] * r[3], 0));   // blocks: their area
+  if (cp >= 0x2591 && cp <= 0x2593) return (cp - 0x2590) / 4;                                     // shades
+  if (cp > 0x2800 && cp <= 0x28FF) { let n = 0; for (let k = cp - 0x2800; k; k &= k - 1) n++; return n / 8; }   // braille dots
+  const G = pixelGlyph(cp); if (!G) return 0.5;
+  let n = 0; for (const row of G) for (let r = row; r; r &= r - 1) n++;
+  return Math.min(1, n / 18);
+}
+/* the line art of a result: polylines in cell units ×4 */
+function plotterLines(res, o = {}) {
+  const { cols, rows, cp } = res, segs = [], hatch = o.hatch !== false;
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const i = y * cols + x, ch = chr(cp[i] || 32), L = PLOT_CHARS[ch], X = x * 4, Y = y * 4;
+    if (L && !res.bits) { for (const [a, b, c, d] of L) segs.push([X + a, Y + b, X + c, Y + d]); continue; }
+    if (!hatch) continue;
+    const n = Math.round(cellInk(res, i) * 4);
+    for (let k = 0; k < n; k++) segs.push([X, Y + HATCH_ROWS[k], X + 4, Y + HATCH_ROWS[k]]);
+  }
+  // join straight pieces: segments on one line that touch become one segment
+  const key = s => { const dx = s[2] - s[0], dy = s[3] - s[1], g = Math.hypot(dx, dy) || 1; return `${(dx / g).toFixed(3)},${(dy / g).toFixed(3)}`; };
+  const byStart = new Map(); for (const s of segs) { const k = s[0] + ',' + s[1] + '|' + key(s); if (!byStart.has(k)) byStart.set(k, []); byStart.get(k).push(s); }
+  const used = new Set(), lines = [];
+  for (const s of segs) {
+    if (used.has(s)) continue; used.add(s);
+    const cur = s.slice(), dir = key(s);
+    for (;;) { const nx = (byStart.get(cur[2] + ',' + cur[3] + '|' + dir) || []).find(t => !used.has(t)); if (!nx) break; used.add(nx); cur[2] = nx[2]; cur[3] = nx[3]; }
+    lines.push(cur);
+  }
+  // pen travel: always continue with the nearest remaining line (either direction)
+  const out = [], left = new Set(lines.keys()); let px = 0, py = 0;
+  while (left.size) {
+    let best = -1, bd = Infinity, flip = false;
+    for (const j of left) { const l = lines[j], d0 = Math.hypot(l[0] - px, l[1] - py), d1 = Math.hypot(l[2] - px, l[3] - py); if (d0 < bd) { bd = d0; best = j; flip = false; } if (d1 < bd) { bd = d1; best = j; flip = true; } if (!bd) break; }
+    left.delete(best); const l = lines[best], seg = flip ? [l[2], l[3], l[0], l[1]] : l; out.push(seg); px = seg[2]; py = seg[3];
+    if (left.size > 20000 && out.length % 2000 === 0) { /* very large drawings: greedy order is O(n²); keep going */ }
+  }
+  return out;
+}
+function plotterSVG(res, o) {
+  const lines = plotterLines(res, o), [cw, ch] = cellSize(S, 1), wmm = o.widthMm, unitX = wmm / (res.cols * 4), unitY = unitX * (ch / cw);
+  const hmm = res.rows * 4 * unitY, f = v => Math.round(v * 1000) / 1000;
+  let d = '', length = 0;
+  for (const [a, b, c, e] of lines) { d += `M${f(a * unitX)} ${f(b * unitY)}L${f(c * unitX)} ${f(e * unitY)}`; length += Math.hypot((c - a) * unitX, (e - b) * unitY); }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${f(wmm)}mm" height="${f(hmm)}mm" viewBox="0 0 ${f(wmm)} ${f(hmm)}">\n<g fill="none" stroke="#000" stroke-width="${o.penMm}" stroke-linecap="round">\n<path d="${d}"/>\n</g>\n</svg>\n`;
+  return { svg, lines: lines.length, lengthM: length / 1000, wmm, hmm };
+}
+function plotterOptions() { return { widthMm: +$('#plotWidth').value, penMm: +$('#plotPen').value, hatch: $('#plotHatch').checked }; }
+function updatePlotInfo() {
+  if (!App.res) return;
+  const r = plotterSVG(App.res, plotterOptions());
+  $('#plotInfo').textContent = `${Math.round(r.wmm)} × ${Math.round(r.hmm)} mm · ${r.lines.toLocaleString()} lines · ${r.lengthM.toFixed(1)} m of pen`;
+}
+function openPlotter() { if (!requireRes()) return; updatePlotInfo(); $('#plotDialog').showModal(); }
+function initPlotter() {
+  for (const id of ['plotWidth', 'plotPen', 'plotHatch']) $('#' + id).addEventListener('input', () => { $('#plotWidthOut').textContent = $('#plotWidth').value + ' mm'; updatePlotInfo(); });
+  $('#plotCancel').addEventListener('click', () => $('#plotDialog').close());
+  $('#plotSave').addEventListener('click', () => { const r = plotterSVG(App.res, plotterOptions()); $('#plotDialog').close(); download(new Blob([r.svg], { type: 'image/svg+xml' }), baseName() + '_plotter.svg'); toast(`Plotter SVG saved: ${r.lines.toLocaleString()} lines, ${r.lengthM.toFixed(1)} m`); });
 }
 /* =====================================================================
    Start: build the UI, then open a demo when the address asks for one (#demo, #demoanim, #demo=<look>…)
@@ -9325,6 +9425,21 @@ UI_TESTS.push(async function printPoster(ok, { wait }) {
   ok('Poster: cleaned up after printing', !$('#printArea img'));
   const got = await uiCaptureDownloads(posterDownload);
   ok('Poster: PNG download', !!got[0] && got[0].blob.type === 'image/png' && got[0].blob.size > 20000);
+});
+
+UI_TESTS.push(async function plotterSvg(ok) {
+  const row = textResult('----  ////\n|||||', Object.assign({}, DEFAULTS));
+  const L = plotterLines(row, { hatch: false });
+  ok('Plotter: a run of dashes becomes one line', L.some(l => l[1] === 2 && l[3] === 2 && Math.abs(l[2] - l[0]) === 16), JSON.stringify(L.slice(0, 3)));
+  ok('Plotter: slashes join into one diagonal', L.some(l => Math.abs(l[2] - l[0]) === 16 && Math.abs(l[3] - l[1]) === 4) === false && L.filter(l => l[0] !== l[2] && l[1] !== l[3]).length === 4);
+  const St = Object.assign({}, DEFAULTS, { mode: 'edge', cols: 60 }), r = uiDemoRes(St), raw = (() => { let n = 0; for (let i = 0; i < r.cp.length; i++) { const c = PLOT_CHARS[chr(r.cp[i])]; n += c ? c.length : Math.round(cellInk(r, i) * 4); } return n; })();
+  const p = plotterSVG(r, { widthMm: 200, penMm: 0.3, hatch: true });
+  ok('Plotter: strokes only, sized in millimetres', /width="200mm"/.test(p.svg) && /fill="none"/.test(p.svg) && !/<text|<rect/.test(p.svg));
+  ok('Plotter: joining makes far fewer lines', p.lines > 50 && p.lines < raw * 0.7, `${p.lines} lines from ${raw} pieces, ${p.lengthM.toFixed(1)} m`);
+  const doc = new DOMParser().parseFromString(p.svg, 'image/svg+xml');
+  ok('Plotter: valid SVG', !doc.querySelector('parsererror') && doc.querySelectorAll('path').length === 1);
+  const b = textResult('██\n  ', Object.assign({}, DEFAULTS)), h = plotterLines(b, { hatch: true });
+  ok('Plotter: dense characters are shaded with 4 lines', h.length === 4 && h.every(l => l[1] === l[3] && Math.abs(l[2] - l[0]) === 8));
 });
 
 UI_TESTS.push(async function captions(ok) {

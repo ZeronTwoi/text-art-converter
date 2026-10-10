@@ -778,6 +778,21 @@ UI_TESTS.push(async function printPoster(ok, { wait }) {
   ok('Poster: PNG download', !!got[0] && got[0].blob.type === 'image/png' && got[0].blob.size > 20000);
 });
 
+UI_TESTS.push(async function plotterSvg(ok) {
+  const row = textResult('----  ////\n|||||', Object.assign({}, DEFAULTS));
+  const L = plotterLines(row, { hatch: false });
+  ok('Plotter: a run of dashes becomes one line', L.some(l => l[1] === 2 && l[3] === 2 && Math.abs(l[2] - l[0]) === 16), JSON.stringify(L.slice(0, 3)));
+  ok('Plotter: slashes join into one diagonal', L.some(l => Math.abs(l[2] - l[0]) === 16 && Math.abs(l[3] - l[1]) === 4) === false && L.filter(l => l[0] !== l[2] && l[1] !== l[3]).length === 4);
+  const St = Object.assign({}, DEFAULTS, { mode: 'edge', cols: 60 }), r = uiDemoRes(St), raw = (() => { let n = 0; for (let i = 0; i < r.cp.length; i++) { const c = PLOT_CHARS[chr(r.cp[i])]; n += c ? c.length : Math.round(cellInk(r, i) * 4); } return n; })();
+  const p = plotterSVG(r, { widthMm: 200, penMm: 0.3, hatch: true });
+  ok('Plotter: strokes only, sized in millimetres', /width="200mm"/.test(p.svg) && /fill="none"/.test(p.svg) && !/<text|<rect/.test(p.svg));
+  ok('Plotter: joining makes far fewer lines', p.lines > 50 && p.lines < raw * 0.7, `${p.lines} lines from ${raw} pieces, ${p.lengthM.toFixed(1)} m`);
+  const doc = new DOMParser().parseFromString(p.svg, 'image/svg+xml');
+  ok('Plotter: valid SVG', !doc.querySelector('parsererror') && doc.querySelectorAll('path').length === 1);
+  const b = textResult('██\n  ', Object.assign({}, DEFAULTS)), h = plotterLines(b, { hatch: true });
+  ok('Plotter: dense characters are shaded with 4 lines', h.length === 4 && h.every(l => l[1] === l[3] && Math.abs(l[2] - l[0]) === 8));
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

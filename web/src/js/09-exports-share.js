@@ -1279,6 +1279,7 @@ function buildExportPanel() {
   btn(t, '.html', () => saveText('html'), { title: 'Web page (keeps colours)', more: 'text' });
   btn(t, '.ans', () => saveText('ans'), { title: 'ANSI art file for terminals', more: 'text' });
   btn(t, '.svg', () => saveText('svg'), { title: 'Scalable vector image', more: 'text' });
+  btn(t, 'Plotter SVG…', openPlotter, { title: 'Only lines, for pen plotters and laser cutters (best with the Edges style)', more: 'text' });
   moreOf(t, 'text').parentNode.insertAdjacentHTML('beforeend', `<div class="xopts"><div class="row"><label for="codeLang">Copy as code</label><div class="inline"><select id="codeLang"><option value="js">JavaScript</option><option value="py">Python</option><option value="cs">C#</option><option value="json">JSON</option></select><button class="btn" id="codeCopy" title="The text as a string you can paste into a program">Copy</button></div></div>
     ${animated ? '' : '<div class="row"><label>Terminal script <span class="muted">prints it in colour</span></label><div class="xbtns" id="scriptBtns"></div></div>'}</div>`);
   t.querySelector('#codeCopy').addEventListener('click', actCopyCode);
