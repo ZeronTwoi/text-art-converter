@@ -283,6 +283,31 @@ UI_TESTS.push(async function emojiMosaic(ok) {
   ok('Emoji: captions on an emoji mosaic', resultText(res2).includes('HI'));
 });
 
+UI_TESTS.push(async function effects(ok, { wait }) {
+  await demoImage(); await wait(30); renderNow();
+  ok('Effects: offered for a still picture', getComputedStyle($('.fx-only')).display !== 'none');
+  const kinds = Object.keys(EFFECTS);
+  for (const kind of kinds) {
+    const a = await makeEffectAnim(kind, { seconds: 2 }, null, true);
+    const px = i => { const c = document.createElement('canvas'); c.width = a.w; c.height = a.h; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(a.frames[i].bmp, 0, 0); return g.getImageData(0, 0, a.w, a.h).data; };
+    const f0 = px(0), f1 = px(Math.floor(a.frames.length / 2)); let d = 0; for (let i = 0; i < f0.length; i += 4) if (f0[i] !== f1[i]) d++;
+    ok(`Effect ${kind}: an animation that changes`, App.src === a && a.kind === 'anim' && a.frames.length === 30 && d > 100, `${a.frames.length} frames, ${d} pixels differ`);
+    if (kind !== kinds[kinds.length - 1]) await backToStillWait();
+  }
+  ok('Effects: the animation offers "back to the still picture"', !$('#fxBack').hidden && document.body.hasAttribute('data-fx'));
+  App.time = App.src.frames[20].t0; App.dirty = true; renderNow();
+  const r20 = App.res; App.time = 0; App.dirty = true; renderNow();
+  ok('Effects: frames convert differently', resultText(r20) !== resultText(App.res));
+  const bytes = await gifBytes(() => {}), g = decodeGIF(bytes.buffer);
+  ok('Effects: saves as an animated GIF', g.frames.length === 30, g.frames.length + ' frames');
+  const got = await uiCaptureDownloads(saveProject);
+  await demoAnim(); await openProject(new File([got[0].blob], got[0].name));
+  ok('Effects: a project keeps the effect', App.src.effect && App.src.effect.kind === kinds[kinds.length - 1] && App.src.frames.length === 30);
+  await backToStillWait();
+  ok('Effects: back to the still picture', App.src.kind === 'image' && App.src.w === 960 && !document.body.hasAttribute('data-fx'));
+});
+async function backToStillWait() { backToStill(); for (let i = 0; i < 50 && App.src.kind !== 'image'; i++) await new Promise(r => setTimeout(r, 20)); }
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

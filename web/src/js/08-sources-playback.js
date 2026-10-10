@@ -225,6 +225,7 @@ function disposeSource(s) {
   if (s.url) URL.revokeObjectURL(s.url);
   if (s.stream) s.stream.getTracks().forEach(t => t.stop());
   if (s.audio) { try { s.audio.ctx.close(); } catch (e) {} }
+  if (s.effect && s.effect.still) { try { s.effect.still.close(); } catch (e) {} }
 }
 function setSource(s) {
   endPeek(true); if (Crop.on) setCropMode(false); editsClear(); if (Edit.on) setEditMode(false);
@@ -254,6 +255,7 @@ function setSource(s) {
   else if (s.kind === 'anim' || s.kind === 'webcam') setPlaying(true);
   if (s.kind !== 'image' && s.kind !== 'text') setTimeout(() => Pool.size(), 0);   // start the workers before playback needs them
   App.look = null; markLooks(); scheduleLooks(); buildFilmstrip(); setStep(2);
+  updateEffectsUI();
 }
 function updateSrcInfo() {
   const s = App.src; if (!s) { $('#srcInfo').textContent = 'No file loaded'; return; }

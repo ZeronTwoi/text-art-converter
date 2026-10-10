@@ -294,6 +294,7 @@ dialog.wide{width:min(1180px,calc(100vw - 32px))}
 .celltip b{font-size:20px;line-height:1.1;min-width:18px;text-align:center;background:#000;border-radius:4px;padding:1px 4px}
 .cellinfo{flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .row input[type=color]{width:100%;height:28px}
+body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
