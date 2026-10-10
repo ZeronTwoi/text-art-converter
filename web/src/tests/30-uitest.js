@@ -674,7 +674,7 @@ UI_TESTS.push(async function findTool(ok, { wait }) {
     try { await uiCaptureDownloads(async () => { await t.run(); await wait(40); }); }
     catch (e) { errors.push(t.name + ': ' + e.message); }
     for (const d of $$('dialog[open]')) d.close();
-    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false); if (Present.on) setPresent(false);
+    if (Crop.on) setCropMode(false); if (Mask.on) setMaskMode(false); if (Edit.on) setEditMode(false); if (Present.on) setPresent(false); if (Tour.i >= 0) endTour();
     if (!App.src || App.src.kind !== 'image') { await demoImage(); await wait(20); }
     App.zoom = 0; setView('out');
   }
@@ -684,7 +684,7 @@ UI_TESTS.push(async function findTool(ok, { wait }) {
 
 /* nothing may cover the page by accident (a class name clash once made a toolbar part a full-page overlay) */
 function uiCoverCheck() {
-  const vw = innerWidth, vh = innerHeight, allowed = new Set(['empty', 'views', 'dropOverlay', 'progress', 'videoHost']);
+  const vw = innerWidth, vh = innerHeight, allowed = new Set(['empty', 'views', 'dropOverlay', 'progress', 'videoHost', 'tour']);
   return $$('body *').filter(el => {
     if (allowed.has(el.id) || el.closest('dialog')) return false;
     const st = getComputedStyle(el); if (st.position !== 'absolute' && st.position !== 'fixed') return false;
@@ -721,6 +721,19 @@ UI_TESTS.push(async function leanScreen(ok, { wait }) {
   await openPresentLink(link.slice(link.indexOf('#'))); await wait(40);
   ok('OBS link: opens full screen in the look of the link', document.body.classList.contains('present') && S.mode === 'ascii' && S.cols === 77 && App.src.kind === 'image');
   setPresent(false);
+});
+
+UI_TESTS.push(async function firstRunTour(ok, { wait }) {
+  startTour(); await wait(20);
+  ok('Tour: starts with a highlighted first step', !$('#tour').hidden && $('#tourTitle').textContent === TOUR[0].title && !$('#tourSpot').hidden);
+  const seen = [];
+  for (let i = 0; i < TOUR.length; i++) { const sp = $('#tourSpot').getBoundingClientRect(), el = TOUR[i].el().getBoundingClientRect(); seen.push(sp.width > 0 && Math.abs(sp.left + 6 - el.left) < 2); $('#tourNext').click(); await wait(10); }
+  ok('Tour: every step highlights its part', seen.every(Boolean), seen.join(','));
+  ok('Tour: Done after the last step closes it and remembers', $('#tour').hidden && localStorage.getItem(TOUR_KEY) === '1');
+  startTour(); $('#tourSkip').click();
+  ok('Tour: Skip closes it', $('#tour').hidden);
+  startTour(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  ok('Tour: Esc closes it', $('#tour').hidden);
 });
 
 UI_TESTS.push(async function captions(ok) {

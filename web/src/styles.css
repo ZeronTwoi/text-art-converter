@@ -382,6 +382,14 @@ details.group.fold>summary.h span{margin-left:auto}
 .xsec details.xmore .xbtns,.xsec details.xstick .xbtns{margin-top:4px}
 .looks:not(.all) .look.extra:not(.shown){display:none}
 .moreLooks{margin-top:8px}
+/* first-run tour */
+.tour{position:fixed;inset:0;z-index:85}
+.tourspot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);outline:2px solid var(--accent);transition:all .25s ease;pointer-events:none}
+.tour:has(.tourspot[hidden]){background:rgba(0,0,0,.55)}
+.tourcard{position:fixed;background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);transition:left .25s,top .25s}
+.tourhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:15px}
+.tourcard p{margin:6px 0 4px;line-height:1.5}
+.tourcard .acts{display:flex;gap:6px;margin-top:8px} .tourcard .acts .left{margin-right:auto}
 /* full screen / OBS: only the art */
 body.present{background:#000}
 body.present .topbar,body.present .settings,body.present .export,body.present .viewbar,body.present .editbar,body.present .player,body.present .statusbar,body.present .mobilebar,body.present .toast,body.present #peekBadge{display:none!important}

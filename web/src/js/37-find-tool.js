@@ -84,6 +84,7 @@ function toolList() {
   add('Redo', 'Top bar', 'forward ctrl+y', () => UndoHistory.step(false));
   add('Light or dark theme', 'Top bar', 'dark mode light colours', () => $('#btnTheme').click());
   add('Show every expert setting (Advanced)', 'Top bar', 'expert more options', () => setAdvanced(true));
+  add('Take the tour again', 'Help', 'tour guide intro first steps', startTour);
   add('How it works (help)', 'Top bar', 'guide manual keyboard shortcuts', () => $('#helpDialog').showModal());
   add("What's new", 'Top bar', 'news changes features', openWhatsNew);
   if (App.installPrompt) add('Install as an app', 'More', 'offline pwa desktop', () => $('#btnInstall').click());

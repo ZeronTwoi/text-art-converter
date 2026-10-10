@@ -438,7 +438,7 @@
     <li><b>Adjust</b> size, light and outlines in <i>Adjust</i>; colours in <i>Colour</i>; framing in <i>Crop</i>.</li>
     <li><b>Share or save</b> on the right: send to a chat app as text, or save a PNG / GIF / MP4.</li>
   </ol>
-  <div class="acts" style="justify-content:flex-start;margin:4px 0 0"><button class="btn" id="helpNews">✨ What's new</button><span class="muted small" style="align-self:center">Looking for something? Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or 🔍 at the top) and type what you want to do.</span></div>
+  <div class="acts" style="justify-content:flex-start;margin:4px 0 0"><button class="btn" id="helpTour">🧭 Take the tour</button><button class="btn" id="helpNews">✨ What's new</button><span class="muted small" style="align-self:center">Looking for something? Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or 🔍 at the top) and type what you want to do.</span></div>
   <h4>Good to know</h4>
   <ul class="tips">
     <li><b>Outlines</b> keep shapes recognisable, especially when small. Try the <i>Comic</i> or <i>Line art</i> looks.</li>
@@ -467,6 +467,14 @@
   <div class="acts"><button class="btn primary" id="helpClose">Got it</button></div>
 </dialog>
 
+<div class="tour" id="tour" hidden>
+  <div class="tourspot" id="tourSpot"></div>
+  <div class="tourcard" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div class="tourhead"><b id="tourTitle"></b><span class="muted small" id="tourCount"></span></div>
+    <p id="tourText"></p>
+    <div class="acts"><button class="btn left" id="tourSkip">Skip the tour</button><button class="btn" id="tourBack">Back</button><button class="btn primary" id="tourNext">Next</button></div>
+  </div>
+</div>
 <div class="presentbar" id="presentBar" role="toolbar" aria-label="Full screen">
   <button class="btn" id="presentObs" title="An address for OBS (Browser source) that shows your webcam in this look">📡 Copy OBS link</button>
   <button class="btn primary" id="presentExit" title="Leave full screen (Esc)">✕ Leave full screen</button>
