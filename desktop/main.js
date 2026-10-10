@@ -23,9 +23,14 @@ app.commandLine.appendSwitch('disable-features', 'WebShare');
 
 // the portable .exe keeps its data next to itself; the installed app in the normal per-user place
 if (process.env.PORTABLE_EXECUTABLE_DIR) app.setPath('userData', path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'text-art-studio-data'));
-// smoke.mjs gives every check run its own clean data folder
+// smoke.mjs gives every check run its own clean data folder; its camera check must work on
+// machines without one, so the fake test camera is switched on here (a command-line switch
+// from outside does not reliably reach Chromium)
 const smokeData = process.argv.find(a => a.startsWith('--smoke-user-data='));
-if (smokeData) app.setPath('userData', smokeData.slice(smokeData.indexOf('=') + 1));
+if (smokeData) {
+  app.setPath('userData', smokeData.slice(smokeData.indexOf('=') + 1));
+  app.commandLine.appendSwitch('use-fake-device-for-media-streams');
+}
 
 app.setAppUserModelId(APP_ID);
 
