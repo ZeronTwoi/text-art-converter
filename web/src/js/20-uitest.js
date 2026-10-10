@@ -520,6 +520,28 @@ UI_TESTS.push(async function versions(ok, { wait }) {
   Versions.list = []; buildVersions();
 });
 
+UI_TESTS.push(async function rampsOverTime(ok, { wait }) {
+  Ramps.list = []; buildRampsUI(); rampsChanged();
+  await demoAnim(); await wait(30); setPlaying(false); applySettings({ mode: 'ascii', cols: 60, brightness: 0 }); renderNow();
+  ok('Change over time: offered for animations', getComputedStyle($('.anim-only')).display !== 'none');
+  $('#rampAdd').click();
+  const r = Ramps.list[0]; r.from = -0.8; r.to = 0.3; buildRampsUI(); rampsChanged();
+  const [a, b] = trimRange();
+  ok('Change over time: start and end values', settingsAt(a).brightness === -0.8 && Math.abs(settingsAt(b).brightness - 0.3) < 1e-9 && Math.abs(settingsAt((a + b) / 2).brightness + 0.25) < 1e-3);
+  ok('Change over time: your own setting is untouched', S.brightness === 0);
+  App.time = App.src.frames[1].t0; App.dirty = true; renderNow(); const dark = resultText(App.res);
+  App.time = App.src.frames[46].t0; App.dirty = true; renderNow(); const light = resultText(App.res);
+  ok('Change over time: playback follows it', dark !== light && (dark.match(/ /g) || []).length > (light.match(/ /g) || []).length);
+  const all = await collectResults(() => {});
+  ok('Change over time: exported frames follow it', resultText(all[0].res) !== resultText(all[all.length - 1].res) && resultText(all[1].res) === dark);
+  r.ease = 'back'; rampsChanged();
+  ok('Change over time: "there and back" ends where it starts', Math.abs(settingsAt(a).brightness - settingsAt(b).brightness) < 1e-6);
+  const { meta } = await projectParts(false);
+  ok('Change over time: kept in projects', meta.ramps && meta.ramps[0].key === 'brightness');
+  Ramps.list = []; buildRampsUI(); rampsChanged();
+  ok('Change over time: none = your settings', settingsAt(1) === S);
+});
+
 UI_TESTS.push(async function captions(ok) {
   const bmp = await createImageBitmap(demoCanvas()), W = bmp.width, H = bmp.height;
   const St = Object.assign({}, DEFAULTS, { mode: 'ascii', cols: 60, captionTop: 'HELLO THERE', captionBottom: 'bottom line' });

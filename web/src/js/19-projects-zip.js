@@ -87,6 +87,7 @@ async function projectParts(withSource = true) {
     meta.mask = { file: 'mask.rgba', w: m.width, h: m.height };
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
+  if (Ramps.list.length) meta.ramps = Ramps.list.map(r => Object.assign({}, r));
   if (Versions.list.length) meta.versions = Versions.list.map(v => ({ name: v.name, settings: v.settings }));
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
   return { meta, files };
@@ -138,6 +139,8 @@ async function openProjectParts(meta, get) {
   if (!App.src || App.src === before) return false;
   applySettings(st);
   History.reset();
+  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
+  buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
     Versions.list = meta.versions.filter(v => v && /^[ABCD]$/.test(v.name) && v.settings).map(v => {
       const o = {}; for (const k in v.settings) if (k in DEFAULTS && !VERSION_SKIP.has(k) && typeof v.settings[k] === typeof DEFAULTS[k]) o[k] = v.settings[k];

@@ -641,21 +641,21 @@ async function* exportFrames(s = App.src, fps0 = S.gifFps) {
     let k = 0;
     for (let i = i0; i <= i1; i += step, k++) {
       let d = 0; for (let j = i; j < Math.min(i + step, i1 + 1); j++) d += s.frames[j].delay;
-      yield { d: s.frames[i].bmp, w: s.w, h: s.h, delay: d, index: k, total };
+      yield { d: s.frames[i].bmp, w: s.w, h: s.h, delay: d, index: k, total, t: s.frames[i].t0 };
     }
   } else if (s.kind === 'video') {
     const v = s.video, fps = clamp(fps0, 1, 60), [a, b] = rangeOf(s);
     const total = Math.max(1, Math.floor((b - a) * fps + 1e-6));
     for (let k = 0; k < total; k++) {
       await seekVideo(v, a + k / fps);
-      yield { d: v, w: v.videoWidth, h: v.videoHeight, delay: 1000 / fps, index: k, total };
+      yield { d: v, w: v.videoWidth, h: v.videoHeight, delay: 1000 / fps, index: k, total, t: a + k / fps };
     }
   } else {
     const d = s.kind === 'text' ? null : s === App.src ? currentDrawable() : [s.bmp, s.w, s.h];
     yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, ansi: s.ansi || null, delay: 100, index: 0, total: 1 };
   }
 }
-const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, S);
+const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, frameSettings(f));
 function confirmLarge(total) {
   if (total > 900) return confirm(`This will export ${total} frames, which can take a while and use a lot of memory. Continue? (Tip: set a trim range or lower the FPS.)`);
   return true;
@@ -702,10 +702,10 @@ async function gifSharedPalette(scale, colors, withTransparency, s = App.src) {
   const add = res => { renderResult(res, S, c, scale); H = rgbaHistogram(g.getImageData(0, 0, c.width, c.height).data, S.bgMode === 'transparent', H); };
   if (s.kind === 'anim') {
     const i0 = frameIndexIn(s, a), i1 = frameIndexIn(s, Math.max(a, b - 1e-6)), n = Math.min(16, i1 - i0 + 1);
-    for (let k = 0; k < n; k++) { const f = s.frames[Math.round(i0 + (i1 - i0) * (n > 1 ? k / (n - 1) : 0))]; add(convert(f.bmp, s.w, s.h, S)); await nextTick(); }
+    for (let k = 0; k < n; k++) { const f = s.frames[Math.round(i0 + (i1 - i0) * (n > 1 ? k / (n - 1) : 0))]; add(convert(f.bmp, s.w, s.h, s === App.src ? settingsAt(f.t0) : S)); await nextTick(); }
   } else if (s.kind === 'video') {
     const v = s.video;
-    for (let k = 0; k < 12; k++) { await seekVideo(v, a + (b - a) * k / 12); add(convert(v, v.videoWidth, v.videoHeight, S)); }
+    for (let k = 0; k < 12; k++) { const t = a + (b - a) * k / 12; await seekVideo(v, t); add(convert(v, v.videoWidth, v.videoHeight, s === App.src ? settingsAt(t) : S)); }
   } else if (s.kind === 'text') add(textResult(s.text, S, s.ansi));
   else { const d = s === App.src ? currentDrawable() : [s.bmp, s.w, s.h]; if (d) add(convert(d[0], d[1], d[2], S)); }
   const P = paletteFromHistogram(H.cnt, H.sr, H.sg, H.sb, colors, withTransparency);
@@ -723,7 +723,8 @@ async function forEachRenderedFrame(progress, onFirst, onFrame, src = App.src, o
   for await (const f of exportFrames(src, o.fps)) {
     if (App.cancel) throw cancelled();
     if (o.throttle) await o.throttle();
-    const a = Pool.size() ? frameJobArgs(f, S) : { res: frameResult(f) };
+    const St = src === App.src ? frameSettings(f) : S;
+    const a = Pool.size() ? frameJobArgs(f, St) : { res: frameResult(f) };
     if (!started) {   // every frame has the size of the first
       started = true;
       const g = a.res || gridFor(f.w, f.h, S); scale = safeScale(g, S.exportScale);
@@ -732,8 +733,8 @@ async function forEachRenderedFrame(progress, onFirst, onFrame, src = App.src, o
       await onFirst(W, H, scale);
     }
     const k = delays.length; delays.push(f.delay);
-    Object.assign(a, { St: S, scale, w: W, h: H, ropts: o.ropts });
-    const local = () => { renderResult(frameJobResult(a, S), S, canvas, scale, o.ropts); return ctx.getImageData(0, 0, W, H).data; };
+    Object.assign(a, { St, scale, w: W, h: H, ropts: o.ropts });
+    const local = () => { renderResult(frameJobResult(a, St), S, canvas, scale, o.ropts); return ctx.getImageData(0, 0, W, H).data; };
     await renders.add(() => Pool.run('renderFrame', a), local);
     renders.list[k].then(px => { ready[k] = px; flush(); });
     progress(renders.done / f.total * 0.9, `Frame ${f.index + 1} / ${f.total}`);
@@ -1039,8 +1040,8 @@ async function exportVideo(fmt) {
   await runExport(`Recording ${fmt.label} (real time)`, async progress => {
     const canvas = document.createElement('canvas'), [a, b] = trimRange();
     let scale = null;
-    const draw = (d, w, h) => {
-      const res = convert(d, w, h, S);
+    const draw = (d, w, h, t) => {
+      const res = convert(d, w, h, settingsAt(t));
       if (scale === null) scale = safeScale(res, S.exportScale);
       renderResult(res, S, canvas, scale, { even: true, bgMode: S.bgMode === 'transparent' ? 'solid' : undefined });
     };
@@ -1062,7 +1063,7 @@ async function exportVideo(fmt) {
           let lastT = -1;
           const step = () => {
             if (App.cancel || v.ended || v.paused || v.currentTime >= b - 0.001) return res();
-            if (v.currentTime !== lastT) { lastT = v.currentTime; draw(v, v.videoWidth, v.videoHeight); progress((v.currentTime - a) / Math.max(1e-3, b - a), fmtTime(v.currentTime - a) + ' / ' + fmtTime(b - a) + ' (keep this tab visible)'); }
+            if (v.currentTime !== lastT) { lastT = v.currentTime; draw(v, v.videoWidth, v.videoHeight, v.currentTime); progress((v.currentTime - a) / Math.max(1e-3, b - a), fmtTime(v.currentTime - a) + ' / ' + fmtTime(b - a) + ' (keep this tab visible)'); }
             requestAnimationFrame(step);
           };
           requestAnimationFrame(step);
@@ -1076,7 +1077,7 @@ async function exportVideo(fmt) {
             const el = (performance.now() - start) / 1000;
             if (App.cancel || el >= total) return res();
             const idx = frameIndexAt(a + (el % span));
-            if (idx !== last) { last = idx; draw(s.frames[idx].bmp, s.w, s.h); }
+            if (idx !== last) { last = idx; draw(s.frames[idx].bmp, s.w, s.h, s.frames[idx].t0); }
             progress(el / total, fmtTime(el) + ' / ' + fmtTime(total) + ' (keep this tab visible)');
             requestAnimationFrame(step);
           };
@@ -1100,11 +1101,11 @@ async function collectResults(progress) {
   for await (const f of exportFrames()) {   // frames not converted yet are converted on workers, several at once
     if (App.cancel) throw cancelled();
     delays.push(Math.round(f.delay));
-    const memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, S);
-    if (memo) await jobs.add(null, () => withOverlay(memo, S));
+    const St = frameSettings(f), memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, St);
+    if (memo) await jobs.add(null, () => withOverlay(memo, St));
     else {
-      const key = memoKey(f.d, f.w, f.h, S), a = Pool.size() ? frameJobArgs(f, S) : null;
-      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, S); })), () => a ? frameJobResult(a, S) : frameResult(f));
+      const key = memoKey(f.d, f.w, f.h, St), a = Pool.size() ? frameJobArgs(f, St) : null;
+      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, St); })), () => a ? frameJobResult(a, St) : frameResult(f));
     }
     progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
     await nextTick();
@@ -1194,10 +1195,10 @@ async function exportZip() {
     for await (const f of exportFrames()) {
       if (App.cancel) throw cancelled();
       // workers convert, draw and compress several frames at once; this thread only resamples the source
-      const a = Pool.size() ? frameJobArgs(f, S) : { res: frameResult(f) };
+      const St = frameSettings(f), a = Pool.size() ? frameJobArgs(f, St) : { res: frameResult(f) };
       if (scale === null) scale = safeScale(a.res || gridFor(f.w, f.h, S), S.exportScale);
-      Object.assign(a, { St: S, scale });
-      const local = async () => { const res = frameJobResult(a, S); renderResult(res, S, canvas, scale); const p = png(canvas); return { png: await p, text: resultText(res) }; };
+      Object.assign(a, { St, scale });
+      const local = async () => { const res = frameJobResult(a, St); renderResult(res, S, canvas, scale); const p = png(canvas); return { png: await p, text: resultText(res) }; };
       await jobs.add(() => Pool.run('pngFrame', a), local);
       progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
       await nextTick();

@@ -338,6 +338,13 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
 @keyframes blink{50%{border-color:transparent;box-shadow:none}}
 .esel{border:1.5px dashed #fff;outline:1.5px dashed #000;outline-offset:-3px;background:rgba(110,231,183,.12)}
 .editsel{display:inline-flex;gap:4px;flex-wrap:wrap}
+body:not([data-kind="anim"]):not([data-kind="video"]) .anim-only{display:none}
+.ramprow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px 6px;align-items:center;margin:6px 0;padding-bottom:6px;border-bottom:1px dashed var(--line)}
+.ramprow>select:first-child{grid-column:1/3}
+.ramprow>select:nth-of-type(2){grid-column:3/5;grid-row:1}
+.ramprow label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.ramprow input{width:100%;min-width:0;padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
+.ramprow select{width:100%;padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2)}
 /* two-way toggle */
 .seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0}
 .seg2 button{border:0;background:var(--panel);padding:6px 8px;cursor:pointer;color:var(--text)}
@@ -557,6 +564,12 @@ body:not([data-kind="image"]):not([data-fx]) .fx-only{display:none}
               <option value="noise">Noise</option>
             </select></div>
         </div>
+      </div>
+      <div class="group anim-only">
+        <h3 class="h">Change over time <span>animations &amp; videos</span></h3>
+        <div id="rampList"></div>
+        <p class="hint" id="rampNote"></p>
+        <button class="btn wide" id="rampAdd" title="Let a setting go from one value to another while the animation plays">+ Add a change (e.g. fade in)</button>
       </div>
       <div class="pair">
         <button class="btn" id="resetTone">Reset light</button>
@@ -3203,7 +3216,7 @@ function tick(now) {
   updatePlayerUI();
 }
 /* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
-const viewS = () => App.peek || S;
+const viewS = () => App.peek || settingsAt(curTime());
 function computeCurrent() {
   const s = App.src, St = viewS();
   if (s.kind === 'text') return textResult(s.text, St, s.ansi);
@@ -3234,23 +3247,23 @@ const Live = {
    so this thread stays free), and playing then just shows memoised results. */
 const Prefetch = {
   inflight: new Set(), fails: 0,
-  pending(src, sw, sh) { if (!this.inflight.size) return false; const k = memoKey(src, sw, sh, S); return !!k && this.inflight.has(k) && !resultCache.m.has(k); },
+  pending(src, sw, sh) { if (!this.inflight.size) return false; const k = memoKey(src, sw, sh, viewS()); return !!k && this.inflight.has(k) && !resultCache.m.has(k); },
   clear() { this.inflight.clear(); this.fails = 0; },
   run() {
     const s = App.src, limit = Pool.size();
     if (!s || s.kind !== 'anim' || App.exporting || !limit || this.fails > 3 || this.inflight.size >= limit) return;
     const [a, b] = trimRange(), i0 = frameIndexAt(a), i1 = frameIndexAt(Math.max(a, b - 1e-6)), span = i1 - i0 + 1;
-    const cur = frameIndexAt(App.time), sig = convertSig(S), St = Object.assign({}, S);
+    const cur = frameIndexAt(App.time), ramps = rampsActive(s), sig0 = ramps ? null : convertSig(S);
     for (let k = 1; k < Math.min(span, limit * 3); k++) {
       const i = i0 + ((cur - i0 + k) % span + span) % span, bmp = s.frames[i].bmp; if (!bmp) continue;
-      const key = memoKey(bmp, s.w, s.h, St, sig);
+      const St = ramps ? settingsAt(s.frames[i].t0) : S, key = memoKey(bmp, s.w, s.h, St, sig0 || convertSig(St));
       if (!key || this.inflight.has(key) || resultCache.m.has(key)) continue;
       this.inflight.add(key);
       convertOnWorker(bmp, s.w, s.h, St).then(r => { if (App.src === s) resultCache.set(key, r, resultBytes(r)); }, () => { this.fails++; })
         .finally(() => {
           if (!this.inflight.delete(key) || App.src !== s) return;
           const d = currentDrawable();
-          if (d && memoKey(d[0], d[1], d[2], S) === key) App.dirty = true;   // the frame on screen just arrived
+          if (d && memoKey(d[0], d[1], d[2], viewS()) === key) App.dirty = true;   // the frame on screen just arrived
         });
       return;
     }
@@ -4080,21 +4093,21 @@ async function* exportFrames(s = App.src, fps0 = S.gifFps) {
     let k = 0;
     for (let i = i0; i <= i1; i += step, k++) {
       let d = 0; for (let j = i; j < Math.min(i + step, i1 + 1); j++) d += s.frames[j].delay;
-      yield { d: s.frames[i].bmp, w: s.w, h: s.h, delay: d, index: k, total };
+      yield { d: s.frames[i].bmp, w: s.w, h: s.h, delay: d, index: k, total, t: s.frames[i].t0 };
     }
   } else if (s.kind === 'video') {
     const v = s.video, fps = clamp(fps0, 1, 60), [a, b] = rangeOf(s);
     const total = Math.max(1, Math.floor((b - a) * fps + 1e-6));
     for (let k = 0; k < total; k++) {
       await seekVideo(v, a + k / fps);
-      yield { d: v, w: v.videoWidth, h: v.videoHeight, delay: 1000 / fps, index: k, total };
+      yield { d: v, w: v.videoWidth, h: v.videoHeight, delay: 1000 / fps, index: k, total, t: a + k / fps };
     }
   } else {
     const d = s.kind === 'text' ? null : s === App.src ? currentDrawable() : [s.bmp, s.w, s.h];
     yield { d: d && d[0], w: d && d[1], h: d && d[2], text: s.kind === 'text' ? s.text : null, ansi: s.ansi || null, delay: 100, index: 0, total: 1 };
   }
 }
-const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, S);
+const frameResult = f => f.text != null ? textResult(f.text, S, f.ansi) : convert(f.d, f.w, f.h, frameSettings(f));
 function confirmLarge(total) {
   if (total > 900) return confirm(`This will export ${total} frames, which can take a while and use a lot of memory. Continue? (Tip: set a trim range or lower the FPS.)`);
   return true;
@@ -4141,10 +4154,10 @@ async function gifSharedPalette(scale, colors, withTransparency, s = App.src) {
   const add = res => { renderResult(res, S, c, scale); H = rgbaHistogram(g.getImageData(0, 0, c.width, c.height).data, S.bgMode === 'transparent', H); };
   if (s.kind === 'anim') {
     const i0 = frameIndexIn(s, a), i1 = frameIndexIn(s, Math.max(a, b - 1e-6)), n = Math.min(16, i1 - i0 + 1);
-    for (let k = 0; k < n; k++) { const f = s.frames[Math.round(i0 + (i1 - i0) * (n > 1 ? k / (n - 1) : 0))]; add(convert(f.bmp, s.w, s.h, S)); await nextTick(); }
+    for (let k = 0; k < n; k++) { const f = s.frames[Math.round(i0 + (i1 - i0) * (n > 1 ? k / (n - 1) : 0))]; add(convert(f.bmp, s.w, s.h, s === App.src ? settingsAt(f.t0) : S)); await nextTick(); }
   } else if (s.kind === 'video') {
     const v = s.video;
-    for (let k = 0; k < 12; k++) { await seekVideo(v, a + (b - a) * k / 12); add(convert(v, v.videoWidth, v.videoHeight, S)); }
+    for (let k = 0; k < 12; k++) { const t = a + (b - a) * k / 12; await seekVideo(v, t); add(convert(v, v.videoWidth, v.videoHeight, s === App.src ? settingsAt(t) : S)); }
   } else if (s.kind === 'text') add(textResult(s.text, S, s.ansi));
   else { const d = s === App.src ? currentDrawable() : [s.bmp, s.w, s.h]; if (d) add(convert(d[0], d[1], d[2], S)); }
   const P = paletteFromHistogram(H.cnt, H.sr, H.sg, H.sb, colors, withTransparency);
@@ -4162,7 +4175,8 @@ async function forEachRenderedFrame(progress, onFirst, onFrame, src = App.src, o
   for await (const f of exportFrames(src, o.fps)) {
     if (App.cancel) throw cancelled();
     if (o.throttle) await o.throttle();
-    const a = Pool.size() ? frameJobArgs(f, S) : { res: frameResult(f) };
+    const St = src === App.src ? frameSettings(f) : S;
+    const a = Pool.size() ? frameJobArgs(f, St) : { res: frameResult(f) };
     if (!started) {   // every frame has the size of the first
       started = true;
       const g = a.res || gridFor(f.w, f.h, S); scale = safeScale(g, S.exportScale);
@@ -4171,8 +4185,8 @@ async function forEachRenderedFrame(progress, onFirst, onFrame, src = App.src, o
       await onFirst(W, H, scale);
     }
     const k = delays.length; delays.push(f.delay);
-    Object.assign(a, { St: S, scale, w: W, h: H, ropts: o.ropts });
-    const local = () => { renderResult(frameJobResult(a, S), S, canvas, scale, o.ropts); return ctx.getImageData(0, 0, W, H).data; };
+    Object.assign(a, { St, scale, w: W, h: H, ropts: o.ropts });
+    const local = () => { renderResult(frameJobResult(a, St), S, canvas, scale, o.ropts); return ctx.getImageData(0, 0, W, H).data; };
     await renders.add(() => Pool.run('renderFrame', a), local);
     renders.list[k].then(px => { ready[k] = px; flush(); });
     progress(renders.done / f.total * 0.9, `Frame ${f.index + 1} / ${f.total}`);
@@ -4478,8 +4492,8 @@ async function exportVideo(fmt) {
   await runExport(`Recording ${fmt.label} (real time)`, async progress => {
     const canvas = document.createElement('canvas'), [a, b] = trimRange();
     let scale = null;
-    const draw = (d, w, h) => {
-      const res = convert(d, w, h, S);
+    const draw = (d, w, h, t) => {
+      const res = convert(d, w, h, settingsAt(t));
       if (scale === null) scale = safeScale(res, S.exportScale);
       renderResult(res, S, canvas, scale, { even: true, bgMode: S.bgMode === 'transparent' ? 'solid' : undefined });
     };
@@ -4501,7 +4515,7 @@ async function exportVideo(fmt) {
           let lastT = -1;
           const step = () => {
             if (App.cancel || v.ended || v.paused || v.currentTime >= b - 0.001) return res();
-            if (v.currentTime !== lastT) { lastT = v.currentTime; draw(v, v.videoWidth, v.videoHeight); progress((v.currentTime - a) / Math.max(1e-3, b - a), fmtTime(v.currentTime - a) + ' / ' + fmtTime(b - a) + ' (keep this tab visible)'); }
+            if (v.currentTime !== lastT) { lastT = v.currentTime; draw(v, v.videoWidth, v.videoHeight, v.currentTime); progress((v.currentTime - a) / Math.max(1e-3, b - a), fmtTime(v.currentTime - a) + ' / ' + fmtTime(b - a) + ' (keep this tab visible)'); }
             requestAnimationFrame(step);
           };
           requestAnimationFrame(step);
@@ -4515,7 +4529,7 @@ async function exportVideo(fmt) {
             const el = (performance.now() - start) / 1000;
             if (App.cancel || el >= total) return res();
             const idx = frameIndexAt(a + (el % span));
-            if (idx !== last) { last = idx; draw(s.frames[idx].bmp, s.w, s.h); }
+            if (idx !== last) { last = idx; draw(s.frames[idx].bmp, s.w, s.h, s.frames[idx].t0); }
             progress(el / total, fmtTime(el) + ' / ' + fmtTime(total) + ' (keep this tab visible)');
             requestAnimationFrame(step);
           };
@@ -4539,11 +4553,11 @@ async function collectResults(progress) {
   for await (const f of exportFrames()) {   // frames not converted yet are converted on workers, several at once
     if (App.cancel) throw cancelled();
     delays.push(Math.round(f.delay));
-    const memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, S);
-    if (memo) await jobs.add(null, () => withOverlay(memo, S));
+    const St = frameSettings(f), memo = f.text != null ? textResult(f.text, S, f.ansi) : peekResult(f.d, f.w, f.h, St);
+    if (memo) await jobs.add(null, () => withOverlay(memo, St));
     else {
-      const key = memoKey(f.d, f.w, f.h, S), a = Pool.size() ? frameJobArgs(f, S) : null;
-      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St: S }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, S); })), () => a ? frameJobResult(a, S) : frameResult(f));
+      const key = memoKey(f.d, f.w, f.h, St), a = Pool.size() ? frameJobArgs(f, St) : null;
+      await jobs.add(a && (() => Pool.run('convertPre', { pre: a.pre, sw: a.sw, sh: a.sh, St }).then(r => { if (key) resultCache.set(key, r, resultBytes(r)); return withOverlay(r, St); })), () => a ? frameJobResult(a, St) : frameResult(f));
     }
     progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
     await nextTick();
@@ -4633,10 +4647,10 @@ async function exportZip() {
     for await (const f of exportFrames()) {
       if (App.cancel) throw cancelled();
       // workers convert, draw and compress several frames at once; this thread only resamples the source
-      const a = Pool.size() ? frameJobArgs(f, S) : { res: frameResult(f) };
+      const St = frameSettings(f), a = Pool.size() ? frameJobArgs(f, St) : { res: frameResult(f) };
       if (scale === null) scale = safeScale(a.res || gridFor(f.w, f.h, S), S.exportScale);
-      Object.assign(a, { St: S, scale });
-      const local = async () => { const res = frameJobResult(a, S); renderResult(res, S, canvas, scale); const p = png(canvas); return { png: await p, text: resultText(res) }; };
+      Object.assign(a, { St, scale });
+      const local = async () => { const res = frameJobResult(a, St); renderResult(res, S, canvas, scale); const p = png(canvas); return { png: await p, text: resultText(res) }; };
       await jobs.add(() => Pool.run('pngFrame', a), local);
       progress(jobs.done / f.total, `Frame ${f.index + 1} / ${f.total}`);
       await nextTick();
@@ -5035,6 +5049,7 @@ function initUI() {
   initA11y();
   initPWA();
   initVersions();
+  initRamps();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);
@@ -6375,6 +6390,7 @@ async function projectParts(withSource = true) {
     meta.mask = { file: 'mask.rgba', w: m.width, h: m.height };
     files.push({ name: 'mask.rgba', data: new Uint8Array(px.buffer, px.byteOffset, px.byteLength) });
   }
+  if (Ramps.list.length) meta.ramps = Ramps.list.map(r => Object.assign({}, r));
   if (Versions.list.length) meta.versions = Versions.list.map(v => ({ name: v.name, settings: v.settings }));
   if (Edits.cells.size) meta.edits = { cols: Edits.cols, rows: Edits.rows, cells: Array.from(Edits.cells, ([i, e]) => [i, e.cp, e.rgb == null ? -1 : e.rgb]) };
   return { meta, files };
@@ -6426,6 +6442,8 @@ async function openProjectParts(meta, get) {
   if (!App.src || App.src === before) return false;
   applySettings(st);
   History.reset();
+  Ramps.list = Array.isArray(meta.ramps) ? meta.ramps.filter(r => r && RAMP_KEYS[r.key] && isFinite(r.from) && isFinite(r.to)).map(r => ({ key: r.key, from: +r.from, to: +r.to, ease: RAMP_EASES[r.ease] ? r.ease : 'linear' })) : [];
+  buildRampsUI(); rampsChanged();
   if (Array.isArray(meta.versions)) {
     Versions.list = meta.versions.filter(v => v && /^[ABCD]$/.test(v.name) && v.settings).map(v => {
       const o = {}; for (const k in v.settings) if (k in DEFAULTS && !VERSION_SKIP.has(k) && typeof v.settings[k] === typeof DEFAULTS[k]) o[k] = v.settings[k];
@@ -6983,6 +7001,28 @@ UI_TESTS.push(async function versions(ok, { wait }) {
   $('#versions .ver[data-ver="A"] .vdel').click();
   ok('Versions: delete', Versions.list.length === 1 && Versions.list[0].name === 'B');
   Versions.list = []; buildVersions();
+});
+
+UI_TESTS.push(async function rampsOverTime(ok, { wait }) {
+  Ramps.list = []; buildRampsUI(); rampsChanged();
+  await demoAnim(); await wait(30); setPlaying(false); applySettings({ mode: 'ascii', cols: 60, brightness: 0 }); renderNow();
+  ok('Change over time: offered for animations', getComputedStyle($('.anim-only')).display !== 'none');
+  $('#rampAdd').click();
+  const r = Ramps.list[0]; r.from = -0.8; r.to = 0.3; buildRampsUI(); rampsChanged();
+  const [a, b] = trimRange();
+  ok('Change over time: start and end values', settingsAt(a).brightness === -0.8 && Math.abs(settingsAt(b).brightness - 0.3) < 1e-9 && Math.abs(settingsAt((a + b) / 2).brightness + 0.25) < 1e-3);
+  ok('Change over time: your own setting is untouched', S.brightness === 0);
+  App.time = App.src.frames[1].t0; App.dirty = true; renderNow(); const dark = resultText(App.res);
+  App.time = App.src.frames[46].t0; App.dirty = true; renderNow(); const light = resultText(App.res);
+  ok('Change over time: playback follows it', dark !== light && (dark.match(/ /g) || []).length > (light.match(/ /g) || []).length);
+  const all = await collectResults(() => {});
+  ok('Change over time: exported frames follow it', resultText(all[0].res) !== resultText(all[all.length - 1].res) && resultText(all[1].res) === dark);
+  r.ease = 'back'; rampsChanged();
+  ok('Change over time: "there and back" ends where it starts', Math.abs(settingsAt(a).brightness - settingsAt(b).brightness) < 1e-6);
+  const { meta } = await projectParts(false);
+  ok('Change over time: kept in projects', meta.ramps && meta.ramps[0].key === 'brightness');
+  Ramps.list = []; buildRampsUI(); rampsChanged();
+  ok('Change over time: none = your settings', settingsAt(1) === S);
 });
 
 UI_TESTS.push(async function captions(ok) {
@@ -7971,6 +8011,70 @@ const EDIT_TIPS = {
   select: 'Select: drag a box. Drag inside it to move it. Ctrl+C / X / V, Delete, or Fill with the brush.',
   fill: 'Fill: click an area of one character (or of empty space) to fill all of it with the brush.',
 };
+/* =====================================================================
+   Settings that change over time (animations and videos): ramps from one value to another across the
+   trim range, e.g. brightness fading in or outlines growing. Only settings that keep the picture size.
+   ===================================================================== */
+const RAMP_KEYS = {
+  brightness: { name: 'Brightness', min: -1, max: 1 }, contrast: { name: 'Contrast', min: -1, max: 0.95 }, gamma: { name: 'Gamma', min: 0.2, max: 3 },
+  saturation: { name: 'Saturation', min: 0, max: 3 }, threshold: { name: 'Threshold', min: 0.05, max: 0.95 }, outline: { name: 'Outlines', min: 0, max: 1 },
+  fill: { name: 'Shading', min: 0, max: 1 }, bgFade: { name: 'Hide plain background', min: 0, max: 1 }, localContrast: { name: 'Depth', min: 0, max: 1 },
+  sharpen: { name: 'Sharpen', min: 0, max: 2 }, edge: { name: 'Edge boost', min: 0, max: 1 },
+};
+const RAMP_EASES = { linear: 'Steady', smooth: 'Smooth (ease in and out)', back: 'There and back (loops)' };
+const Ramps = { list: [] };   // { key, from, to, ease }
+const rampEase = (e, p) => e === 'smooth' ? p * p * (3 - 2 * p) : e === 'back' ? 0.5 - 0.5 * Math.cos(2 * Math.PI * p) : p;
+const rampsActive = s => Ramps.list.length > 0 && !!s && (s.kind === 'anim' || s.kind === 'video');
+let rampMemo = new Map();
+/* the settings at time t (seconds) of the open animation / video: yours, with the ramps applied */
+function settingsAt(t) {
+  if (!rampsActive(App.src)) return S;
+  const [a, b] = trimRange(), p = b > a ? clamp((t - a) / (b - a), 0, 1) : 0;
+  const key = p.toFixed(5) + '|' + rampSig();
+  let St = rampMemo.get(key);
+  if (!St) {
+    St = Object.assign({}, S);
+    for (const r of Ramps.list) { const k = RAMP_KEYS[r.key]; if (k) St[r.key] = Math.round(clamp(r.from + (r.to - r.from) * rampEase(r.ease, p), k.min, k.max) * 1e4) / 1e4; }
+    if (rampMemo.size > 400) rampMemo.clear();
+    rampMemo.set(key, St);
+  }
+  return St;
+}
+let rampSigCache = null;
+function rampSig() { if (rampSigCache) return rampSigCache; return (rampSigCache = JSON.stringify(Ramps.list) + '|' + convertSig(S)); }
+function rampsChanged() { rampSigCache = null; rampMemo.clear(); App.dirty = true; Prefetch.clear(); scheduleSessionSave(); }
+/* the time of an export frame */
+const frameTime = f => f.t || 0;
+const frameSettings = f => settingsAt(frameTime(f));
+function buildRampsUI() {
+  const box = $('#rampList'); box.textContent = '';
+  Ramps.list.forEach((r, i) => {
+    const k = RAMP_KEYS[r.key], row = document.createElement('div'); row.className = 'ramprow';
+    row.innerHTML = `<select aria-label="Setting">${Object.entries(RAMP_KEYS).map(([key, v]) => `<option value="${key}"${key === r.key ? ' selected' : ''}>${v.name}</option>`).join('')}</select>
+      <label>from <input type="number" step="0.05" value="${r.from}" aria-label="From"></label><label>to <input type="number" step="0.05" value="${r.to}" aria-label="To"></label>
+      <select aria-label="How it changes">${Object.entries(RAMP_EASES).map(([e, n]) => `<option value="${e}"${e === r.ease ? ' selected' : ''}>${n}</option>`).join('')}</select>
+      <button class="btn icon" aria-label="Remove this change" title="Remove">✕</button>`;
+    const [sel, ease] = row.querySelectorAll('select'), [from, to] = row.querySelectorAll('input');
+    sel.addEventListener('change', () => { r.key = sel.value; const kk = RAMP_KEYS[r.key]; r.from = S[r.key]; r.to = clamp(S[r.key] + (kk.max - kk.min) / 3, kk.min, kk.max); buildRampsUI(); rampsChanged(); });
+    const num = (inp, prop) => inp.addEventListener('input', () => { const v = parseFloat(inp.value); if (isFinite(v)) { r[prop] = clamp(v, RAMP_KEYS[r.key].min, RAMP_KEYS[r.key].max); rampsChanged(); } });
+    num(from, 'from'); num(to, 'to');
+    ease.addEventListener('change', () => { r.ease = ease.value; rampsChanged(); });
+    row.querySelector('button').addEventListener('click', () => { Ramps.list.splice(i, 1); buildRampsUI(); rampsChanged(); });
+    box.appendChild(row);
+  });
+  $('#rampNote').textContent = Ramps.list.length ? 'Plays from the start to the end of the trim range, and every animated export follows it.' : 'Nothing changes over time yet.';
+}
+function addRamp(key = 'brightness') {
+  const used = new Set(Ramps.list.map(r => r.key)), k = RAMP_KEYS[key] && !used.has(key) ? key : Object.keys(RAMP_KEYS).find(x => !used.has(x));
+  if (!k) return;
+  const d = RAMP_KEYS[k];
+  Ramps.list.push({ key: k, from: S[k], to: Math.round(clamp(k === 'brightness' ? S[k] - 0.6 : S[k] + (d.max - d.min) / 3, d.min, d.max) * 100) / 100, ease: 'linear' });
+  buildRampsUI(); rampsChanged();
+}
+function initRamps() {
+  $('#rampAdd').addEventListener('click', () => addRamp());
+  buildRampsUI();
+}
 /* =====================================================================
    Start: build the UI, then run a test or demo when the address asks for one (#selftest, #equiv, #uitest, #demo…)
    ===================================================================== */

@@ -270,6 +270,7 @@ function initUI() {
   initA11y();
   initPWA();
   initVersions();
+  initRamps();
   initSession();
   buildExportPanel();
   requestAnimationFrame(tick);

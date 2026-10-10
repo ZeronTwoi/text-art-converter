@@ -378,7 +378,7 @@ function tick(now) {
   updatePlayerUI();
 }
 /* the settings the view shows: yours, or a look you are previewing (pointer resting on a look card) */
-const viewS = () => App.peek || S;
+const viewS = () => App.peek || settingsAt(curTime());
 function computeCurrent() {
   const s = App.src, St = viewS();
   if (s.kind === 'text') return textResult(s.text, St, s.ansi);
@@ -409,23 +409,23 @@ const Live = {
    so this thread stays free), and playing then just shows memoised results. */
 const Prefetch = {
   inflight: new Set(), fails: 0,
-  pending(src, sw, sh) { if (!this.inflight.size) return false; const k = memoKey(src, sw, sh, S); return !!k && this.inflight.has(k) && !resultCache.m.has(k); },
+  pending(src, sw, sh) { if (!this.inflight.size) return false; const k = memoKey(src, sw, sh, viewS()); return !!k && this.inflight.has(k) && !resultCache.m.has(k); },
   clear() { this.inflight.clear(); this.fails = 0; },
   run() {
     const s = App.src, limit = Pool.size();
     if (!s || s.kind !== 'anim' || App.exporting || !limit || this.fails > 3 || this.inflight.size >= limit) return;
     const [a, b] = trimRange(), i0 = frameIndexAt(a), i1 = frameIndexAt(Math.max(a, b - 1e-6)), span = i1 - i0 + 1;
-    const cur = frameIndexAt(App.time), sig = convertSig(S), St = Object.assign({}, S);
+    const cur = frameIndexAt(App.time), ramps = rampsActive(s), sig0 = ramps ? null : convertSig(S);
     for (let k = 1; k < Math.min(span, limit * 3); k++) {
       const i = i0 + ((cur - i0 + k) % span + span) % span, bmp = s.frames[i].bmp; if (!bmp) continue;
-      const key = memoKey(bmp, s.w, s.h, St, sig);
+      const St = ramps ? settingsAt(s.frames[i].t0) : S, key = memoKey(bmp, s.w, s.h, St, sig0 || convertSig(St));
       if (!key || this.inflight.has(key) || resultCache.m.has(key)) continue;
       this.inflight.add(key);
       convertOnWorker(bmp, s.w, s.h, St).then(r => { if (App.src === s) resultCache.set(key, r, resultBytes(r)); }, () => { this.fails++; })
         .finally(() => {
           if (!this.inflight.delete(key) || App.src !== s) return;
           const d = currentDrawable();
-          if (d && memoKey(d[0], d[1], d[2], S) === key) App.dirty = true;   // the frame on screen just arrived
+          if (d && memoKey(d[0], d[1], d[2], viewS()) === key) App.dirty = true;   // the frame on screen just arrived
         });
       return;
     }
