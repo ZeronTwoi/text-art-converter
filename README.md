@@ -31,3 +31,23 @@ node test.mjs           # self-test, bit-exact regression check, feature checks,
 `node test.mjs` needs Node 22+ and Chrome or Edge (or `CHROME=<path>`). It exits with code 1 if
 anything fails. Single suites: `node test.mjs selftest`, `equiv`, `uitest`, `pwa`, `video`.
 To check video in your own browser: open `web/test.html#videotest` and press Start. (`test.html` is the app plus its tests; `index.html` is the app alone.)
+
+## Desktop app (`desktop/`)
+
+A small Electron shell around the same `web/index.html` (the page is unchanged and keeps working
+in a browser). It serves the page from a stable `app://` origin so settings, projects and sessions
+persist, opens files passed on the command line or by double-click, lets the camera through, and
+opens outside links in the system browser.
+
+```
+cd desktop
+npm install
+npm start               # run it (electron .)
+node smoke.mjs          # run it headlessly and check start, file open, camera, storage, restart
+node smoke.mjs selftest # the page's own test suites inside the shell (also: uitest, videotest)
+npm run dist:win        # Windows: NSIS installer + portable .exe → desktop/dist/
+npm run dist:linux      # Linux: AppImage + .deb (build on Linux; see the workflow below)
+```
+
+The GitHub Actions workflow `.github/workflows/desktop.yml` builds Windows and Linux packages
+(run it from the Actions tab, or push a `desktop-v*` tag). Builds are unsigned.

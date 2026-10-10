@@ -7132,6 +7132,12 @@ async function actShareText() {
 const servedOnWeb = () => location.protocol === 'https:' || (location.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname));
 function initPWA() {
   $('#shareDialogCancel').addEventListener('click', () => $('#shareDialog').close());
+  // the desktop app: files from the command line or a double-click arrive over its small bridge (desktop/preload.js)
+  if (window.desktopHost) {
+    const arrived = files => { const f = files && files[0]; if (f) openFile(new File([f.data], f.name, { type: f.type || '' })); };
+    window.desktopHost.onOpenedFiles(arrived);
+    window.desktopHost.takeOpenedFiles().then(arrived);
+  }
   if (!servedOnWeb()) return;   // a file on disk: nothing to install, nothing to cache
   const link = document.createElement('link'); link.rel = 'manifest'; link.href = 'manifest.webmanifest'; document.head.appendChild(link);
   const apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = 'icon-192.png'; document.head.appendChild(apple);

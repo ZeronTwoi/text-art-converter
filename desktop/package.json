@@ -1,0 +1,20 @@
+{
+  "name": "text-art-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turns pictures, GIFs and videos into text art, offline. The desktop shell around web/index.html.",
+  "author": "LighterVoids <afra.kamil.05@gmail.com>",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node smoke.mjs",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  }
+}

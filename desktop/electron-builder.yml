@@ -1,0 +1,58 @@
+# Packaging: Windows installer + portable .exe, Linux AppImage + .deb (built by CI; see
+# .github/workflows/desktop.yml — Linux packages do not build reliably from Windows).
+appId: io.github.lightervoids.text-art-studio
+productName: Text Art Studio
+artifactName: text-art-studio-${version}-${os}-${arch}.${ext}
+npmRebuild: false
+
+directories:
+  output: dist
+  buildResources: build
+
+# the shell is three small files; the page itself travels as a resource, unchanged
+files:
+  - main.js
+  - preload.js
+extraResources:
+  - from: ../web/index.html
+    to: web/index.html
+  - from: ../web/icon-512.png
+    to: web/icon-512.png
+
+# "Open with…" for everything the page opens (the page also takes .txt and ANSI text art,
+# but those stay with the system's text tools)
+fileAssociations:
+  - { ext: textart, name: Text Art project, mimeType: application/x-textart }
+  - { ext: textlook, name: Text Art look, mimeType: application/x-textart-look }
+  - { ext: png, name: PNG image, mimeType: image/png, role: Viewer }
+  - { ext: apng, name: Animated PNG image, mimeType: image/apng, role: Viewer }
+  - { ext: jpg, name: JPEG image, mimeType: image/jpeg, role: Viewer }
+  - { ext: jpeg, name: JPEG image, mimeType: image/jpeg, role: Viewer }
+  - { ext: gif, name: GIF image, mimeType: image/gif, role: Viewer }
+  - { ext: webp, name: WebP image, mimeType: image/webp, role: Viewer }
+  - { ext: avif, name: AVIF image, mimeType: image/avif, role: Viewer }
+  - { ext: bmp, name: BMP image, mimeType: image/bmp, role: Viewer }
+  - { ext: svg, name: SVG image, mimeType: image/svg+xml, role: Viewer }
+  - { ext: mp4, name: MP4 video, mimeType: video/mp4, role: Viewer }
+  - { ext: m4v, name: MP4 video, mimeType: video/mp4, role: Viewer }
+  - { ext: webm, name: WebM video, mimeType: video/webm, role: Viewer }
+  - { ext: mov, name: QuickTime video, mimeType: video/quicktime, role: Viewer }
+  - { ext: mkv, name: Matroska video, mimeType: video/x-matroska, role: Viewer }
+  - { ext: ogv, name: Ogg video, mimeType: video/ogg, role: Viewer }
+  - { ext: 3gp, name: 3GP video, mimeType: video/3gpp, role: Viewer }
+
+win:
+  target:
+    - { target: nsis, arch: [x64] }
+    - { target: portable, arch: [x64] }
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: text-art-studio-${version}-setup.${ext}
+portable:
+  artifactName: text-art-studio-${version}-portable.${ext}
+
+linux:
+  target: [AppImage, deb]
+  category: Graphics
+  synopsis: Pictures, GIFs and videos to text art, offline

@@ -1,0 +1,48 @@
+# Packages the desktop app: Windows (NSIS installer + portable .exe) and Linux (AppImage + .deb).
+# Linux packages do not build reliably from Windows, so both are built here.
+# Runs on demand (Actions → desktop → Run workflow) and for tags like desktop-v1.0.0.
+name: desktop
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The page is built from src/ (the shell ships web/index.html as it is)
+        run: node build.mjs --check
+        working-directory: web
+      - run: npm ci
+        working-directory: desktop
+      - name: Shell checks (Linux, under a virtual display)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run --auto-servernum node smoke.mjs
+        working-directory: desktop
+      - name: Shell checks (Windows)
+        if: runner.os == 'Windows'
+        run: node smoke.mjs
+        working-directory: desktop
+      - name: Package (unsigned)
+        run: npx electron-builder --publish never
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+          if-no-files-found: error
