@@ -210,5 +210,7 @@ node smoke.mjs          # drive the real shell and check start, file open, camer
 npm run dist:win        # Windows installer + portable .exe → desktop/dist/
 ```
 
+At the end, I made this app because the idea of it made me happy. I hope it would be usefull to you too. 
+
 Linux packages are built by CI: the `desktop` workflow in `.github/workflows/` builds both
 platforms, and pushing a `desktop-v*` tag publishes a Release with the files and their checksums.
